@@ -439,27 +439,34 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             actions.add(loginAction);
         }
 
-        actions.add(new GeneiousAction("Remove Duplicate Passed", "Remove Duplicate Passed") {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                final ProgressFrame progress = new ProgressFrame("Working", "Fetching Workflows");
-                new Thread() {
-                    public void run() {
-                        try {
-                            CompositeProgressListener partProgress = new CompositeProgressListener(progress, 0.8, 0.2);
-                            partProgress.beginSubtask();
-                            List<Integer> duplicateSequences = getDuplicateSequences(partProgress);
-                            partProgress.beginSubtask();
-//                            deleteSequences(duplicateSequences, partProgress);
-                        } catch(SQLException e) {
-                            e.printStackTrace();
-                            Dialogs.showMessageDialog(e.getMessage());
+        if(isLoggedIn) {
+            actions.add(new GeneiousAction("Remove Duplicate Passed", "Remove Duplicate Passed") {
+                @Override
+                public void actionPerformed(ActionEvent actionEvent) {
+                    final ProgressFrame progress = new ProgressFrame("Working", "Fetching Workflows");
+                    new Thread() {
+                        public void run() {
+                            try {
+                                CompositeProgressListener partProgress = new CompositeProgressListener(progress, 0.8, 0.2);
+                                partProgress.beginSubtask();
+                                List<Integer> duplicateSequences = getDuplicateSequences(partProgress);
+                                boolean delete = Dialogs.showYesNoDialog("Geneious found " + duplicateSequences.size() + " duplicates.\n\n" +
+                                        "Do you wish to delete them?",
+                                        "Duplicates Found", null, Dialogs.DialogIcon.QUESTION);
+                                partProgress.beginSubtask();
+                                if(delete) {
+                                    deleteSequences(duplicateSequences, partProgress);
+                                }
+                            } catch(SQLException e) {
+                                e.printStackTrace();
+                                Dialogs.showMessageDialog(e.getMessage());
+                            }
+                            progress.setProgress(1.0);
                         }
-                        progress.setProgress(1.0);
-                    }
-                }.start();
-            }
-        }.setInPopupMenu(true));
+                    }.start();
+                }
+            }.setInPopupMenu(true));
+        }
 
         return actions;
     }
@@ -479,7 +486,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     }
 
 
-    DateFormat df  = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss");
+    DateFormat df  = new SimpleDateFormat("dd/MM/yyyy");
     private List<Integer> getDuplicateSequences(ProgressListener progress) throws SQLException {
         // Get the list of reactions with multiple passed workflows
         try {
@@ -507,6 +514,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
 
             List<Integer> duplicates = new ArrayList<Integer>();
+            int sameDayCount = 0;
 
             PreparedStatement getReactionId = getActiveLIMSConnection().createStatement("SELECT reaction FROM sequencing_result WHERE assembly = ?");
 
@@ -545,7 +553,9 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                         }
                         if(allColumnsSame) {
                             if(isSameReaction(getReactionId, id, otherValues)) {
-                                System.out.println(otherValues.get("date") + " -> " + dateString);
+                                if(otherValues.get("date").equals(dateString)) {
+                                    sameDayCount++;
+                                }
                                 duplicateFound = true;
                             } else {
                                 System.out.println("what!?");
@@ -565,6 +575,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
             // Print it out then delete the newest one?
             System.out.println("Dupe Count: " + duplicates.size());
+            System.out.println("On same day: " + sameDayCount + "/" + duplicates.size());
             return duplicates;
 
         } catch (TransactionException e) {

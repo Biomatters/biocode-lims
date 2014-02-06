@@ -486,7 +486,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     }
 
 
-    DateFormat df  = new SimpleDateFormat("dd/MM/yyyy");
+    DateFormat df  = new SimpleDateFormat("dd/MM/yyyy hh:mm");
     private List<Integer> getDuplicateSequences(ProgressListener progress) throws SQLException {
         // Get the list of reactions with multiple passed workflows
         try {
@@ -518,9 +518,10 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
             PreparedStatement getReactionId = getActiveLIMSConnection().createStatement("SELECT reaction FROM sequencing_result WHERE assembly = ?");
 
+            int count = 1;
             for (Integer workflow : workflows) {
-                partProgress.beginSubtask("Checking workflow no. " + workflow + "\n\n"
-                 + "Current Dupe Count = " + duplicates.size());
+                partProgress.beginSubtask("Checking workflow " + count++ + "/" + workflows.size() + " (with multiple passed seqs)\n\n"
+                 + "Current Dupe Count = " + duplicates.size() + " (" + sameDayCount + " /w same date)");
                 getAssemblies.setObject(1, workflow);
                 ResultSet assemblySet = getAssemblies.executeQuery();
 
@@ -553,8 +554,11 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                         }
                         if(allColumnsSame) {
                             if(isSameReaction(getReactionId, id, otherValues)) {
-                                if(otherValues.get("date").equals(dateString)) {
+                                String otherDateString = otherValues.get("date");
+                                if(sameDay(dateString, otherDateString)) {
                                     sameDayCount++;
+                                } else {
+                                    System.out.println("Different Days: " + otherDateString + " -> " + dateString);
                                 }
                                 duplicateFound = true;
                             } else {
@@ -585,6 +589,12 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             progress.setProgress(1.0);
         }
 
+    }
+
+    private boolean sameDay(String dateString, String otherDateString) {
+        String otherDay = otherDateString.split(" ")[0];
+        String day = dateString.split(" ")[0];
+        return otherDay.equals(day);
     }
 
     private boolean isSameReaction(PreparedStatement getReactionId, int id, Map<String, String> otherValues) throws SQLException {

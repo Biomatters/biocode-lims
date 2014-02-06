@@ -18,6 +18,7 @@ import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.labbench.reporting.ReportingService;
+import jebl.util.CompositeProgressListener;
 import jebl.util.ProgressListener;
 import org.jdom.Element;
 import org.jdom.JDOMException;
@@ -438,7 +439,154 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             actions.add(loginAction);
         }
 
+        actions.add(new GeneiousAction("Remove Duplicate Passed", "Remove Duplicate Passed") {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                final ProgressFrame progress = new ProgressFrame("Working", "Fetching Workflows");
+                new Thread() {
+                    public void run() {
+                        try {
+                            CompositeProgressListener partProgress = new CompositeProgressListener(progress, 0.8, 0.2);
+                            partProgress.beginSubtask();
+                            List<Integer> duplicateSequences = getDuplicateSequences(partProgress);
+                            partProgress.beginSubtask();
+//                            deleteSequences(duplicateSequences, partProgress);
+                        } catch(SQLException e) {
+                            e.printStackTrace();
+                            Dialogs.showMessageDialog(e.getMessage());
+                        }
+                        progress.setProgress(1.0);
+                    }
+                }.start();
+            }
+        }.setInPopupMenu(true));
+
         return actions;
+    }
+
+    private void deleteSequences(List<Integer> duplicateSequences, ProgressListener progress) throws SQLException {
+        CompositeProgressListener partProgress = new CompositeProgressListener(progress, duplicateSequences.size());
+        int total =0;
+        PreparedStatement delete = getActiveLIMSConnection().createStatement("DELETE FROM assembly WHERE id = ?");
+        for (Integer id : duplicateSequences) {
+            partProgress.beginSubtask();
+            delete.setObject(1, id);
+            int deleted = delete.executeUpdate();
+            total += deleted;
+        }
+        progress.setProgress(1.0);
+        System.out.println("Deleted " + total + " sequences");
+    }
+
+
+    DateFormat df  = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss");
+    private List<Integer> getDuplicateSequences(ProgressListener progress) throws SQLException {
+        // Get the list of reactions with multiple passed workflows
+        try {
+            progress.setIndeterminateProgress();
+            Set<Integer> workflows = new HashSet<Integer>();
+            ResultSet resultSet = getActiveLIMSConnection().executeQuery(
+                    "SELECT workflow FROM assembly WHERE  progress = 'passed' GROUP BY (workflow) HAVING count(id) > 1");
+            while(resultSet.next()) {
+                workflows.add(resultSet.getInt("workflow"));
+            }
+            resultSet.close();
+
+            CompositeProgressListener partProgress = new CompositeProgressListener(progress, workflows.size());
+            // Go through each workflow and check if there is a duplicate.  If there is,
+            PreparedStatement getAssemblies = getActiveLIMSConnection().createStatement("SELECT * FROM assembly WHERE workflow = ?");
+
+            List<Map<String, String>> rowValues = new ArrayList<Map<String, String>>();
+            String[] columnsToCompare = new String[]{
+                "consensus","extraction_id","params","coverage","disagreements","edits","notes","technician",
+                    "reference_seq_id", "confidence_scores", "trim_params_fwd","trim_params_rev",
+                    "other_processing_fwd", "other_processing_rev","bin","ambiguities", "editrecord"
+
+            };
+
+
+
+            List<Integer> duplicates = new ArrayList<Integer>();
+
+            PreparedStatement getReactionId = getActiveLIMSConnection().createStatement("SELECT reaction FROM sequencing_result WHERE assembly = ?");
+
+            for (Integer workflow : workflows) {
+                partProgress.beginSubtask("Checking workflow no. " + workflow + "\n\n"
+                 + "Current Dupe Count = " + duplicates.size());
+                getAssemblies.setObject(1, workflow);
+                ResultSet assemblySet = getAssemblies.executeQuery();
+
+                while(assemblySet.next()) {
+
+                    HashMap<String, String> values = new HashMap<String, String>();
+                    int id = assemblySet.getInt("id");
+                    values.put("id", ""+ id);
+                    for (String columnName : columnsToCompare) {
+                        values.put(columnName, assemblySet.getString(columnName));
+                    }
+                    Timestamp date = assemblySet.getTimestamp("date");
+                    String dateString = df.format(date);
+                    values.put("date", dateString);
+
+                    boolean duplicateFound = false;
+                    for (Map<String, String> otherValues : rowValues) {
+                        if(duplicateFound) {
+                            continue;
+                        }
+                        boolean allColumnsSame = true;
+                        for (String column : columnsToCompare) {
+                            String value = values.get(column);
+                            String other = otherValues.get(column);
+                            if(value != null && !value.equals(other)
+                                    || (value == null && other != null))
+                            {
+                                allColumnsSame = false;
+                            }
+                        }
+                        if(allColumnsSame) {
+                            if(isSameReaction(getReactionId, id, otherValues)) {
+                                System.out.println(otherValues.get("date") + " -> " + dateString);
+                                duplicateFound = true;
+                            } else {
+                                System.out.println("what!?");
+                            }
+
+                        }
+                    }
+                    if(!duplicateFound) {
+                        rowValues.add(values);
+                    } else {
+
+                        duplicates.add(id);
+                    }
+                }
+                assemblySet.close();
+            }
+
+            // Print it out then delete the newest one?
+            System.out.println("Dupe Count: " + duplicates.size());
+            return duplicates;
+
+        } catch (TransactionException e) {
+           e.printStackTrace();
+            throw new IllegalStateException(e.getMessage());
+        } finally {
+            progress.setProgress(1.0);
+        }
+
+    }
+
+    private boolean isSameReaction(PreparedStatement getReactionId, int id, Map<String, String> otherValues) throws SQLException {
+        Set<Integer> reactionIds = new HashSet<Integer>();
+        for(int i : new int[]{id, Integer.parseInt(otherValues.get("id"))}) {
+                getReactionId.setObject(1, id);
+            ResultSet result = getReactionId.executeQuery();
+            if(result.next()) {
+                reactionIds.add(result.getInt("reaction"));
+            }
+            result.close();
+        }
+        return reactionIds.size() <= 1;
     }
 
     private void logOut() {

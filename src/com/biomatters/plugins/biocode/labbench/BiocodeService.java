@@ -30,9 +30,7 @@ import org.virion.jam.framework.AbstractFrame;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -486,10 +484,21 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     }
 
 
-    DateFormat df  = new SimpleDateFormat("dd/MM/yyyy hh:mm");
+    DateFormat df  = new SimpleDateFormat("yyyy/MM/dd hh:mm:ss.SSS");
     private List<Integer> getDuplicateSequences(ProgressListener progress) throws SQLException {
         // Get the list of reactions with multiple passed workflows
+        String[] allColumns = new String[] {"id","extraction_id","workflow","progress","consensus","params",
+                "coverage","disagreements","edits","reference_seq_id","confidence_scores", "trim_params_fwd",
+                "trim_params_rev","other_processing_fwd","other_processing_rev","date","notes","technician","bin",
+                "ambiguities", "submitted","editrecord"
+        };
         try {
+            BufferedWriter duplicateWriter = new BufferedWriter(new FileWriter(new File("/Users/matthew/Desktop/multiplePassed.csv")));
+            BufferedWriter exactDuplicateWriter = new BufferedWriter(new FileWriter(new File("/Users/matthew/Desktop/exactDuplicatePassed.csv")));
+            duplicateWriter.write(StringUtilities.join(",", Arrays.asList(allColumns)) + "\n");
+            exactDuplicateWriter.write(StringUtilities.join(",", Arrays.asList(allColumns)) + "\n");
+
+
             progress.setIndeterminateProgress();
             Set<Integer> workflows = new HashSet<Integer>();
             ResultSet resultSet = getActiveLIMSConnection().executeQuery(
@@ -501,11 +510,16 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
             CompositeProgressListener partProgress = new CompositeProgressListener(progress, workflows.size());
             // Go through each workflow and check if there is a duplicate.  If there is,
-            PreparedStatement getAssemblies = getActiveLIMSConnection().createStatement("SELECT * FROM assembly WHERE workflow = ?");
+            PreparedStatement getAssemblies = getActiveLIMSConnection().createStatement("SELECT * FROM assembly WHERE workflow = ? ORDER BY date");
 
             List<Map<String, String>> rowValues = new ArrayList<Map<String, String>>();
+            String[] intColumns = new String[] {
+                "id","workflow","disagreements", "reference_seq_id","ambiguities","submitted"
+            };
+
+
             String[] columnsToCompare = new String[]{
-                "consensus","extraction_id","params","coverage","disagreements","edits","notes","technician",
+                "consensus","extraction_id","params","coverage","disagreements","edits","notes",
                     "reference_seq_id", "confidence_scores", "trim_params_fwd","trim_params_rev",
                     "other_processing_fwd", "other_processing_rev","bin","ambiguities", "editrecord"
 
@@ -513,33 +527,48 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
 
 
-            List<Integer> duplicates = new ArrayList<Integer>();
+            List<Integer> toDelete = new ArrayList<Integer>();
+            List<String> printed = new ArrayList<String>();
             int sameDayCount = 0;
+            int sameTechCount = 0;
 
             PreparedStatement getReactionId = getActiveLIMSConnection().createStatement("SELECT reaction FROM sequencing_result WHERE assembly = ?");
 
             int count = 1;
             for (Integer workflow : workflows) {
                 partProgress.beginSubtask("Checking workflow " + count++ + "/" + workflows.size() + " (with multiple passed seqs)\n\n"
-                 + "Current Dupe Count = " + duplicates.size() + " (" + sameDayCount + " /w same date)");
+                 + "Current Dupe Count = " + toDelete.size() + " (" + sameDayCount + " /w same date, " +
+                sameTechCount + " /w same person)");
                 getAssemblies.setObject(1, workflow);
                 ResultSet assemblySet = getAssemblies.executeQuery();
 
                 while(assemblySet.next()) {
+                    int id = assemblySet.getInt("id");
 
                     HashMap<String, String> values = new HashMap<String, String>();
-                    int id = assemblySet.getInt("id");
-                    values.put("id", ""+ id);
-                    for (String columnName : columnsToCompare) {
-                        values.put(columnName, assemblySet.getString(columnName));
+                    String dateString = "";
+                    for (String columnName : allColumns) {
+                        if(Arrays.asList(intColumns).contains(columnName)) {
+                            values.put(columnName, "" + assemblySet.getInt(columnName));
+                        } else if(columnName.equals("coverage")) {
+                            values.put(columnName, "" + assemblySet.getFloat(columnName));
+                        } else if(columnName.equals("date")) {
+                            Timestamp date = assemblySet.getTimestamp("date");
+                            dateString = df.format(date);
+                            values.put("date", dateString);
+                        } else {
+                            values.put(columnName, assemblySet.getString(columnName));
+                        }
                     }
-                    Timestamp date = assemblySet.getTimestamp("date");
-                    String dateString = df.format(date);
-                    values.put("date", dateString);
 
-                    boolean duplicateFound = false;
+                    String technician = values.get("technician");
+
+                    printRow(duplicateWriter, allColumns, values);
+
+
+                    boolean exactDuplicate = false;
                     for (Map<String, String> otherValues : rowValues) {
-                        if(duplicateFound) {
+                        if(exactDuplicate) {
                             continue;
                         }
                         boolean allColumnsSame = true;
@@ -560,35 +589,63 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                                 } else {
                                     System.out.println("Different Days: " + otherDateString + " -> " + dateString);
                                 }
-                                duplicateFound = true;
+                                String otherTech = otherValues.get("technician");
+                                if((technician != null && technician.equals(otherTech)) ||
+                                        technician == null && otherTech == null) {
+                                    sameTechCount++;
+                                } else {
+                                    System.out.println("Different Person: " + otherTech + " -> " + technician);
+                                }
+                                exactDuplicate = true;
+                                if(!printed.contains(otherValues.get("id"))) {
+                                    printRow(exactDuplicateWriter, allColumns, otherValues);
+
+                                }
+                                printRow(exactDuplicateWriter, allColumns, values);
                             } else {
                                 System.out.println("what!?");
                             }
 
                         }
                     }
-                    if(!duplicateFound) {
-                        rowValues.add(values);
-                    } else {
-
-                        duplicates.add(id);
+                    rowValues.add(values);
+                    if(exactDuplicate) {
+                        toDelete.add(id);
                     }
                 }
                 assemblySet.close();
             }
-
+            exactDuplicateWriter.close();
+            duplicateWriter.close();
             // Print it out then delete the newest one?
-            System.out.println("Dupe Count: " + duplicates.size());
-            System.out.println("On same day: " + sameDayCount + "/" + duplicates.size());
-            return duplicates;
+            System.out.println("Dupe Count: " + toDelete.size());
+            System.out.println("On same day: " + sameDayCount + "/" + toDelete.size());
+            return toDelete;
 
         } catch (TransactionException e) {
            e.printStackTrace();
+            throw new IllegalStateException(e.getMessage());
+        } catch (IOException e) {
+            e.printStackTrace();
             throw new IllegalStateException(e.getMessage());
         } finally {
             progress.setProgress(1.0);
         }
 
+    }
+
+    private void printRow(Writer writer, String[] columns, Map<String, String> values) throws IOException {
+        boolean first = true;
+        for (String column : columns) {
+            if(first) {
+                first = false;
+            } else {
+                writer.write(",");
+            }
+            String toPrint = values.get(column);
+            writer.write("\"" + (toPrint == null ? "" : toPrint) + "\"");
+        }
+        writer.write("\n");
     }
 
     private boolean sameDay(String dateString, String otherDateString) {

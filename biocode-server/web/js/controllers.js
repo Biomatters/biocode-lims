@@ -1,10 +1,11 @@
 /**
  * Created by frank on 24/06/14.
  */
+var errorUrl = "biocode/info/errors";
 var projectsUrl = "biocode/projects";
 var usersUrl = "biocode/users";
 var rolesUrl = "biocode/roles";
-var usersPage = "#/users"
+var usersPage = "#/users";
 var projectMap = null;
 var projects = null;
 
@@ -268,6 +269,7 @@ biocodeControllers.controller('userDetailCtrl', ['$scope', '$http', '$routeParam
             tmpUser.password = $('#passinput')[0].value;
             $http.put(usersUrl + '/' + $scope.user.username, tmpUser).success(function(){
                 alert('password update sucessfull');
+                $scope.toggleModal();
             });
         }
 
@@ -332,8 +334,12 @@ biocodeControllers.controller('aboutCtrl', ['$scope',
         $('li#about').attr('class', 'active');
     }]);
 
-biocodeControllers.controller('contactCtrl', ['$scope',
-    function($scope) {
+biocodeControllers.controller('homeCtrl', ['$scope', '$http',
+    function($scope, $http) {
         $('.navbar-nav li').attr('class', '');
-        $('li#contact').attr('class', 'active');
+        $('li#home').attr('class', 'active');
+
+        $http.get(errorUrl).success(function (data) {
+            $('div.errors').html(data);
+        });
     }]);

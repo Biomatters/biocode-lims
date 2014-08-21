@@ -1480,6 +1480,9 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             String extractionId = reaction.getExtractionId();
 
             if (!reaction.isEmpty()) {
+                if(extractionId.isEmpty()) {
+                    continue;
+                }
                 if (reaction.getType() != Reaction.Type.Extraction && reaction.getLocus().equals("None")) {
                     throw new BadDataException("Locus is not specified for reaction with extraction id " + reaction.getExtractionId());
                 }

@@ -239,80 +239,92 @@ public class AddAssemblyResultsToLimsOperation extends DocumentOperation {
         List<AnnotatedPluginDocument> toGetReactionsFrom = haveSourceChromatograms ? chromatograms : Collections.singletonList(annotatedDocument);
 
         for (AnnotatedPluginDocument doc : toGetReactionsFrom) {
-            String plateName = (String)doc.getFieldValue(BiocodeUtilities.SEQUENCING_PLATE_FIELD);
-            if (plateName == null) {
-                return "FIMS data not annotated on referenced sequence (plate name)";
-            }
+            for(boolean firstTry : new boolean[]{true, false}) {
 
-            Plate plate;
-            if (sequencingPlateCache.containsKey(plateName)) {
-                plate = sequencingPlateCache.get(plateName);
-            } else {
-                Query q = Query.Factory.createFieldQuery(LIMSConnection.PLATE_NAME_FIELD, Condition.EQUAL, new Object[]{plateName},
-                        BiocodeService.getSearchDownloadOptions(false, false, true, false));//Query.Factory.createQuery(plateName);
-                List<PlateDocument> plateDocuments;
-                try {
-                    plateDocuments = limsConnection.getMatchingDocumentsFromLims(q, null, null).getPlates();
-                } catch (DatabaseServiceException e) {
-                    e.printStackTrace();
-                    throw new DocumentOperationException("Failed to connect to FIMS: " + e.getMessage(), e);
+                String plateName;
+                if(firstTry) {
+                    plateName = (String) doc.getFieldValue(BiocodeUtilities.SEQUENCING_PLATE_FIELD);
+                    if (plateName == null) {
+                        return "FIMS data not annotated on referenced sequence (plate name)";
+                    }
+                } else{
+                    Object revFieldValue = doc.getFieldValue(BiocodeService.getInstance().REV_PLATE_FIELD);
+                    if(revFieldValue == null) {
+                        continue;
+                    }
+                    plateName = String.valueOf(revFieldValue);
                 }
-                if (plateDocuments.isEmpty()) {
-                    sequencingPlateCache.put(plateName, null);
-                    return "No plate found with name \"" + plateName + "\"";
+
+                Plate plate;
+                if (sequencingPlateCache.containsKey(plateName)) {
+                    plate = sequencingPlateCache.get(plateName);
+                } else {
+                    Query q = Query.Factory.createFieldQuery(LIMSConnection.PLATE_NAME_FIELD, Condition.EQUAL, new Object[]{plateName},
+                            BiocodeService.getSearchDownloadOptions(false, false, true, false));//Query.Factory.createQuery(plateName);
+                    List<PlateDocument> plateDocuments;
+                    try {
+                        plateDocuments = limsConnection.getMatchingDocumentsFromLims(q, null, null).getPlates();
+                    } catch (DatabaseServiceException e) {
+                        e.printStackTrace();
+                        throw new DocumentOperationException("Failed to connect to FIMS: " + e.getMessage(), e);
+                    }
+                    if (plateDocuments.isEmpty()) {
+                        sequencingPlateCache.put(plateName, null);
+                        return "No plate found with name \"" + plateName + "\"";
+                    }
+                    if (plateDocuments.size() != 1) {
+                        sequencingPlateCache.put(plateName, null);
+                        return "Multiple plates found matching name \"" + plateName + "\"";
+                    }
+                    PlateDocument plateDocument = plateDocuments.get(0);
+                    if (plateDocument.getPlate().getReactionType() != Reaction.Type.CycleSequencing) {
+                        sequencingPlateCache.put(plateName, null);
+                        return "Plate \"" + plateName + "\" is not a sequencing plate";
+                    }
+                    plate = plateDocument.getPlate();
+                    sequencingPlateCache.put(plateName, plate);
                 }
-                if (plateDocuments.size() != 1) {
-                    sequencingPlateCache.put(plateName, null);
-                    return "Multiple plates found matching name \"" + plateName + "\"";
+                if (plate == null) {
+                    return "Cannot find sequencing plate \"" + plateName + "\"";
                 }
-                PlateDocument plateDocument = plateDocuments.get(0);
-                if (plateDocument.getPlate().getReactionType() != Reaction.Type.CycleSequencing) {
-                    sequencingPlateCache.put(plateName, null);
-                    return "Plate \"" + plateName + "\" is not a sequencing plate";
+
+                String wellName = (String) doc.getFieldValue(BiocodeUtilities.SEQUENCING_WELL_FIELD);
+                if (wellName == null) {
+                    return "FIMS data not annotated on referenced sequence (well name)";
                 }
-                plate = plateDocument.getPlate();
-                sequencingPlateCache.put(plateName, plate);
-            }
-            if (plate == null) {
-                return "Cannot find sequencing plate \"" + plateName + "\"";
-            }
+                BiocodeUtilities.Well well = new BiocodeUtilities.Well(wellName);
 
-            String wellName = (String) doc.getFieldValue(BiocodeUtilities.SEQUENCING_WELL_FIELD);
-            if (wellName == null) {
-                return "FIMS data not annotated on referenced sequence (well name)";
-            }
-            BiocodeUtilities.Well well = new BiocodeUtilities.Well(wellName);
+                Reaction reaction = plate.getReaction(well.row(), well.col());
+                if (reaction == null) {
+                    return "No reaction found in well " + well.toPaddedString();
+                }
+                if (!(reaction instanceof CycleSequencingReaction)) {
+                    return "Reaction is not cycle sequencing";
+                }
 
-            Reaction reaction = plate.getReaction(well.row(), well.col());
-            if (reaction == null) {
-                return "No reaction found in well " + well.toPaddedString();
-            }
-            if (!(reaction instanceof CycleSequencingReaction)) {
-                return "Reaction is not cycle sequencing";
-            }
+                Workflow workflow = reaction.getWorkflow();
+                if (workflow == null) {
+                    return "No workflow record found in LIMS";
+                }
+                if (assemblyResult.workflowId != null && workflow.getId() != assemblyResult.workflowId) {
+                    return "Reads have different workflow IDs";
+                }
+                if (workflow.getId() == -1) {
+                    return "No workflow ID found in LIMS";
+                }
+                assemblyResult.workflowId = workflow.getId();
 
-            Workflow workflow = reaction.getWorkflow();
-            if (workflow == null) {
-                return "No workflow record found in LIMS";
-            }
-            if (assemblyResult.workflowId != null && workflow.getId() != assemblyResult.workflowId) {
-                return "Reads have different workflow IDs";
-            }
-            if (workflow.getId() == -1) {
-                return "No workflow ID found in LIMS";
-            }
-            assemblyResult.workflowId = workflow.getId();
+                if (reaction.getExtractionId() == null) {
+                    return "Extraction ID missing for workflow";
+                }
+                if (assemblyResult.extractionId != null && !reaction.getExtractionId().equals(assemblyResult.extractionId)) {
+                    return "Reads have different workflow IDs";
+                }
+                assemblyResult.extractionId = reaction.getExtractionId();
 
-            if (reaction.getExtractionId() == null) {
-                return "Extraction ID missing for workflow";
+                assemblyResult.addReaction((CycleSequencingReaction) reaction,
+                        haveSourceChromatograms ? Collections.singletonList(doc) : Collections.<AnnotatedPluginDocument>emptyList());
             }
-            if (assemblyResult.extractionId != null && !reaction.getExtractionId().equals(assemblyResult.extractionId)) {
-                return "Reads have different workflow IDs";
-            }
-            assemblyResult.extractionId = reaction.getExtractionId();
-
-            assemblyResult.addReaction((CycleSequencingReaction) reaction,
-                    haveSourceChromatograms ? Collections.singletonList(doc) : Collections.<AnnotatedPluginDocument>emptyList());
         }
         return null;
     }

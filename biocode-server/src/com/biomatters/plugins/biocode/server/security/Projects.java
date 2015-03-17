@@ -78,7 +78,7 @@ public class Projects {
                 project.globalId = resultSet.getString("external_id");
                 project.description = resultSet.getString("description");
                 project.name = resultSet.getString("name");
-                project.parentProjectId = resultSet.getInt("parent");
+                project.parentProjectId = resultSet.getInt("parent_project_id");
                 boolean addNow = true;
                 if(resultSet.wasNull()) {
                     project.parentProjectId = -1;
@@ -160,7 +160,7 @@ public class Projects {
                 resultSet.close();
             }
 
-            PreparedStatement insert = connection.prepareStatement("INSERT INTO project(id,external_id,name,description,parent) VALUES(?,?,?,?,?)");
+            PreparedStatement insert = connection.prepareStatement("INSERT INTO project(id,external_id,name,description,parent_project_id,is_public) VALUES(?,?,?,?,?,?)");
             insert.setObject(1, project.id);
             insert.setObject(2, project.globalId);
             insert.setObject(3, project.name);
@@ -170,6 +170,7 @@ public class Projects {
             } else {
                 insert.setObject(5, project.parentProjectId);
             }
+            insert.setObject(6, true);
             int inserted = insert.executeUpdate();
             if(inserted > 1) {
                 throw new InternalServerErrorException("Inserted " + inserted + " projects instead of just 1.  Transaction rolled back");
@@ -244,7 +245,7 @@ public class Projects {
             connection = dataSource.getConnection();
             SqlUtilities.beginTransaction(connection);
             PreparedStatement update = connection.prepareStatement("UPDATE project SET " +
-                    "name = ?, description = ?, parent = ? WHERE id = ?"
+                    "name = ?, description = ?, parent_project_id = ? WHERE id = ?"
             );
             update.setObject(1, project.name);
             update.setObject(2, project.description);

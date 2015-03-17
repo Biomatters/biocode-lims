@@ -23,7 +23,7 @@ CREATE TABLE project (
   description VARCHAR(255),
   parent_project_id INT,
   is_public BIT NOT NULL,
-  FOREIGN KEY (parent) REFERENCES project(id) ON DELETE CASCADE
+  FOREIGN KEY (parent_project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
 CREATE TABLE project_role (

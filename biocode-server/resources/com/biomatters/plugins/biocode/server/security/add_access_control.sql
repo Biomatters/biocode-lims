@@ -17,17 +17,16 @@ CREATE TABLE authorities (
 );
 
 CREATE TABLE project (
-  id INT NOT NULL PRIMARY KEY,
+  id INT unsigned NOT NULL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  external_id VARCHAR(255),
   description VARCHAR(255),
-  parent_project_id INT,
+  parent_project_id INT unsigned,
   is_public BIT NOT NULL,
   FOREIGN KEY (parent_project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
 CREATE TABLE project_role (
-  project_id INT NOT NULL,
+  project_id INT unsigned NOT NULL,
   username VARCHAR(255) NOT NULL,
   role INT,
   PRIMARY KEY(project_id, username),
@@ -36,8 +35,8 @@ CREATE TABLE project_role (
 );
 
 CREATE TABLE workflow_project (
-  workflow_id INT NOT NULL PRIMARY KEY,
-  project_id INT NOT NULL,
+  workflow_id INT unsigned NOT NULL PRIMARY KEY,
+  project_id INT unsigned NOT NULL,
   FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE,
   FOREIGN KEY(workflow_id) REFERENCES workflow(id) ON DELETE CASCADE
 );

@@ -159,7 +159,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             throw new IllegalStateException("Could not find " + dropAccessControlTablesScriptName);
         }
 
-        DatabaseScriptRunner.runScript(connection, dropAccessControlTablesScript, false, false);
+        DatabaseScriptRunner.runScript(connection, dropAccessControlTablesScript, true, false);
     }
 
     private static void setupTables(Connection connection) throws SQLException, IOException {

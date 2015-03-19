@@ -17,7 +17,7 @@ CREATE TABLE authorities (
 );
 
 CREATE TABLE project (
-  id INT unsigned NOT NULL PRIMARY KEY,
+  id INT unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   description VARCHAR(255),
   parent_project_id INT unsigned,

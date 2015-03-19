@@ -1,18 +1,16 @@
 CREATE TABLE users (
-  username VARCHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL PRIMARY KEY,
   password VARCHAR(255) NOT NULL,
   firstname VARCHAR(255) NOT NULL,
   lastname VARCHAR(255) NOT NULL,
   email VARCHAR(320) NOT NULL,
   enabled BIT NOT NULL,
-  is_ldap_account BIT NOT NULL,
-  PRIMARY KEY(username)
+  is_ldap_account BIT NOT NULL
 );
 
 CREATE TABLE authorities (
-  username VARCHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL PRIMARY KEY,
   authority VARCHAR(50) NOT NULL,
-  PRIMARY KEY (username),
   FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
 );
 
@@ -23,9 +21,7 @@ CREATE TABLE project (
   parent_project_id INT unsigned,
   is_public BIT NOT NULL,
   FOREIGN KEY (parent_project_id) REFERENCES project(id) ON DELETE CASCADE
-);
-
-ALTER TABLE project AUTO_INCREMENT=1;
+) AUTO_INCREMENT=1;
 
 CREATE TABLE project_role (
   project_id INT unsigned NOT NULL,

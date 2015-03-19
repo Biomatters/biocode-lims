@@ -33,6 +33,7 @@
     <property name="server-resources" value="${server-folder}/resources"/>
     <property name="server-test" value="${server-folder}/test"/>
     <property name="server-test.classes" value="${server-folder}/testclasses"/>
+    <property name="server-test.resources" value="${server-folder}/testresources"/>
     <property name="warfile" value="BiocodeLIMS.war"/>
 
     <path id="classpath">
@@ -200,6 +201,7 @@
                 <pathelement location="${server-resources}"/>
                 <pathelement location="${server-test}"/>
                 <pathelement location="${server-test.classes}"/>
+                <pathelement location="${server-test.resources}"/>
                 <pathelement location="${GeneiousFiles}/resources"/>
                 <pathelement location="${GeneiousFiles}/bundledPlugins"/>
                 <path refid="server-classpath"/>

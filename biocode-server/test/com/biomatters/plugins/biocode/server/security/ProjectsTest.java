@@ -12,6 +12,7 @@ import com.biomatters.plugins.biocode.labbench.FimsSample;
 import com.biomatters.plugins.biocode.labbench.PasswordOptions;
 import com.biomatters.plugins.biocode.labbench.fims.FIMSConnection;
 import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
+import com.biomatters.plugins.biocode.labbench.lims.DatabaseScriptRunner;
 import com.biomatters.plugins.biocode.labbench.lims.SqlLimsConnection;
 import org.junit.After;
 import org.junit.Assert;
@@ -21,6 +22,8 @@ import org.junit.Test;
 import javax.sql.DataSource;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -33,14 +36,19 @@ public class ProjectsTest extends Assert {
     private DataSource dataSource;
 
     @Before
-    public void setupDatabase() throws ConnectionException, IOException {
+    public void setupDatabase() throws ConnectionException, IOException, SQLException {
         tempDir = FileUtilities.createTempDir(true);
         String path = tempDir.getAbsolutePath() + File.separator + "database.db";
         System.out.println("Database Path: " + path);
         String connectionString = "jdbc:hsqldb:file:" + path + ";shutdown=true";
         dataSource = SqlLimsConnection.createBasicDataSource(connectionString, BiocodeService.getInstance().getLocalDriver(), null, null);
-        SecurityConfig.createUserTablesIfNecessary(dataSource);
+        InputStream preScript = getClass().getResourceAsStream("for_tests.sql");
+        InputStream script = SecurityConfig.class.getResourceAsStream("add_access_control_sqlite.sql");
+        DatabaseScriptRunner.runScript(dataSource.getConnection(), preScript, false, false);
+        DatabaseScriptRunner.runScript(dataSource.getConnection(), script, false, false);
     }
+
+
 
     @After
     public void closeDatabase() {

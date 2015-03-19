@@ -43,7 +43,7 @@ public class ProjectsTest extends Assert {
         String connectionString = "jdbc:hsqldb:file:" + path + ";shutdown=true";
         dataSource = SqlLimsConnection.createBasicDataSource(connectionString, BiocodeService.getInstance().getLocalDriver(), null, null);
         InputStream preScript = getClass().getResourceAsStream("for_tests.sql");
-        InputStream script = SecurityConfig.class.getResourceAsStream("add_access_control_sqlite.sql");
+        InputStream script = SecurityConfig.class.getResourceAsStream("add_access_control_hsql.sql");
         DatabaseScriptRunner.runScript(dataSource.getConnection(), preScript, false, false);
         DatabaseScriptRunner.runScript(dataSource.getConnection(), script, false, false);
     }

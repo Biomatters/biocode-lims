@@ -20,7 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
 
 import javax.sql.DataSource;
-import javax.ws.rs.InternalServerErrorException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
@@ -165,13 +164,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     private static void setupTables(Connection connection) throws SQLException, IOException {
-        LIMSConnection limsConnection = LIMSInitializationListener.getLimsConnection();
-
-        if (limsConnection == null) {
-            throw new InternalServerErrorException("A connection to a LIMS database could not be found.");
-        }
-
-        String scriptName = limsConnection.isLocal() ? "add_access_control_sqlite.sql" : "add_access_control_mysql.sql";
+        String scriptName = "add_access_control_mysql.sql";
 
         InputStream script = SecurityConfig.class.getResourceAsStream(scriptName);
 

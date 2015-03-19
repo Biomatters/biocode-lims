@@ -25,6 +25,8 @@ CREATE TABLE project (
   FOREIGN KEY (parent_project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
+ALTER TABLE project AUTO_INCREMENT=1;
+
 CREATE TABLE project_role (
   project_id INT unsigned NOT NULL,
   username VARCHAR(255) NOT NULL,

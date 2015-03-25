@@ -1,16 +1,9 @@
 package com.biomatters.plugins.biocode.server.security;
 
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
-import com.biomatters.geneious.publicapi.databaseservice.Query;
-import com.biomatters.geneious.publicapi.databaseservice.RetrieveCallback;
-import com.biomatters.geneious.publicapi.documents.DocumentField;
-import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.utilities.FileUtilities;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
-import com.biomatters.plugins.biocode.labbench.FimsSample;
-import com.biomatters.plugins.biocode.labbench.PasswordOptions;
-import com.biomatters.plugins.biocode.labbench.fims.FIMSConnection;
 import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
 import com.biomatters.plugins.biocode.labbench.lims.DatabaseScriptRunner;
 import com.biomatters.plugins.biocode.labbench.lims.SqlLimsConnection;
@@ -87,10 +80,12 @@ public class ProjectsTest extends Assert {
     public void canDeleteProject() throws SQLException {
         Project p = new Project();
         p.name = "Test";
-        Projects.addProject(dataSource, p);
-        assertEquals(p, Projects.getProjects(dataSource, Collections.singletonList(p.id)));
 
-        Projects.deleteProject(dataSource, p.id);
+        assertTrue(Projects.getProjects(dataSource, Collections.<Integer>emptyList()).isEmpty());
+        Projects.addProject(dataSource, p);
+        assertEquals(1, Projects.getProjects(dataSource, Collections.singletonList(1)).size());
+
+        Projects.deleteProject(dataSource, 1);
         assertTrue(Projects.getProjects(dataSource, Collections.<Integer>emptyList()).isEmpty());
     }
 
@@ -102,14 +97,14 @@ public class ProjectsTest extends Assert {
 
         Project p2 = new Project();
         p2.name = "child";
-        p2.parentProjectID = p.id;
+        p2.parentProjectID = 1;
         Projects.addProject(dataSource, p2);
 
         List<Project> projectList = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
 
         assertEquals(2, projectList.size());
 
-        Projects.deleteProject(dataSource, p.id);
+        Projects.deleteProject(dataSource, 1);
 
         projectList = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
 
@@ -126,6 +121,7 @@ public class ProjectsTest extends Assert {
         Projects.addProject(dataSource, p);
 
         p.name = newName;
+        p.id = 1;
         Projects.updateProject(dataSource, p);
         List<Project> inDatabase = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
         assertEquals(1, inDatabase.size());
@@ -142,7 +138,7 @@ public class ProjectsTest extends Assert {
         p.userRoles.put(user1, Role.WRITER);
         Projects.addProject(dataSource, p);
 
-        List<Project> inDatabase = Projects.getProjects(dataSource, Collections.singletonList(p.id));
+        List<Project> inDatabase = Projects.getProjects(dataSource, Collections.singletonList(1));
         assertEquals(1, inDatabase.size());
         assertEquals(1, inDatabase.get(0).userRoles.size());
         assertEquals(Role.WRITER, inDatabase.get(0).userRoles.get(user1));
@@ -158,16 +154,16 @@ public class ProjectsTest extends Assert {
         p.userRoles.put(user1, Role.WRITER);
         Projects.addProject(dataSource, p);
 
-        Projects.assignRole(dataSource, p.id, user1.username, Role.ADMIN);
+        Projects.assignRole(dataSource, 1, user1.username, Role.ADMIN);
 
-        List<Project> inDatabase = Projects.getProjects(dataSource, Collections.singletonList(p.id));
+        List<Project> inDatabase = Projects.getProjects(dataSource, Collections.singletonList(1));
 
         assertEquals(1, inDatabase.size());
         assertEquals(1, inDatabase.get(0).userRoles.size());
         assertEquals(Role.ADMIN, inDatabase.get(0).userRoles.get(user1));
 
-        Projects.deleteRole(dataSource, p.id, user1.username);
-        inDatabase = Projects.getProjects(dataSource, Collections.singletonList(p.id));
+        Projects.deleteRole(dataSource, 1, user1.username);
+        inDatabase = Projects.getProjects(dataSource, Collections.singletonList(1));
         assertTrue(inDatabase.get(0).userRoles.isEmpty());
     }
 

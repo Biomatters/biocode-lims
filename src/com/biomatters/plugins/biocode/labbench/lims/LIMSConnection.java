@@ -429,7 +429,7 @@ public abstract class LIMSConnection {
 
     protected abstract List<WorkflowDocument> getWorkflowsById_(Collection<Integer> workflowIds, Cancelable cancelable) throws DatabaseServiceException;
     public abstract List<Workflow> getWorkflowsByName(Collection<String> workflowNames) throws DatabaseServiceException;
-    public abstract Map<String,String> getWorkflowIds(List<String> idsToCheck, List<String> loci, Reaction.Type reactionType) throws DatabaseServiceException;
+    public abstract Map<String,String> getWorkflowNames(List<String> idsToCheck, List<String> loci, Reaction.Type reactionType) throws DatabaseServiceException;
     public abstract void renameWorkflow(int id, String newName) throws DatabaseServiceException;
 
     public abstract void testConnection() throws DatabaseServiceException;

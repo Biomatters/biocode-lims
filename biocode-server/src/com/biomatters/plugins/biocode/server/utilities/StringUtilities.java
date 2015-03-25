@@ -1,11 +1,6 @@
 package com.biomatters.plugins.biocode.server.utilities;
 
-import com.biomatters.geneious.publicapi.utilities.StringUtilities;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Routines for verifying Strings. Non-instantiable.
@@ -13,8 +8,8 @@ import java.util.Map;
  * @author Gen Li
  *         Created on 15/10/14 9:23 AM
  */
-public class StringVerificationUtilities {
-    private StringVerificationUtilities() {
+public class StringUtilities {
+    private StringUtilities() {
     }
 
     public static void throwExceptionIfExistsNULLOrEmptyStrings(Map<String, String> stringIdentifierToString) throws IllegalArgumentException {
@@ -115,7 +110,7 @@ public class StringVerificationUtilities {
             return "";
         }
 
-        return "NULL Strings: " + StringUtilities.join(", ", identifiersOfNULLStrings) + ".";
+        return "NULL Strings: " + com.biomatters.geneious.publicapi.utilities.StringUtilities.join(", ", identifiersOfNULLStrings) + ".";
     }
 
     private static String createStringsAreEmptyMessage(Collection<String> identifiersOfEmptyStrings) {
@@ -123,12 +118,44 @@ public class StringVerificationUtilities {
             return "";
         }
 
-        return "Empty Strings: " + StringUtilities.join(", ", identifiersOfEmptyStrings) + ".";
+        return "Empty Strings: " + com.biomatters.geneious.publicapi.utilities.StringUtilities.join(", ", identifiersOfEmptyStrings) + ".";
     }
 
     private static String createStringsAreNULLOrEmptyMessage(Collection<String> identifiersOfNULLStrings, Collection<String> identifiersOfEmptyStrings) {
         String message = createStringsAreNULLMessage(identifiersOfNULLStrings) + "\n" + createStringsAreEmptyMessage(identifiersOfEmptyStrings);
 
         return message.length() > 1 ? message : "";
+    }
+
+    public static String generateCommaSeparatedQuestionMarks(int count) {
+        if (count < 0) {
+            throw new IllegalArgumentException("count < 0");
+        }
+
+        StringBuilder commaSeparatedQuestionMarksBuilder = new StringBuilder();
+
+        for (int i = 0; i < count; i++) {
+            commaSeparatedQuestionMarksBuilder.append("?,");
+        }
+
+        if (count > 0) {
+            commaSeparatedQuestionMarksBuilder.deleteCharAt(commaSeparatedQuestionMarksBuilder.length() - 1);
+        }
+
+        return commaSeparatedQuestionMarksBuilder.toString();
+    }
+
+    public static List<String> getListFromString(String stringList) {
+        if (stringList == null) {
+            return null;
+        }
+        List<String> strings = new ArrayList<String>();
+        for (String item : Arrays.asList(stringList.split(","))) {
+            String toAdd = item.trim();
+            if(!toAdd.isEmpty()) {
+                strings.add(item);
+            }
+        }
+        return strings;
     }
 }

@@ -1,9 +1,5 @@
 package com.biomatters.plugins.biocode.server.security;
 
-import com.biomatters.plugins.biocode.labbench.fims.FIMSConnection;
-import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
-
-import javax.sql.DataSource;
 import javax.xml.bind.annotation.XmlRootElement;
 import java.sql.SQLException;
 import java.util.*;
@@ -17,9 +13,8 @@ public class Project {
     public Integer id;
     public String name;
     public String description = "";
-    public int parentProjectId = -1;
-
-    String globalId;
+    public Integer parentProjectID = -1;
+    public boolean isPublic = false;
 
     public Map<User, Role> userRoles = new HashMap<User, Role>();
 
@@ -31,12 +26,12 @@ public class Project {
      * @return The role the current user has in the project.  Will fetch from parent groups if the user is not
      * part of the current project.
      */
-    public Role getRoleForUser(DataSource dataSource, User user) throws SQLException {
+    public Role getRoleForUser(User user) throws SQLException {
         Role role = userRoles.get(user);
-        if(role != null) {
+        if (role != null) {
             return role;
-        } else if(parentProjectId != -1) {
-            return Projects.getProjectForId(dataSource, parentProjectId).getRoleForUser(dataSource, user);
+        } else if (parentProjectID != -1) {
+            return new Projects().getProject(parentProjectID).getRoleForUser(user);
         } else {
             return null;
         }
@@ -44,21 +39,29 @@ public class Project {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
 
-        Project project = (Project) o;
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
-        if (id != null ? !id.equals(project.id) : project.id != null) return false;
-        if (!name.equals(project.name)) return false;
+        Project project = (Project)o;
+
+        if (id != null ? !id.equals(project.id) : project.id != null) {
+            return false;
+        }
+
+        if (!name.equals(project.name)) {
+            return false;
+        }
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = id != null ? id.hashCode() : 0;
-        result = 31 * result + name.hashCode();
-        return result;
+        return 31*(id != null ? id.hashCode() : 0) + name.hashCode();
     }
 }

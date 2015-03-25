@@ -2,10 +2,9 @@ package com.biomatters.plugins.biocode.server.security;
 
 import com.biomatters.plugins.biocode.labbench.lims.DatabaseScriptRunner;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
-import com.biomatters.plugins.biocode.labbench.lims.LimsDatabaseConstants;
 import com.biomatters.plugins.biocode.labbench.lims.SqlLimsConnection;
 import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
-import com.biomatters.plugins.biocode.server.utilities.StringVerificationUtilities;
+import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -66,7 +65,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         if (needMemoryUsers) {
             // If the use of LDAP authentication isn't specified or the database connection isn't set up or users
             // haven't been added yet then we need to also use memory auth with test users.
-            auth.inMemoryAuthentication().withUser("admin").password("admin").roles(LimsDatabaseConstants.AUTHORITY_ADMIN_CODE);
+            auth.inMemoryAuthentication().withUser("admin").password("admin").roles(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE);
         }
     }
 
@@ -74,7 +73,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
             .authorizeRequests()
-                .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(LimsDatabaseConstants.AUTHORITY_ADMIN_CODE)
+                .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE)
                 .antMatchers(INFO_URL + "/**").permitAll()
                 .antMatchers(BASE_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
                 .anyRequest().permitAll().and()
@@ -83,7 +82,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         if (LIMSInitializationListener.getLDAPConfiguration() != null) {
             String LDAPAdminAuthority = LIMSInitializationListener.getLDAPConfiguration().getAdminAuthority();
-            if (!StringVerificationUtilities.isStringNULLOrEmpty(LDAPAdminAuthority)) {
+            if (!StringUtilities.isStringNULLOrEmpty(LDAPAdminAuthority)) {
                 http.authorizeRequests()
                     .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(LDAPAdminAuthority);
             }
@@ -134,7 +133,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             connection = dataSource.getConnection();
             Set<String> tables = SqlUtilities.getDatabaseTableNamesLowerCase(connection);
 
-            if (!tables.contains(LimsDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME.toLowerCase())) {
+            if (!tables.contains(BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME.toLowerCase())) {
                 dropAccessControlTables(connection);
                 setupTables(connection);
             }
@@ -176,16 +175,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     private AuthenticationManagerBuilder authenticateWithLDAP(AuthenticationManagerBuilder auth, final LDAPConfiguration config) throws Exception {
-        StringVerificationUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
+        StringUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
             put("server", config.getServer());
         }});
 
-        StringVerificationUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
+        StringUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
             put("userDNPattern", config.getUserDNPattern());
             put("userSearchFilter", config.getUserSearchFilter());
         }});
 
-        StringVerificationUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
+        StringUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
             put("groupSearchBase", config.getGroupSearchBase());
             put("groupSearchFilter", config.getGroupSearchFilter());
         }});
@@ -203,31 +202,31 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         ldapAuthenticationProviderConfigurer.userDetailsContextMapper(mapper);
 
-        if (!StringVerificationUtilities.isStringNULLOrEmpty(config.getUserDNPattern())) {
+        if (!StringUtilities.isStringNULLOrEmpty(config.getUserDNPattern())) {
             ldapAuthenticationProviderConfigurer.userDnPatterns(config.getUserDNPattern());
         }
 
-        if (!StringVerificationUtilities.isStringNULLOrEmpty(config.getUserSearchFilter())) {
+        if (!StringUtilities.isStringNULLOrEmpty(config.getUserSearchFilter())) {
             ldapAuthenticationProviderConfigurer.userSearchFilter(config.getUserSearchFilter());
         }
 
-        if (!StringVerificationUtilities.isStringNULLOrEmpty(config.getUserSearchBase())) {
+        if (!StringUtilities.isStringNULLOrEmpty(config.getUserSearchBase())) {
             ldapAuthenticationProviderConfigurer.userSearchBase(config.getUserSearchBase());
         }
 
-        if (!StringVerificationUtilities.isStringNULLOrEmpty(config.getGroupSearchBase())) {
+        if (!StringUtilities.isStringNULLOrEmpty(config.getGroupSearchBase())) {
             ldapAuthenticationProviderConfigurer.groupSearchBase(config.getGroupSearchBase());
         }
 
-        if (!StringVerificationUtilities.isStringNULLOrEmpty(config.getGroupSearchFilter())) {
+        if (!StringUtilities.isStringNULLOrEmpty(config.getGroupSearchFilter())) {
             ldapAuthenticationProviderConfigurer.groupSearchFilter(config.getGroupSearchFilter());
         }
 
-        if (!StringVerificationUtilities.isStringNULLOrEmpty(config.getGroupRoleAttribute())) {
+        if (!StringUtilities.isStringNULLOrEmpty(config.getGroupRoleAttribute())) {
             ldapAuthenticationProviderConfigurer.groupRoleAttribute(config.getGroupRoleAttribute());
         }
 
-        if (!StringVerificationUtilities.isStringNULLOrEmpty(config.getRolePrefix())) {
+        if (!StringUtilities.isStringNULLOrEmpty(config.getRolePrefix())) {
             ldapAuthenticationProviderConfigurer.rolePrefix(config.getRolePrefix());
         }
 

@@ -5,6 +5,7 @@ import com.biomatters.plugins.biocode.labbench.AssembledSequence;
 import com.biomatters.plugins.biocode.labbench.reaction.FailureReason;
 import com.biomatters.plugins.biocode.server.security.AccessUtilities;
 import com.biomatters.plugins.biocode.server.security.Role;
+import com.biomatters.plugins.biocode.server.security.Users;
 import jebl.util.ProgressListener;
 
 import javax.ws.rs.*;
@@ -40,7 +41,7 @@ public class Sequences {
         for (AssembledSequence sequence : data) {
             extractionIds.add(sequence.extractionId);
         }
-        AccessUtilities.checkUserHasRoleForExtractionIds(extractionIds, roleToCheckFor);
+        AccessUtilities.checkUserHasRoleForExtractionIDs(extractionIds, Users.getLoggedInUser(), roleToCheckFor);
         return data;
     }
 
@@ -122,10 +123,9 @@ public class Sequences {
                            @QueryParam("failureReason")String failureReason,
                            @QueryParam("failureNotes")String failureNotes,
                            @QueryParam("addChromatograms")boolean addChromatograms,
-                           @QueryParam("reactionIds")String reactionIds
-                           ) {
+                           @QueryParam("reactionIds")String reactionIds) {
         try {
-            AccessUtilities.checkUserHasRoleForExtractionIds(Collections.singletonList(seq.extractionId), Role.WRITER);
+            AccessUtilities.checkUserHasRoleForExtractionIDs(Collections.singletonList(seq.extractionId), Users.getLoggedInUser(), Role.WRITER);
             return LIMSInitializationListener.getLimsConnection().addAssembly(isPass, notes, technician,
                     FailureReason.getReasonFromIdString(failureReason),
                     failureNotes, addChromatograms, seq, getIntegerListFromString(reactionIds), ProgressListener.EMPTY);

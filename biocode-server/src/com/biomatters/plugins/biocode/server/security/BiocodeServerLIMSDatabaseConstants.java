@@ -1,10 +1,12 @@
-package com.biomatters.plugins.biocode.labbench.lims;
+package com.biomatters.plugins.biocode.server.security;
+
+import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
 
 /**
  * @author Gen Li
  *         Created on 20/06/14 5:42 PM
  */
-public class LimsDatabaseConstants {
+public class BiocodeServerLIMSDatabaseConstants {
     public static final String USERS_TABLE_NAME             = "users";
     public static final String AUTHORITIES_TABLE_NAME       = "authorities";
     public static final String PROJECT_TABLE_NAME           = "project";

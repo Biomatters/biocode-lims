@@ -1,0 +1,3 @@
+CREATE TABLE workflow (
+  id INT NOT NULL PRIMARY KEY
+);

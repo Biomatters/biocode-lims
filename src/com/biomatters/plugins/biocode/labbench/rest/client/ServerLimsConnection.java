@@ -511,7 +511,7 @@ public class ServerLimsConnection extends LIMSConnection {
     }
 
     @Override
-    public Map<String, String> getWorkflowIds(List<String> idsToCheck, List<String> loci, Reaction.Type reactionType) throws DatabaseServiceException {
+    public Map<String, String> getWorkflowNames(List<String> idsToCheck, List<String> loci, Reaction.Type reactionType) throws DatabaseServiceException {
         try {
             return target.path("extractions").path(WORKFLOWS).
                     queryParam("extractionIds", StringUtilities.join(",", idsToCheck)).
@@ -716,5 +716,15 @@ public class ServerLimsConnection extends LIMSConnection {
             return Collections.emptyList();
         }
         return response.readEntity(type);
+    }
+
+    public static List<String> convertToStringList(Collection<Integer> integerList) {
+        List<String> stringList = new ArrayList<String>();
+
+        for (Integer integer : integerList) {
+            stringList.add(String.valueOf(integer));
+        }
+
+        return stringList;
     }
 }

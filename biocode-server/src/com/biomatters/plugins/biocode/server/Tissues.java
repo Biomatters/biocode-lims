@@ -2,10 +2,8 @@ package com.biomatters.plugins.biocode.server;
 
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.utilities.StringUtilities;
-import com.biomatters.plugins.biocode.server.utilities.RestUtilities;
 
 import javax.ws.rs.*;
-import java.util.Arrays;
 
 /**
  * A tissue entry
@@ -27,7 +25,7 @@ public class Tissues {
         }
         try {
             return StringUtilities.join("\n", LIMSInitializationListener.getLimsConnection().
-                    getAllExtractionIdsForTissueIds(RestUtilities.getListFromString(tissueIds)));
+                    getAllExtractionIdsForTissueIds(com.biomatters.plugins.biocode.server.utilities.StringUtilities.getListFromString(tissueIds)));
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }

@@ -11,9 +11,8 @@ import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.PasswordOptions;
 import com.biomatters.plugins.biocode.labbench.connection.Connection;
-import com.biomatters.plugins.biocode.labbench.fims.*;
-import com.biomatters.plugins.biocode.labbench.fims.biocode.BiocodeFIMSConnectionOptions;
 import com.biomatters.plugins.biocode.labbench.lims.*;
+import com.biomatters.plugins.biocode.server.security.BiocodeServerLIMSDatabaseConstants;
 import com.biomatters.plugins.biocode.server.security.ConnectionSettingsConstants;
 import com.biomatters.plugins.biocode.server.security.LDAPConfiguration;
 import com.biomatters.plugins.biocode.server.security.Projects;
@@ -22,9 +21,7 @@ import jebl.util.ProgressListener;
 
 import javax.servlet.*;
 import javax.sql.DataSource;
-import javax.ws.rs.ProcessingException;
 import java.io.*;
-import java.net.MalformedURLException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
@@ -48,11 +45,6 @@ public class LIMSInitializationListener implements ServletContextListener {
     private static LIMSConnection limsConnection;
     public static LIMSConnection getLimsConnection() {
         return limsConnection;
-    }
-
-    private static FIMSConnection fimsConnection;
-    public static FIMSConnection getFimsConnection() {
-        return fimsConnection;
     }
 
     public static DataSource getDataSource() {
@@ -108,23 +100,16 @@ public class LIMSInitializationListener implements ServletContextListener {
 
             setLdapAuthenticationSettings(config);
 
-            setFimsOptionsFromConfigFile(connectionConfig, config);
-
             setLimsOptionsFromConfigFile(connectionConfig, config);
 
             biocodeeService.connect(connectionConfig, false, false);
-            fimsConnection = biocodeeService.getActiveFIMSConnection();
-            if(fimsConnection == null) {
-                connectFims(connectionConfig); // to get error message.  In the future BiocodeService should be changed to expose it's connection errors
-            }
+
             limsConnection = biocodeeService.getActiveLIMSConnection();
             if(limsConnection == null) {
                 connectLims(connectionConfig); // to get error message.  In the future BiocodeService should be changed to expose it's connection errors
             } else if(!(limsConnection instanceof SqlLimsConnection)) {
                 throw new IllegalStateException("LIMSConnection was not a SqlLimsConnection.  Was " + limsConnection.getClass());
             }
-
-            startProjectPopulatingThread();
 
             createBCIDRootsTableIfNecessary(getDataSource());
         } catch (IOException e) {
@@ -185,43 +170,11 @@ public class LIMSInitializationListener implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent servletContextEvent) {
-        stopProjectPopulatingThread();
-
         if (LDAPConfiguration != null) {
             LDAPConfiguration = null;
         }
 
         BiocodeService.getInstance().logOut();
-    }
-
-    private long TIME_BETWEEN_NEW_PROJECT_CHECK = 60 * 1000;
-    private AtomicBoolean updatingProjects = new AtomicBoolean(false);
-    private void startProjectPopulatingThread() {
-        updatingProjects.set(true);
-        Runnable runnable = new Runnable() {
-            public void run() {
-                int failureCount = 0;
-                while (updatingProjects.get()) {
-                    try {
-                        Projects.updateProjectsFromFims(getDataSource(), fimsConnection);
-                    } catch (DatabaseServiceException e) {
-                        System.err.println("Encountered problem updating projects from FIMS: " + e.getMessage());
-                        e.printStackTrace();
-                        failureCount++;
-                        if(failureCount > 10) {
-                            System.err.println("Made 10 failed attempts to update projects.  Giving up.");
-                            updatingProjects.set(false);
-                        }
-                    }
-                    ThreadUtilities.sleep(TIME_BETWEEN_NEW_PROJECT_CHECK);
-                }
-            }
-        };
-        new Thread(runnable).start();
-    }
-
-    private void stopProjectPopulatingThread() {
-        updatingProjects.set(false);
     }
 
     public static File getPropertiesFile() {
@@ -239,22 +192,16 @@ public class LIMSInitializationListener implements ServletContextListener {
         return limsConnection;
     }
 
-    private static FIMSConnection connectFims(Connection connectionConfig) throws ConnectionException, DatabaseServiceException {
-        FIMSConnection fimsConnection = connectionConfig.getFimsConnection();
-        fimsConnection.connect(connectionConfig.getFimsOptions());
-        return fimsConnection;
-    }
-
     private void setLimsOptionsFromConfigFile(Connection connectionConfig, Properties config) throws ConfigurationException, DatabaseServiceException {
-        LimsConnectionOptions parentLimsOptions = (LimsConnectionOptions)connectionConfig.getLimsOptions();
+        LimsConnectionOptions parentLimsOptions = (LimsConnectionOptions) connectionConfig.getLimsOptions();
         String limsType = config.getProperty("lims.type");
-        if(limsType == null) {
+        if (limsType == null) {
             throw new MissingPropertyException("lims.type");
         }
         parentLimsOptions.setValue(LimsConnectionOptions.CONNECTION_TYPE_CHOOSER, limsType);
         PasswordOptions _limsOptions = parentLimsOptions.getSelectedLIMSOptions();
 
-        if(limsType.equals(LIMSConnection.AvailableLimsTypes.remote.name())) {
+        if (limsType.equals(LIMSConnection.AvailableLimsTypes.remote.name())) {
             MySqlLIMSConnectionOptions limsOptions = (MySqlLIMSConnectionOptions) _limsOptions;
 
             if (config.getProperty("lims.jndi") == null) {
@@ -262,13 +209,13 @@ public class LIMSInitializationListener implements ServletContextListener {
                 for (String optionName : new String[]{"server", "port", "database", "username", "password"}) {
                     String propertyKey = "lims." + optionName;
                     String value = config.getProperty(propertyKey);
-                    if(value == null) {
+                    if (value == null) {
                         missing.add(propertyKey);
                     } else {
                         limsOptions.setValue(optionName, value);
                     }
                 }
-                if(!missing.isEmpty()) {
+                if (!missing.isEmpty()) {
                     throw new MissingPropertyException(missing.toArray(new String[missing.size()]));
                 }
             } else {
@@ -276,148 +223,12 @@ public class LIMSInitializationListener implements ServletContextListener {
                 limsOptions.setStringValue("jndi", JNDI_PREFIX + config.getProperty("lims.jndi"));
             }
 
-        } else if(limsType.equals(LIMSConnection.AvailableLimsTypes.local.name())) {
+        } else if (limsType.equals(LIMSConnection.AvailableLimsTypes.local.name())) {
             LocalLIMSConnectionOptions options = (LocalLIMSConnectionOptions) _limsOptions;
             String name = config.getProperty("lims.name", "BiocodeLIMS");  // Use a default
             options.setValue(LocalLIMSConnectionOptions.DATABASE, name);
         } else {
             throw new ConfigurationException("Invalid lims.type: " + limsType);
-        }
-    }
-
-    private void setFimsOptionsFromConfigFile(Connection connectionConfig, Properties config) throws ConfigurationException, ConnectionException, DatabaseServiceException {
-        String type = config.getProperty("fims.type", "biocode");
-        boolean isExcel = type.equals("excel");
-        boolean isTapir = type.equals("tapir");
-        connectionConfig.setFims(type);
-        PasswordOptions fimsOptions = connectionConfig.getFimsOptions();
-        String username = config.getProperty("fims.username");
-        String password = config.getProperty("fims.password");
-        String jndi = config.getProperty("fims.jndi");
-
-        if((type.equals("biocode") && jndi == null || type.equals("MySql") && jndi == null || type.equals("biocode-fims"))  && (username == null || password == null) ) {
-            throw new MissingPropertyException("fims.username", "fims.password");
-        }
-
-        if(type.equals("biocode")) {
-            if (jndi != null) {
-                fimsOptions.addStringOption("jndi", "JNDI", "");
-                fimsOptions.setStringValue("jndi", JNDI_PREFIX + jndi);
-            } else {
-                fimsOptions.setValue("username", username);
-                fimsOptions.setValue("password", password);
-            }
-        } else if(type.equals("MySql")) {
-            if (jndi != null) {
-                fimsOptions.addStringOption("jndi", "JNDI", "");
-                fimsOptions.setStringValue("jndi", JNDI_PREFIX + jndi);
-            } else {
-                fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".username", username);
-                fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".password", password);
-                fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".serverUrl", config.getProperty("fims.server"));
-                fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".serverPort", config.getProperty("fims.port"));
-                fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".database", config.getProperty("fims.database"));
-                fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".table", config.getProperty("fims.table"));
-            }
-
-            setupTableFims(config, fimsOptions);
-        } else if (isExcel) {
-            if (!(fimsOptions instanceof ExcelFimsConnectionOptions)) {
-                throw new IllegalStateException("expected: ExcelFimsConnectionOptions, actual: " + fimsOptions.getClass().getSimpleName());
-            }
-            ExcelFimsConnectionOptions excelFimsConnectionOptions = (ExcelFimsConnectionOptions) fimsOptions;
-            excelFimsConnectionOptions.setStringValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + "." + ExcelFimsConnectionOptions.FILE_LOCATION, config.getProperty("fims.excelPath"));
-            setupTableFims(config, fimsOptions);
-        } else if (isTapir) {
-            fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".accessPoint", config.getProperty("fims.accessPoint"));
-            fimsOptions.setValue(TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".schema", config.getProperty("fims.dataSharingStandard"));
-        } else if (type.equals("biocode-fims")) {
-            Options childOptions = fimsOptions.getChildOptions().get(
-                    TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY);
-            if (childOptions == null || !(childOptions instanceof BiocodeFIMSConnectionOptions)) {
-                throw new IllegalStateException(childOptions == null ?
-                        "No child options for key " + TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY :
-                        "expected: BiocodeFIMSConnectionOptions, actual: " + fimsOptions.getClass().getSimpleName());
-            }
-            BiocodeFIMSConnectionOptions biocodeFimsConnectionOptions = (BiocodeFIMSConnectionOptions) childOptions;
-            try {
-                biocodeFimsConnectionOptions.login(config.getProperty("fims.host", "http://biscicol.org"), username, password);
-            } catch (MalformedURLException e1) {
-                throw new ConfigurationException("Could not connect to server.  Invalid URL: " + e1.getMessage());
-            } catch (ProcessingException e) {
-                throw new ConfigurationException("There was a problem communicating with the server: " + e.getMessage());
-            }
-            setFimsOptionBasedOnLabel(fimsOptions, TableFimsConnectionOptions.CONNECTION_OPTIONS_KEY + ".project", config.getProperty("fims.project"));
-            setupTableFims(config, fimsOptions);
-        } else {
-            throw new ConfigurationException("fims.type = " + type + " is unsupported for the alpha");
-        }
-    }
-
-    private void setupTableFims(Properties config, PasswordOptions fimsOptions) throws ConnectionException, MissingPropertyException {
-        fimsOptions.update();
-        ((TableFimsConnectionOptions) fimsOptions).autodetectTaxonFields();
-        String tissueId = config.getProperty("fims.tissueId");
-        String specimenId = config.getProperty("fims.specimenId");
-        if (tissueId == null || specimenId == null) {
-            throw new MissingPropertyException("fims.tissueId", "fims.specimenId");
-        }
-
-        setFimsOptionBasedOnLabel(fimsOptions, TableFimsConnectionOptions.TISSUE_ID, tissueId);
-        setFimsOptionBasedOnLabel(fimsOptions, TableFimsConnectionOptions.SPECIMEN_ID, specimenId);
-        String plate = config.getProperty("fims.plate");
-        String well = config.getProperty("fims.well");
-        if (plate != null && well != null) {
-            fimsOptions.setValue(TableFimsConnectionOptions.STORE_PLATES, Boolean.TRUE);
-            setFimsOptionBasedOnLabel(fimsOptions, TableFimsConnectionOptions.PLATE_WELL, well);
-            setFimsOptionBasedOnLabel(fimsOptions, TableFimsConnectionOptions.PLATE_NAME, plate);
-        }
-        setMultipleOptionsFromConfig(config, "fims.taxon.", fimsOptions, TableFimsConnectionOptions.TAX_FIELDS, TableFimsConnectionOptions.TAX_COL);
-        boolean enableProjects = setMultipleOptionsFromConfig(config, "fims.project.", fimsOptions, TableFimsConnectionOptions.PROJECT_FIELDS, TableFimsConnectionOptions.PROJECT_COLUMN);
-        fimsOptions.setValue(TableFimsConnectionOptions.STORE_PROJECTS, enableProjects);
-    }
-
-    private boolean setMultipleOptionsFromConfig(Properties config, String configKey, PasswordOptions fimsOptions, String multipleOptionsName, String optionNameToSet) {
-        // Get the refernce to the first Option in the MultipleOptions.  The rest will not have been instantiated yet.
-        Options.Option firstOption = fimsOptions.getOption(multipleOptionsName + "." + 0 + "." +
-                            optionNameToSet);
-        if (firstOption == null) {
-            return false;
-        }
-        if (!(firstOption instanceof Options.ComboBoxOption)) {
-            throw new IllegalStateException("Unexpected Option, expected ComboBoxOption but was " + firstOption.getClass().getSimpleName());
-        }
-
-        boolean setSomething = false;
-        int optionIndex = 0;
-        String valueToSet = config.getProperty(configKey + optionIndex);
-        while (valueToSet != null) {
-            setSomething = true;
-            @SuppressWarnings("unchecked") Options.ComboBoxOption<Options.OptionValue> comboBoxOption = (Options.ComboBoxOption<Options.OptionValue>) firstOption;
-            for (Options.OptionValue optionValue : comboBoxOption.getPossibleOptionValues()) {
-                if (optionValue.getLabel().equals(valueToSet)) {
-                    fimsOptions.setValue(multipleOptionsName + "." + optionIndex + "." + optionNameToSet, optionValue);
-                }
-            }
-            optionIndex++;
-            valueToSet = config.getProperty(configKey + optionIndex);
-        }
-        return setSomething;
-    }
-
-    private void setFimsOptionBasedOnLabel(PasswordOptions fimsOptions, String optionName, String labelToLookFor) {
-        Options.Option option = fimsOptions.getOption(optionName);
-        if (option == null) {
-            return;
-        }
-        if (!(option instanceof Options.ComboBoxOption)) {
-            throw new IllegalStateException("Unexpected Option, expected ComboBoxOption but was " + option.getClass().getSimpleName());
-        }
-        Options.ComboBoxOption<Options.OptionValue> comboBoxOption = (Options.ComboBoxOption<Options.OptionValue>) option;
-        for (Options.OptionValue optionValue : comboBoxOption.getPossibleOptionValues()) {
-            if (optionValue.getLabel().equals(labelToLookFor)) {
-                fimsOptions.setValue(optionName, optionValue);
-            }
         }
     }
 
@@ -534,13 +345,13 @@ public class LIMSInitializationListener implements ServletContextListener {
                                                "FROM information_schema.tables " +
                                                "WHERE table_name=? " +
                                                "AND table_schema IN (SELECT DATABASE())";
-            String createBCIDRootsTableQuery = "CREATE TABLE " + LimsDatabaseConstants.BCID_ROOTS_TABLE_NAME +
+            String createBCIDRootsTableQuery = "CREATE TABLE " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME +
                                                "(" +
                                                "type VARCHAR(255) NOT NULL," +
                                                "bcid_root VARCHAR(255) NOT NULL," +
                                                "PRIMARY KEY (type)" +
                                                ");";
-            String populateBCIDRootsTableQuery = "INSERT INTO " + LimsDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
+            String populateBCIDRootsTableQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
                                                  "VALUES (?, ?)";
 
             selectBCIDRootsTableStatement = connection.prepareStatement(selectBCIDRootsTableQuery);
@@ -549,7 +360,7 @@ public class LIMSInitializationListener implements ServletContextListener {
 
             SqlUtilities.beginTransaction(connection);
 
-            selectBCIDRootsTableStatement.setObject(1, LimsDatabaseConstants.BCID_ROOTS_TABLE_NAME);
+            selectBCIDRootsTableStatement.setObject(1, BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME);
             if (selectBCIDRootsTableStatement.executeQuery().next()) {
                 return;
             }
@@ -560,7 +371,7 @@ public class LIMSInitializationListener implements ServletContextListener {
                 throw new DatabaseServiceException("Could not create bcid_roots table.", false);
             }
 
-            for (String BCIDRootType : LimsDatabaseConstants.SUPPORTED_BCID_ROOT_TYPES) {
+            for (String BCIDRootType : BiocodeServerLIMSDatabaseConstants.SUPPORTED_BCID_ROOT_TYPES) {
                 populateBCIDRootsTableStatement.setObject(1, BCIDRootType);
                 populateBCIDRootsTableStatement.setObject(2, ""); // Empty BCID roots.
                 populateBCIDRootsTableStatement.addBatch();
@@ -584,5 +395,9 @@ public class LIMSInitializationListener implements ServletContextListener {
             }
             SqlUtilities.closeConnection(connection);
         }
+    }
+
+    public static String getRetrieveLastInsertedIDStatement() {
+        return LIMSInitializationListener.getLimsConnection().isLocal() ? "CALL IDENTITY()" : "SELECT last_insert_id()";
     }
 }

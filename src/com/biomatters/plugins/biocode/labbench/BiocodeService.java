@@ -1720,11 +1720,11 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
         return workflows;
     }
 
-    public Map<String, String> getWorkflowIds(List<String> idsToCheck, List<String> loci, Reaction.Type reactionType) throws DatabaseServiceException {
+    public Map<String, String> getWorkflowNames(List<String> idsToCheck, List<String> loci, Reaction.Type reactionType) throws DatabaseServiceException {
         if(idsToCheck.size() == 0) {
             return Collections.emptyMap();
         }
-        return getActiveLIMSConnection().getWorkflowIds(idsToCheck, loci, reactionType);
+        return getActiveLIMSConnection().getWorkflowNames(idsToCheck, loci, reactionType);
     }
 
     public Map<String, Workflow> getWorkflows(Collection<String> workflowNames) throws DatabaseServiceException {

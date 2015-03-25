@@ -3,10 +3,9 @@ package com.biomatters.plugins.biocode.server;
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.plugins.biocode.labbench.reaction.ExtractionReaction;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
-import com.biomatters.plugins.biocode.server.utilities.RestUtilities;
+import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 
 import javax.ws.rs.*;
-import java.util.Arrays;
 
 /**
  * @author Matthew Cheung
@@ -27,7 +26,7 @@ public class Extractions {
         try {
             return new XMLSerializableList<ExtractionReaction>(ExtractionReaction.class,
                     LIMSInitializationListener.getLimsConnection().getExtractionsFromBarcodes(
-                            RestUtilities.getListFromString(barcodes)));
+                            StringUtilities.getListFromString(barcodes)));
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
@@ -52,9 +51,9 @@ public class Extractions {
 
         try {
             return new StringMap(
-                    LIMSInitializationListener.getLimsConnection().getWorkflowIds(
-                            RestUtilities.getListFromString(extractionIds),
-                            RestUtilities.getListFromString(loci),
+                    LIMSInitializationListener.getLimsConnection().getWorkflowNames(
+                            StringUtilities.getListFromString(extractionIds),
+                            StringUtilities.getListFromString(loci),
                             Reaction.Type.valueOf(type)
                     ));
         } catch (DatabaseServiceException e) {

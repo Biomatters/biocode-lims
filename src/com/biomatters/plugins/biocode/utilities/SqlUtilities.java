@@ -209,6 +209,18 @@ public class SqlUtilities {
         }
     }
 
+    public static void cleanUpResultSets(ResultSet... resultSets) {
+        for (ResultSet resultSet : resultSets) {
+            if (resultSet != null) {
+                try {
+                    resultSet.close();
+                } catch (SQLException e) {
+
+                }
+            }
+        }
+    }
+
     public static void closeConnection(Connection connection) {
         if(connection != null) {
             try {

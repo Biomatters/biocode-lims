@@ -554,13 +554,13 @@ public class PlateBulkEditor {
                                         noLociSet = false;
                                     }
                                 }
-                                Map<String, String> idToWorkflow = BiocodeService.getInstance().getWorkflowIds(idsToCheck, loci, plate.getReactionType());
-                                if(idToWorkflow.isEmpty()) {
+                                Map<String, String> extractionIDToWorkflowName = BiocodeService.getInstance().getWorkflowNames(idsToCheck, loci, plate.getReactionType());
+                                if(extractionIDToWorkflowName.isEmpty()) {
                                     Dialogs.showMessageDialog("<html>Did not find any workflows that match your extraction IDs and locus. " +
                                             (noLociSet ? "Have you set the locus for your plate?" : "") + "<br><br><u><b>Note</b></u>: If you save this plate without any workflows, " +
                                             "Geneious will generate new workflows for your reactions.</html>");
                                 } else {
-                                    putMappedValuesIntoEditor(editorToCheck, workflowEditor, idToWorkflow, plate, true);
+                                    putMappedValuesIntoEditor(editorToCheck, workflowEditor, extractionIDToWorkflowName, plate, true);
                                 }
                             } catch (DatabaseServiceException e1) {
                                 Dialogs.showMessageDialog("Could not get Workflow IDs from the database: " + e1.getMessage());

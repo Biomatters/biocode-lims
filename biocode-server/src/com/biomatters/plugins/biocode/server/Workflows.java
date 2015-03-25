@@ -7,11 +7,12 @@ import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.WorkflowDocument;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
-import com.biomatters.plugins.biocode.labbench.lims.LimsSearchCallback;
 import com.biomatters.plugins.biocode.labbench.lims.LimsSearchResult;
+import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
 import com.biomatters.plugins.biocode.server.security.AccessUtilities;
 import com.biomatters.plugins.biocode.server.security.Role;
-import com.biomatters.plugins.biocode.server.utilities.RestUtilities;
+import com.biomatters.plugins.biocode.server.security.Users;
+import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import jebl.util.ProgressListener;
 
 import javax.ws.rs.*;
@@ -40,7 +41,7 @@ public class Workflows {
             for (WorkflowDocument result : results) {
                 extractionIds.add(result.getWorkflow().getExtractionId());
             }
-            AccessUtilities.checkUserHasRoleForExtractionIds(extractionIds, Role.READER);
+            AccessUtilities.checkUserHasRoleForExtractionIDs(extractionIds, Users.getLoggedInUser(), Role.READER);
             return new XMLSerializableList<WorkflowDocument>(WorkflowDocument.class, results);
         } catch (DatabaseServiceException e) {
             throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST)
@@ -58,8 +59,9 @@ public class Workflows {
             throw new BadRequestException("Must specify ids");
         }
         try {
-            Workflow result = RestUtilities.getOnlyItemFromList(LIMSInitializationListener.getLimsConnection().getWorkflowsByName(Collections.singletonList(workflowName)), "No workflow for id: " + workflowName);
-            AccessUtilities.checkUserHasRoleForExtractionIds(Collections.singletonList(result.getExtractionId()), Role.READER);
+            List<Workflow> workflows = LIMSInitializationListener.getLimsConnection().getWorkflowsByName(Collections.singletonList(workflowName));
+            Workflow result = workflows.get(0);
+            AccessUtilities.checkUserHasRoleForExtractionIDs(Collections.singletonList(result.getExtractionId()), Users.getLoggedInUser(), Role.READER);
             return result;
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
@@ -71,7 +73,7 @@ public class Workflows {
     @Path("{id}/name")
     public void renameWorkflow(@PathParam("id") int id, String newName) {
         try {
-            checkAccessForWorkflowId(id, Role.WRITER);
+            AccessUtilities.checkUserHasRoleForWorkflows(Collections.singleton(id), Users.getLoggedInUser(), Role.WRITER);
             LIMSInitializationListener.getLimsConnection().renameWorkflow(id, newName);
         } catch (DatabaseServiceException e) {
             throw new WebApplicationException(e.getMessage(), e);
@@ -82,23 +84,42 @@ public class Workflows {
     @Path("{workflowId}/sequences/{extractionId}")
     public void deleteSequencesForWorkflow(@PathParam("workflowId")int workflowId, @PathParam("extractionId")String extractionId) {
         try {
-            checkAccessForWorkflowId(workflowId, Role.WRITER);
+            AccessUtilities.checkUserHasRoleForWorkflows(Collections.singletonList(workflowId), Users.getLoggedInUser(), Role.WRITER);
             LIMSInitializationListener.getLimsConnection().deleteSequencesForWorkflowId(workflowId, extractionId);
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
-    private static void checkAccessForWorkflowId(int id, Role role) throws DatabaseServiceException {
-        LimsSearchResult result = LIMSInitializationListener.getLimsConnection().getMatchingDocumentsFromLims(
-                Query.Factory.createFieldQuery(LIMSConnection.WORKFLOW_ID_FIELD, Condition.EQUAL, new Object[]{id},
-                        BiocodeService.getSearchDownloadOptions(false, true, false, false)), null, ProgressListener.EMPTY
-        );
-        Map<Integer, String> extractionIdsForWorkflows = QueryService.getExtractionIdsForWorkflows(result.getWorkflowIds());
-        String extractionId = extractionIdsForWorkflows.get(id);
-        if(extractionId == null) {
-            throw new NotFoundException("Could not find workflow for id = " + id);
+    @GET
+    @Produces("application/xml")
+    @Path("workflows")
+    public StringMap getWorkflowsForExtractionIds(@QueryParam("extractionIds")String extractionIds,
+                                                  @QueryParam("loci")String loci,
+                                                  @QueryParam("type")String type) { // todo: Migrate logic to QueryService?
+        if(extractionIds == null || extractionIds.trim().isEmpty()) {
+            throw new BadRequestException("Must specify extractionIds");
         }
-        AccessUtilities.checkUserHasRoleForExtractionIds(Collections.singletonList(extractionId), role);
+
+        if(loci == null || loci.trim().isEmpty()) {
+            throw new BadRequestException("Must specify loci");
+        }
+
+        if(type == null || type.trim().isEmpty()) {
+            throw new BadRequestException("Must specify type");
+        }
+
+        try {
+            return new StringMap(
+                    LIMSInitializationListener.getLimsConnection().getWorkflowNames(
+                            StringUtilities.getListFromString(extractionIds),
+                            StringUtilities.getListFromString(loci),
+                            Reaction.Type.valueOf(type)
+                    ));
+        } catch (DatabaseServiceException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        } catch(IllegalArgumentException e) {
+            throw new BadRequestException(type + " is not valid type.");
+        }
     }
 }

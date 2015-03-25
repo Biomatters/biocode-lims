@@ -342,14 +342,14 @@ public class NewPlateDocumentOperation extends DocumentOperation {
             loci.add(r.getLocus());
         }
         try {
-            Map<String, String> idToWorkflow = BiocodeService.getInstance().getWorkflowIds(extractionIds, loci, plate.getReactionType());
-            Map<String,Workflow> workflowIdToWorkflow = BiocodeService.getInstance().getWorkflows(idToWorkflow.values());
+            Map<String, String> extractionIDToWorkflowName = BiocodeService.getInstance().getWorkflowNames(extractionIds, loci, plate.getReactionType());
+            Map<String,Workflow> workflowNameToWorkflow = BiocodeService.getInstance().getWorkflows(extractionIDToWorkflowName.values());
             for(int row=0; row < plate.getRows(); row++) {
                 for(int col=0; col < plate.getCols(); col++) {
                     Reaction reaction = plate.getReaction(row, col);
-                    String value = idToWorkflow.get(reaction.getExtractionId());
+                    String value = extractionIDToWorkflowName.get(reaction.getExtractionId());
                     if(value != null) {
-                        reaction.setWorkflow(workflowIdToWorkflow.get(value));
+                        reaction.setWorkflow(workflowNameToWorkflow.get(value));
                     }
                     else {
                         reaction.setWorkflow(null);

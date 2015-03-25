@@ -1,7 +1,7 @@
 package com.biomatters.plugins.biocode.server;
 
 import com.biomatters.plugins.biocode.labbench.lims.BCIDRoot;
-import com.biomatters.plugins.biocode.labbench.lims.LimsDatabaseConstants;
+import com.biomatters.plugins.biocode.server.security.BiocodeServerLIMSDatabaseConstants;
 import com.biomatters.plugins.biocode.server.security.User;
 import com.biomatters.plugins.biocode.server.security.Users;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
@@ -31,15 +31,15 @@ public class BCIDRoots {
             connection = LIMSInitializationListener.getDataSource().getConnection();
 
             String getBCIDRootsQuery = "SELECT * " +
-                                       "FROM " + LimsDatabaseConstants.BCID_ROOTS_TABLE_NAME;
+                                       "FROM " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME;
 
             getBCIDRootsStatement = connection.prepareStatement(getBCIDRootsQuery);
 
             BCIDRootsResultSet = getBCIDRootsStatement.executeQuery();
 
             while (BCIDRootsResultSet.next()) {
-                BCIDRootsCache.put(BCIDRootsResultSet.getString(LimsDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE),
-                                   BCIDRootsResultSet.getString(LimsDatabaseConstants.BCID_ROOT_COLUMN_NAME_BCID_ROOTS_TABLE));
+                BCIDRootsCache.put(BCIDRootsResultSet.getString(BiocodeServerLIMSDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE),
+                                   BCIDRootsResultSet.getString(BiocodeServerLIMSDatabaseConstants.BCID_ROOT_COLUMN_NAME_BCID_ROOTS_TABLE));
             }
         } catch (SQLException e) {
             throw new InternalServerErrorException("Failed to retrieve BCID Roots.", e);
@@ -80,7 +80,7 @@ public class BCIDRoots {
         try {
             connection = LIMSInitializationListener.getDataSource().getConnection();
 
-            String addBCIDRootQuery = "INSERT INTO " + LimsDatabaseConstants.BCID_ROOTS_TABLE_NAME + " VALUES (?, ?)";
+            String addBCIDRootQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " VALUES (?, ?)";
 
             addBCIDRootStatement = connection.prepareStatement(addBCIDRootQuery);
             addBCIDRootStatement.setObject(1, bcidRoot.type);
@@ -125,10 +125,10 @@ public class BCIDRoots {
         try {
             connection = LIMSInitializationListener.getDataSource().getConnection();
 
-            String updateBCIDRootQuery = "UPDATE " + LimsDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
-                                         "SET "    + LimsDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?, "
-                                                   + LimsDatabaseConstants.BCID_ROOT_COLUMN_NAME_BCID_ROOTS_TABLE + "=? " +
-                                         "WHERE "  + LimsDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?";
+            String updateBCIDRootQuery = "UPDATE " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
+                                         "SET "    + BiocodeServerLIMSDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?, "
+                                                   + BiocodeServerLIMSDatabaseConstants.BCID_ROOT_COLUMN_NAME_BCID_ROOTS_TABLE + "=? " +
+                                         "WHERE "  + BiocodeServerLIMSDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?";
 
             updateBCIDRootStatement = connection.prepareStatement(updateBCIDRootQuery);
             updateBCIDRootStatement.setObject(1, bcidRoot.type);
@@ -167,8 +167,8 @@ public class BCIDRoots {
         try {
             connection = LIMSInitializationListener.getDataSource().getConnection();
 
-            String deleteBCIDRootQuery = "DELETE FROM " + LimsDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
-                                         "WHERE "       + LimsDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?";
+            String deleteBCIDRootQuery = "DELETE FROM " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
+                                         "WHERE "       + BiocodeServerLIMSDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?";
 
             deleteBCIDRootStatement = connection.prepareStatement(deleteBCIDRootQuery);
             deleteBCIDRootStatement.setObject(1, type);

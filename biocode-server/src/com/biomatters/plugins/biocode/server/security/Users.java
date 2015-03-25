@@ -1,6 +1,5 @@
 package com.biomatters.plugins.biocode.server.security;
 
-import com.biomatters.plugins.biocode.labbench.lims.LimsDatabaseConstants;
 import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -55,14 +54,14 @@ public class Users {
     }
 
     public static List<User> getUserList(Connection connection) throws SQLException {
-        String query = "SELECT " + LimsDatabaseConstants.USERS_TABLE_NAME + "." +
-                                   LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + ", " +
-                                   LimsDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE + ", " +
-                                   LimsDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE + ", " +
-                                   LimsDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE + ", "  +
-                                   LimsDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE + ", " +
-                                   LimsDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + ", " +
-                                   LimsDatabaseConstants.IS_LDAP_ACCOUNT_COLUMN_NAME_USERS_TABLE + " " +
+        String query = "SELECT " + BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + "." +
+                                   BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + ", " +
+                                   BiocodeServerLIMSDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE + ", " +
+                                   BiocodeServerLIMSDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE + ", " +
+                                   BiocodeServerLIMSDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE + ", "  +
+                                   BiocodeServerLIMSDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE + ", " +
+                                   BiocodeServerLIMSDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + ", " +
+                                   BiocodeServerLIMSDatabaseConstants.IS_LDAP_ACCOUNT_COLUMN_NAME_USERS_TABLE + " " +
                        "FROM "   + getUserTableJoinedWithAuthTable();
 
         PreparedStatement statement = connection.prepareStatement(query);
@@ -102,15 +101,15 @@ public class Users {
         try {
             connection = LIMSInitializationListener.getDataSource().getConnection();
 
-            String usernameUserTable = LimsDatabaseConstants.USERS_TABLE_NAME + "." + LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE;
+            String usernameUserTable = BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + "." + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE;
 
             String query = "SELECT " + usernameUserTable + ", " +
-                                       LimsDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE + ", " +
-                                       LimsDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE + ", " +
-                                       LimsDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE + ", " +
-                                       LimsDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE + ", " +
-                                       LimsDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + ", " +
-                                       LimsDatabaseConstants.IS_LDAP_ACCOUNT_COLUMN_NAME_USERS_TABLE + " " +
+                                       BiocodeServerLIMSDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE + ", " +
+                                       BiocodeServerLIMSDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE + ", " +
+                                       BiocodeServerLIMSDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE + ", " +
+                                       BiocodeServerLIMSDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE + ", " +
+                                       BiocodeServerLIMSDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + ", " +
+                                       BiocodeServerLIMSDatabaseConstants.IS_LDAP_ACCOUNT_COLUMN_NAME_USERS_TABLE + " " +
                            "FROM "   + getUserTableJoinedWithAuthTable() + " " +
                            "WHERE "  + usernameUserTable + "=?";
 
@@ -139,28 +138,30 @@ public class Users {
      * @throws SQLException if a problem occurs communicating with the database
      */
     static User createUserFromResultSetRow(ResultSet resultSet) throws SQLException {
-        String username = resultSet.getString(LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE);
+        String username = resultSet.getString(BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE);
 
         if (username == null) {
             return null;
         }
 
-        return new User(username,
-                        null,
-                        resultSet.getString(LimsDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE),
-                        resultSet.getString(LimsDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE),
-                        resultSet.getString(LimsDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE),
-                        resultSet.getBoolean(LimsDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE),
-                        resultSet.getString(LimsDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE).equals(LimsDatabaseConstants.AUTHORITY_ADMIN_CODE),
-                        resultSet.getBoolean(LimsDatabaseConstants.IS_LDAP_ACCOUNT_COLUMN_NAME_USERS_TABLE));
+        return new User(
+                username,
+                null,
+                resultSet.getString(BiocodeServerLIMSDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE),
+                resultSet.getString(BiocodeServerLIMSDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE),
+                resultSet.getString(BiocodeServerLIMSDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE),
+                resultSet.getBoolean(BiocodeServerLIMSDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE),
+                resultSet.getString(BiocodeServerLIMSDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE).equals(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE),
+                resultSet.getBoolean(BiocodeServerLIMSDatabaseConstants.IS_LDAP_ACCOUNT_COLUMN_NAME_USERS_TABLE)
+        );
     }
 
     private static String getUserTableJoinedWithAuthTable() {
-        return LimsDatabaseConstants.USERS_TABLE_NAME + " INNER JOIN " + LimsDatabaseConstants.AUTHORITIES_TABLE_NAME +
+        return BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + " INNER JOIN " + BiocodeServerLIMSDatabaseConstants.AUTHORITIES_TABLE_NAME +
                " ON " +
-               LimsDatabaseConstants.USERS_TABLE_NAME + "." + LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE +
+               BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + "." + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE +
                "=" +
-               LimsDatabaseConstants.AUTHORITIES_TABLE_NAME + "." + LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE;
+               BiocodeServerLIMSDatabaseConstants.AUTHORITIES_TABLE_NAME + "." + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE;
     }
 
     @POST
@@ -177,7 +178,7 @@ public class Users {
 
             SqlUtilities.beginTransaction(connection);
 
-            String addUserQuery = "INSERT INTO " + LimsDatabaseConstants.USERS_TABLE_NAME + " VALUES (?, ?, ?, ?, ?, ?, ?)";
+            String addUserQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + " VALUES (?, ?, ?, ?, ?, ?, ?)";
 
             PreparedStatement statement = connection.prepareStatement(addUserQuery);
 
@@ -192,12 +193,12 @@ public class Users {
             int inserted = statement.executeUpdate();
 
             if (inserted == 1) {
-                String addAuthorityQuery = "INSERT INTO " + LimsDatabaseConstants.AUTHORITIES_TABLE_NAME + " VALUES (?,?)";
+                String addAuthorityQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.AUTHORITIES_TABLE_NAME + " VALUES (?,?)";
 
                 PreparedStatement insertAuth = connection.prepareStatement(addAuthorityQuery);
 
                 insertAuth.setObject(1, user.username);
-                insertAuth.setObject(2, user.isAdministrator ? LimsDatabaseConstants.AUTHORITY_ADMIN_CODE : LimsDatabaseConstants.AUTHORITY_USER_CODE);
+                insertAuth.setObject(2, user.isAdministrator ? BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE : BiocodeServerLIMSDatabaseConstants.AUTHORITY_USER_CODE);
 
                 int insertedAuth = insertAuth.executeUpdate();
 
@@ -236,14 +237,14 @@ public class Users {
 
             SqlUtilities.beginTransaction(connection);
 
-            String updateUserQuery = "UPDATE " + LimsDatabaseConstants.USERS_TABLE_NAME + " " +
-                                     "SET "    + LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + "=?, " +
-                                                 (user.password == null ? "" : LimsDatabaseConstants.PASSWORD_COLUMN_NAME_USERS_TABLE + "=?, ") +
-                                                 LimsDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE + "=?, " +
-                                                 LimsDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE + "=?, " +
-                                                 LimsDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE + "=?, "  +
-                                                 LimsDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE + "=? " +
-                                     "WHERE " +  LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + "=?";
+            String updateUserQuery = "UPDATE " + BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + " " +
+                                     "SET "    + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + "=?, " +
+                                                 (user.password == null ? "" : BiocodeServerLIMSDatabaseConstants.PASSWORD_COLUMN_NAME_USERS_TABLE + "=?, ") +
+                                                 BiocodeServerLIMSDatabaseConstants.FIRSTNAME_COLUMN_NAME_USERS_TABLE + "=?, " +
+                                                 BiocodeServerLIMSDatabaseConstants.LASTNAME_COLUMN_NAME_USERS_TABLE + "=?, " +
+                                                 BiocodeServerLIMSDatabaseConstants.EMAIL_COLUMN_NAME_USERS_TABLE + "=?, "  +
+                                                 BiocodeServerLIMSDatabaseConstants.ENABLED_COLUMN_NAME_USERS_TABLE + "=? " +
+                                     "WHERE " +  BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + "=?";
 
             PreparedStatement statement = connection.prepareStatement(updateUserQuery);
 
@@ -262,15 +263,15 @@ public class Users {
             int updated = statement.executeUpdate();
 
             if (updated == 1) {
-                String updateAuthorityQuery = "UPDATE " + LimsDatabaseConstants.AUTHORITIES_TABLE_NAME + " " +
-                                              "SET "    + LimsDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + "=? " +
-                                              "WHERE "  + LimsDatabaseConstants.USERNAME_COLUMN_NAME_AUTHORITIES_TABLE + "=?";
+                String updateAuthorityQuery = "UPDATE " + BiocodeServerLIMSDatabaseConstants.AUTHORITIES_TABLE_NAME + " " +
+                                              "SET "    + BiocodeServerLIMSDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + "=? " +
+                                              "WHERE "  + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_AUTHORITIES_TABLE + "=?";
 
                 PreparedStatement updateAuth = connection.prepareStatement(updateAuthorityQuery);
 
                 updateAuth.setObject(1, user.isAdministrator ?
-                        LimsDatabaseConstants.AUTHORITY_ADMIN_CODE :
-                        LimsDatabaseConstants.AUTHORITY_USER_CODE);
+                        BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE :
+                        BiocodeServerLIMSDatabaseConstants.AUTHORITY_USER_CODE);
                 updateAuth.setObject(2, user.username);
 
                 int updatedAuth = updateAuth.executeUpdate();
@@ -313,8 +314,8 @@ public class Users {
 
             SqlUtilities.beginTransaction(connection);
 
-            String query = "DELETE FROM " + LimsDatabaseConstants.USERS_TABLE_NAME + " " +
-                           "WHERE " + LimsDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + "=?";
+            String query = "DELETE FROM " + BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + " " +
+                           "WHERE " + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE + "=?";
 
             PreparedStatement statement = connection.prepareStatement(query);
 
@@ -358,9 +359,9 @@ public class Users {
         try {
             connection = LIMSInitializationListener.getDataSource().getConnection();
 
-            String query = "SELECT " + LimsDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + " " +
-                           "FROM " + LimsDatabaseConstants.AUTHORITIES_TABLE_NAME + " " +
-                           "WHERE " + LimsDatabaseConstants.USERNAME_COLUMN_NAME_AUTHORITIES_TABLE + "=?";
+            String query = "SELECT " + BiocodeServerLIMSDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + " " +
+                           "FROM " + BiocodeServerLIMSDatabaseConstants.AUTHORITIES_TABLE_NAME + " " +
+                           "WHERE " + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_AUTHORITIES_TABLE + "=?";
 
             PreparedStatement statement = connection.prepareStatement(query);
 
@@ -372,7 +373,7 @@ public class Users {
                 throw new InternalServerErrorException("No authority associated with user account '" + username + "'.");
             }
 
-            return resultSet.getString("authority").equals(LimsDatabaseConstants.AUTHORITY_ADMIN_CODE);
+            return resultSet.getString("authority").equals(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE);
         } catch (SQLException e) {
             throw new InternalServerErrorException("Error verifying authority of user account '" + username + "'", e);
         } finally {
@@ -438,7 +439,7 @@ public class Users {
 
             SqlUtilities.beginTransaction(connection);
 
-            String addUserQuery = "INSERT INTO " + LimsDatabaseConstants.USERS_TABLE_NAME + " VALUES (?, ?, ?, ?, ?, ?, ?)";
+            String addUserQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + " VALUES (?, ?, ?, ?, ?, ?, ?)";
 
             String usernameWithLDAPIdentifier = appendWithLDAPIdentifier(username);
 
@@ -455,12 +456,12 @@ public class Users {
             int inserted = statement.executeUpdate();
 
             if (inserted == 1) {
-                String addAuthorityQuery = "INSERT INTO " + LimsDatabaseConstants.AUTHORITIES_TABLE_NAME + " VALUES (?,?)";
+                String addAuthorityQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.AUTHORITIES_TABLE_NAME + " VALUES (?,?)";
 
                 PreparedStatement insertAuth = connection.prepareStatement(addAuthorityQuery);
 
                 insertAuth.setObject(1, usernameWithLDAPIdentifier);
-                insertAuth.setObject(2, isAdministrator ? LimsDatabaseConstants.AUTHORITY_ADMIN_CODE : LimsDatabaseConstants.AUTHORITY_USER_CODE);
+                insertAuth.setObject(2, isAdministrator ? BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE : BiocodeServerLIMSDatabaseConstants.AUTHORITY_USER_CODE);
 
                 int insertedAuth = insertAuth.executeUpdate();
 

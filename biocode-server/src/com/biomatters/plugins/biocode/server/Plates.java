@@ -3,15 +3,13 @@ package com.biomatters.plugins.biocode.server;
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.labbench.BadDataException;
-import com.biomatters.plugins.biocode.labbench.BiocodeService;
-import com.biomatters.plugins.biocode.labbench.lims.LimsSearchCallback;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.ExtractionReaction;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
 import com.biomatters.plugins.biocode.server.security.AccessUtilities;
 import com.biomatters.plugins.biocode.server.security.Role;
-import com.biomatters.plugins.biocode.server.utilities.RestUtilities;
+import com.biomatters.plugins.biocode.server.security.Users;
 
 import jebl.util.ProgressListener;
 
@@ -36,7 +34,7 @@ public class Plates {
         try {
             List<Plate> plates = LIMSInitializationListener.getLimsConnection().getPlates(
                     Sequences.getIntegerListFromString(idListAsString), ProgressListener.EMPTY);
-            AccessUtilities.checkUserHasRoleForPlate(plates, Role.READER);
+            AccessUtilities.checkUserHasRoleForPlates(plates, Users.getLoggedInUser(), Role.READER);
             return new XMLSerializableList<Plate>(Plate.class, plates);
         } catch (DatabaseServiceException e) {
             throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST)
@@ -50,7 +48,7 @@ public class Plates {
     @Consumes("application/xml")
     public void add(XMLSerializableList<Plate> plates) {
         try {
-            AccessUtilities.checkUserHasRoleForPlate(plates.getList(), Role.WRITER);
+            AccessUtilities.checkUserHasRoleForPlates(plates.getList(), Users.getLoggedInUser(), Role.WRITER);
             LIMSInitializationListener.getLimsConnection().savePlates(plates.getList(), ProgressListener.EMPTY);
         } catch (DatabaseServiceException e) {
             throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST)
@@ -72,7 +70,7 @@ public class Plates {
     @Path("delete")
     public String delete(XMLSerializableList<Plate> plates) {
         try {
-            AccessUtilities.checkUserHasRoleForPlate(plates.getList(), Role.WRITER);
+            AccessUtilities.checkUserHasRoleForPlates(plates.getList(), Users.getLoggedInUser(), Role.WRITER);
             Set<Integer> ids = LIMSInitializationListener.getLimsConnection().deletePlates(plates.getList(), ProgressListener.EMPTY);
             return StringUtilities.join("\n", ids);
         } catch (DatabaseServiceException e) {
@@ -97,7 +95,7 @@ public class Plates {
         if(plateList.size() < 1) {
             throw new NotFoundException("Could not find plate for id = " + id);
         }
-        AccessUtilities.checkUserHasRoleForPlate(Collections.singletonList(plateList.get(0)), Role.WRITER);
+        AccessUtilities.checkUserHasRoleForPlates(Collections.singletonList(plateList.get(0)), Users.getLoggedInUser(), Role.WRITER);
     }
 
     @GET
@@ -119,7 +117,7 @@ public class Plates {
         }
         try {
             List<Plate> plates = LIMSInitializationListener.getLimsConnection().getEmptyPlates(ids);
-            AccessUtilities.checkUserHasRoleForPlate(plates, Role.READER);
+            AccessUtilities.checkUserHasRoleForPlates(plates, Users.getLoggedInUser(), Role.READER);
             return new XMLSerializableList<Plate>(Plate.class, plates);
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
@@ -133,7 +131,7 @@ public class Plates {
         List<Reaction> reactionList = reactions.getList();
         Reaction.Type reactionType = Reaction.Type.valueOf(type);
         try {
-            AccessUtilities.checkUserHasRoleForReactions(reactionList, Role.WRITER);
+            AccessUtilities.checkUserHasRoleForReactions(reactionList, Users.getLoggedInUser(), Role.WRITER);
             LIMSInitializationListener.getLimsConnection().saveReactions(reactionList.toArray(
                     new Reaction[reactionList.size()]
             ), reactionType, ProgressListener.EMPTY);
@@ -150,9 +148,9 @@ public class Plates {
         }
         try {
             List<ExtractionReaction> extractions = LIMSInitializationListener.getLimsConnection().getExtractionsForIds(
-                    RestUtilities.getListFromString(ids)
+                    com.biomatters.plugins.biocode.server.utilities.StringUtilities.getListFromString(ids)
             );
-            AccessUtilities.checkUserHasRoleForReactions(extractions, Role.READER);
+            AccessUtilities.checkUserHasRoleForReactions(extractions, Users.getLoggedInUser(), Role.READER);
             return new XMLSerializableList<ExtractionReaction>(ExtractionReaction.class, extractions);
         } catch (DatabaseServiceException e) {
             throw new WebApplicationException(e.getMessage(), e);
@@ -171,7 +169,7 @@ public class Plates {
 
         try {
             return new StringMap(LIMSInitializationListener.getLimsConnection().getTissueIdsForExtractionIds(
-                    table, RestUtilities.getListFromString(ids)));
+                    table, com.biomatters.plugins.biocode.server.utilities.StringUtilities.getListFromString(ids)));
         } catch (DatabaseServiceException e) {
             throw new WebApplicationException(e.getMessage(), e);
         }

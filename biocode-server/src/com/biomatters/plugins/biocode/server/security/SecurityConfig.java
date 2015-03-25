@@ -82,7 +82,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         if (LIMSInitializationListener.getLDAPConfiguration() != null) {
             String LDAPAdminAuthority = LIMSInitializationListener.getLDAPConfiguration().getAdminAuthority();
-            if (!StringUtilities.isStringNULLOrEmpty(LDAPAdminAuthority)) {
+            if (LDAPAdminAuthority != null && !LDAPAdminAuthority.isEmpty()) {
                 http.authorizeRequests()
                     .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(LDAPAdminAuthority);
             }
@@ -175,19 +175,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     private AuthenticationManagerBuilder authenticateWithLDAP(AuthenticationManagerBuilder auth, final LDAPConfiguration config) throws Exception {
-        StringUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
-            put("server", config.getServer());
-        }});
+        if (config.getServer() == null || config.getServer().isEmpty()) {
+            throw new IllegalStateException("Server address was not supplied.");
+        }
 
-        StringUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
-            put("userDNPattern", config.getUserDNPattern());
-            put("userSearchFilter", config.getUserSearchFilter());
-        }});
+        if ((config.getUserDNPattern() == null || config.getUserDNPattern().isEmpty()) && (config.getUserSearchFilter() == null || config.getUserSearchFilter().isEmpty())) {
+            throw new IllegalStateException("The user dn pattern and/or the user search filter must be supplied.");
+        }
 
-        StringUtilities.throwExceptionIfAllNULLOrEmptyStrings(new HashMap<String, String>() {{
-            put("groupSearchBase", config.getGroupSearchBase());
-            put("groupSearchFilter", config.getGroupSearchFilter());
-        }});
+        if ((config.getGroupSearchBase() == null || config.getGroupSearchBase().isEmpty()) && (config.getGroupSearchFilter() == null || config.getGroupSearchFilter().isEmpty())) {
+            throw new IllegalStateException("The group search base and/or the group search filter must be supplied.");
+        }
 
         LdapAuthenticationProviderConfigurer<AuthenticationManagerBuilder> ldapAuthenticationProviderConfigurer = auth.ldapAuthentication();
 
@@ -202,31 +200,31 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         ldapAuthenticationProviderConfigurer.userDetailsContextMapper(mapper);
 
-        if (!StringUtilities.isStringNULLOrEmpty(config.getUserDNPattern())) {
+        if (config.getUserDNPattern() != null && !config.getUserDNPattern().isEmpty()) {
             ldapAuthenticationProviderConfigurer.userDnPatterns(config.getUserDNPattern());
         }
 
-        if (!StringUtilities.isStringNULLOrEmpty(config.getUserSearchFilter())) {
+        if (config.getUserSearchFilter() != null && !config.getUserSearchFilter().isEmpty()) {
             ldapAuthenticationProviderConfigurer.userSearchFilter(config.getUserSearchFilter());
         }
 
-        if (!StringUtilities.isStringNULLOrEmpty(config.getUserSearchBase())) {
+        if (config.getUserSearchBase() != null && !config.getGroupSearchBase().isEmpty()) {
             ldapAuthenticationProviderConfigurer.userSearchBase(config.getUserSearchBase());
         }
 
-        if (!StringUtilities.isStringNULLOrEmpty(config.getGroupSearchBase())) {
+        if (config.getGroupSearchBase() != null && !config.getGroupSearchBase().isEmpty()) {
             ldapAuthenticationProviderConfigurer.groupSearchBase(config.getGroupSearchBase());
         }
 
-        if (!StringUtilities.isStringNULLOrEmpty(config.getGroupSearchFilter())) {
+        if (config.getGroupSearchFilter() != null && !config.getGroupSearchFilter().isEmpty()) {
             ldapAuthenticationProviderConfigurer.groupSearchFilter(config.getGroupSearchFilter());
         }
 
-        if (!StringUtilities.isStringNULLOrEmpty(config.getGroupRoleAttribute())) {
+        if (config.getGroupRoleAttribute() != null && !config.getGroupRoleAttribute().isEmpty()) {
             ldapAuthenticationProviderConfigurer.groupRoleAttribute(config.getGroupRoleAttribute());
         }
 
-        if (!StringUtilities.isStringNULLOrEmpty(config.getRolePrefix())) {
+        if (config.getRolePrefix() != null && !config.getRolePrefix().isEmpty()) {
             ldapAuthenticationProviderConfigurer.rolePrefix(config.getRolePrefix());
         }
 

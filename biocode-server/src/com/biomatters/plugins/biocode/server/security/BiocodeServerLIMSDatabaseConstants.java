@@ -1,7 +1,5 @@
 package com.biomatters.plugins.biocode.server.security;
 
-import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
-
 /**
  * @author Gen Li
  *         Created on 20/06/14 5:42 PM

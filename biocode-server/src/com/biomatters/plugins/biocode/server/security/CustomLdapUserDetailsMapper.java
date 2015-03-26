@@ -50,15 +50,15 @@ public class CustomLdapUserDetailsMapper extends LdapUserDetailsMapper {
         Object lastname = dirContextOperations.getObjectAttribute(lastnameAttribute);
         Object email = dirContextOperations.getObjectAttribute(emailAttribute);
 
-        if (firstname == null || !(firstname instanceof String)) {
+        if (!(firstname instanceof String)) {
             firstname = "";
         }
 
-        if (lastname == null || !(lastname instanceof String)) {
+        if (!(lastname instanceof String)) {
             lastname = "";
         }
 
-        if (email == null || !(email instanceof String)) {
+        if (!(email instanceof String)) {
             email = "";
         }
 

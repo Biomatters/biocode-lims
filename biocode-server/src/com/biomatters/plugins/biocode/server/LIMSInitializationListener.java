@@ -7,7 +7,6 @@ import com.biomatters.geneious.publicapi.documents.DocumentUtilitiesImplementati
 import com.biomatters.geneious.publicapi.documents.XMLSerializerImplementation;
 import com.biomatters.geneious.publicapi.plugin.*;
 import com.biomatters.geneious.publicapi.utilities.*;
-import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.PasswordOptions;
 import com.biomatters.plugins.biocode.labbench.connection.Connection;
@@ -15,7 +14,6 @@ import com.biomatters.plugins.biocode.labbench.lims.*;
 import com.biomatters.plugins.biocode.server.security.BiocodeServerLIMSDatabaseConstants;
 import com.biomatters.plugins.biocode.server.security.ConnectionSettingsConstants;
 import com.biomatters.plugins.biocode.server.security.LDAPConfiguration;
-import com.biomatters.plugins.biocode.server.security.Projects;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 import jebl.util.ProgressListener;
 
@@ -25,7 +23,6 @@ import java.io.*;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Responsible for making the various LIMS connections on start up
@@ -68,8 +65,6 @@ public class LIMSInitializationListener implements ServletContextListener {
     public void contextInitialized(ServletContextEvent servletContextEvent) {
         initializeGeneiousUtilities();
 
-        BiocodeService biocodeeService;
-
         File connectionPropertiesFile = getPropertiesFile();
         File dataDir = connectionPropertiesFile.getParentFile();
         if(!dataDir.exists()) {
@@ -95,21 +90,11 @@ public class LIMSInitializationListener implements ServletContextListener {
             Properties config = new Properties();
             config.load(new FileInputStream(connectionPropertiesFile));
 
-            biocodeeService = BiocodeService.getInstance();
-            biocodeeService.setDataDirectory(dataDir);
-
             setLdapAuthenticationSettings(config);
 
             setLimsOptionsFromConfigFile(connectionConfig, config);
 
-            biocodeeService.connect(connectionConfig, false, false);
-
-            limsConnection = biocodeeService.getActiveLIMSConnection();
-            if(limsConnection == null) {
-                connectLims(connectionConfig); // to get error message.  In the future BiocodeService should be changed to expose it's connection errors
-            } else if(!(limsConnection instanceof SqlLimsConnection)) {
-                throw new IllegalStateException("LIMSConnection was not a SqlLimsConnection.  Was " + limsConnection.getClass());
-            }
+            limsConnection = connectLims(connectionConfig); // to get error message.  In the future BiocodeService should be changed to expose it's connection errors
 
             createBCIDRootsTableIfNecessary(getDataSource());
         } catch (IOException e) {
@@ -173,8 +158,6 @@ public class LIMSInitializationListener implements ServletContextListener {
         if (LDAPConfiguration != null) {
             LDAPConfiguration = null;
         }
-
-        BiocodeService.getInstance().logOut();
     }
 
     public static File getPropertiesFile() {
@@ -395,9 +378,5 @@ public class LIMSInitializationListener implements ServletContextListener {
             }
             SqlUtilities.closeConnection(connection);
         }
-    }
-
-    public static String getRetrieveLastInsertedIDStatement() {
-        return LIMSInitializationListener.getLimsConnection().isLocal() ? "CALL IDENTITY()" : "SELECT last_insert_id()";
     }
 }

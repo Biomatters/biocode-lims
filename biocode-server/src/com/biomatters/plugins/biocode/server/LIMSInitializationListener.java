@@ -88,6 +88,7 @@ public class LIMSInitializationListener implements ServletContextListener {
         Connection connectionConfig = new Connection("forServer");
         try {
             Properties config = new Properties();
+
             config.load(new FileInputStream(connectionPropertiesFile));
 
             setLdapAuthenticationSettings(config);
@@ -155,6 +156,10 @@ public class LIMSInitializationListener implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent servletContextEvent) {
+        if (limsConnection != null) {
+            limsConnection.disconnect();
+            limsConnection = null;
+        }
         if (LDAPConfiguration != null) {
             LDAPConfiguration = null;
         }

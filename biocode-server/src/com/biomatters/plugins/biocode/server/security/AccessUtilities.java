@@ -150,10 +150,8 @@ public class AccessUtilities {
     /**
      * @param user The user to check for
      * @param role The role to check for
-     * @return A list of IDs for samples of the supplied list that are readable
-     * @throws com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException if there is a problem communicating with the FIMS or LIMS
      */
-    public static Set<Integer> getWorkflowIDsUserHasRoleFor(User user, Role role) throws DatabaseServiceException {
+    public static Set<String> getExtractionIDsUserHasRoleFor(User user, Role role) throws DatabaseServiceException {
         if (user == null) {
             throw new IllegalArgumentException("user is null.");
         }
@@ -161,44 +159,46 @@ public class AccessUtilities {
             throw new IllegalArgumentException("role is null.");
         }
 
-        Set<Integer> workflowIDsUserHasRoleFor = new HashSet<Integer>();
+        Set<String> extractionIDsUserHasRoleFor = new HashSet<String>();
         Connection connection = null;
-        PreparedStatement retrieveWorkflowIDsUserHasRoleForStatement = null;
-        ResultSet retrieveWorkflowIDsUserHasRoleForResultSet = null;
+        PreparedStatement retrieveExtractionIDsUserHasRoleForStatement = null;
+        ResultSet retrieveExtractionIDsUserHasRoleForResultSet = null;
         try {
-            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIDs(Projects.getProjectsUserHasAtLeastRoleFor(LIMSInitializationListener.getDataSource(), user, role));
-
             DataSource dataSource = LIMSInitializationListener.getDataSource();
 
             if (dataSource == null) {
                 throw new DatabaseServiceException("The data source is null.", false);
             }
 
+            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIDs(Projects.getProjectsUserHasAtLeastRoleFor(dataSource, user, role));
+
             connection = dataSource.getConnection();
-            retrieveWorkflowIDsUserHasRoleForStatement = connection.prepareStatement(
-                    "SELECT workflow_id " +
-                    "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
-                    " WHERE project_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(idsOfProjectsUserHasRoleFor.size()) + ")"
+            retrieveExtractionIDsUserHasRoleForStatement = connection.prepareStatement(
+                    "SELECT extraction.extractionId " +
+                    "FROM extraction, workflow, " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + " " +
+                    "WHERE extraction.id = workflow.extractionId " +
+                    "AND workflow.id = workflow_project.workflow_id " +
+                    "AND project_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(idsOfProjectsUserHasRoleFor.size()) + ")"
             );
 
             int statementObjectIndex = 1;
             for (Integer projectID : idsOfProjectsUserHasRoleFor) {
-                retrieveWorkflowIDsUserHasRoleForStatement.setInt(statementObjectIndex++, projectID);
+                retrieveExtractionIDsUserHasRoleForStatement.setInt(statementObjectIndex++, projectID);
             }
 
-            retrieveWorkflowIDsUserHasRoleForResultSet = retrieveWorkflowIDsUserHasRoleForStatement.executeQuery();
-            while (retrieveWorkflowIDsUserHasRoleForResultSet.next()) {
-                workflowIDsUserHasRoleFor.add(retrieveWorkflowIDsUserHasRoleForResultSet.getInt(1));
+            retrieveExtractionIDsUserHasRoleForResultSet = retrieveExtractionIDsUserHasRoleForStatement.executeQuery();
+            while (retrieveExtractionIDsUserHasRoleForResultSet.next()) {
+                extractionIDsUserHasRoleFor.add(retrieveExtractionIDsUserHasRoleForResultSet.getString(1));
             }
         } catch (SQLException e) {
             throw new DatabaseServiceException("An error occurred while retrieving the IDs of workflows that user " + user.username + " has access to.", false);
         } finally {
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(retrieveWorkflowIDsUserHasRoleForStatement);
-            SqlUtilities.cleanUpResultSets(retrieveWorkflowIDsUserHasRoleForResultSet);
+            SqlUtilities.cleanUpStatements(retrieveExtractionIDsUserHasRoleForStatement);
+            SqlUtilities.cleanUpResultSets(retrieveExtractionIDsUserHasRoleForResultSet);
         }
 
-        return workflowIDsUserHasRoleFor;
+        return extractionIDsUserHasRoleFor;
     }
 
     private static Set<Integer> getWorkflowIDsAssociatedWithExtractionsIDs(LIMSConnection limsConnection, Collection<String> extractionIDs) throws DatabaseServiceException {

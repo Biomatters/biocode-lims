@@ -78,10 +78,26 @@ public class Projects {
         }
     }
 
+    @DELETE
+    @Path("{id}")
+    public void deleteProject(@PathParam("id")int id) {
+        DataSource dataSource = LIMSInitializationListener.getDataSource();
+
+        if (dataSource == null) {
+            throw new InternalServerErrorException("The data source is null.");
+        }
+
+        try {
+            deleteProject(dataSource, id);
+        } catch (SQLException e) {
+            throw new InternalServerErrorException("The deletion of project with ID " + id + " was unsuccessful.");
+        }
+    }
+
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
-    @Path("{projectId}/roles")
-    public Response listRoles(@PathParam("projectId")int projectID) {
+    @Path("{id}/roles")
+    public Response listRoles(@PathParam("id")int projectID) {
         return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProject(projectID).userRoles)){}).build();
     }
 

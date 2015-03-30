@@ -61,6 +61,21 @@ public class Projects {
         return retrievedProjects.get(0);
     }
 
+    @POST
+    public void addProject(Project project) {
+        DataSource dataSource = LIMSInitializationListener.getDataSource();
+
+        if (dataSource == null) {
+            throw new InternalServerErrorException("The data source is null.");
+        }
+
+        try {
+            addProject(dataSource, project);
+        } catch (SQLException e) {
+            throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful.");
+        }
+    }
+
     @PUT
     @Consumes({"application/json", "application/xml"})
     @Path("{id}")

@@ -93,7 +93,7 @@ public class AnnotateLimsDataOptions extends Options {
 
         useExistingPlates = addRadioOption("useExistingPlate", "", useExistingValues, useExistingValues[0], Alignment.VERTICAL_ALIGN);
         useExistingPlates.addDependent(useExistingValues[0], useExistingOptions, true);
-        
+
     }
 
     private static boolean containsOptionValueWithLabel(Collection<OptionValue> optionValues, String label) {
@@ -146,7 +146,7 @@ public class AnnotateLimsDataOptions extends Options {
     FimsData getFIMSDataForGivenPlate(AnnotatedPluginDocument annotatedDocument) throws DocumentOperationException {
         if (idType.getValue() == BARCODE) {
 //            if (true) {
-                throw new DocumentOperationException("FIMS data cannot be retrieved using barcodes. Please contact Biomatters if you require this functionality.");
+            throw new DocumentOperationException("FIMS data cannot be retrieved using barcodes. Please contact Biomatters if you require this functionality.");
 //            } else {
 //                DocumentField plateQueryField = activeFimsConnection.getPlateDocumentField();
 //                Query plateFieldQuery = Query.Factory.createFieldQuery(plateQueryField, Condition.CONTAINS, getPlateName());

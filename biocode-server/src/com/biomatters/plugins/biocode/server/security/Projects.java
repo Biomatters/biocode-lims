@@ -4,6 +4,7 @@ import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
 import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
+import com.biomatters.plugins.biocode.server.Result;
 
 import javax.sql.DataSource;
 import javax.ws.rs.*;
@@ -62,18 +63,24 @@ public class Projects {
     }
 
     @POST
-    public void addProject(Project project) {
+    @Consumes({"application/json", "application/xml"})
+    @Produces("application/json;qs=1")
+    public Result<Integer> addProject(Project project) {
         DataSource dataSource = LIMSInitializationListener.getDataSource();
 
         if (dataSource == null) {
             throw new InternalServerErrorException("The data source is null.");
         }
 
+        Result<Integer> containingIDOfProjectAdded = new Result<Integer>();
+
         try {
-            addProject(dataSource, project);
+            containingIDOfProjectAdded.data = addProject(dataSource, project);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful.");
         }
+
+        return containingIDOfProjectAdded;
     }
 
     @PUT
@@ -130,7 +137,7 @@ public class Projects {
             throw new InternalServerErrorException("The data source is null.");
         }
 
-        Role role = null;
+        Role role;
         try {
             role = getRole(dataSource, projectID, username);
         } catch (SQLException e) {
@@ -265,7 +272,7 @@ public class Projects {
         }
     }
 
-    static void addProject(DataSource dataSource, Project project) throws SQLException {
+    static synchronized int addProject(DataSource dataSource, Project project) throws SQLException {
         if (dataSource == null) {
             throw new IllegalArgumentException("dataSource is null.");
         }
@@ -310,9 +317,12 @@ public class Projects {
             addProjectRoles(connection, project.userRoles, projectID);
 
             SqlUtilities.commitTransaction(connection);
+
+            return projectID;
         } finally {
             SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(retrieveMaxProjectIDStatement, addProjectStatement);
+            SqlUtilities.cleanUpResultSets(retrieveMaxProjectIDResultSet);
         }
     }
 
@@ -505,7 +515,8 @@ public class Projects {
                 project.id = projectID;
                 project.name = resultSet.getString("name");
                 project.description = resultSet.getString("description");
-                project.parentProjectID = resultSet.getInt("parent_project_id");
+                int parentProjectID = resultSet.getInt("parent_project_id");
+                project.parentProjectID = parentProjectID > 0 ? parentProjectID : -1;
                 project.isPublic = resultSet.getBoolean("is_public");
 
                 projectIDToProject.put(projectID, project);

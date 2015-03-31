@@ -4,7 +4,6 @@ import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
 import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
-import com.biomatters.plugins.biocode.server.Result;
 
 import javax.sql.DataSource;
 import javax.ws.rs.*;
@@ -65,22 +64,18 @@ public class Projects {
     @POST
     @Consumes({"application/json", "application/xml"})
     @Produces("application/xml;qs=0.5")
-    public Result<Integer> addProject(Project project) {
+    public String addProject(Project project) {
         DataSource dataSource = LIMSInitializationListener.getDataSource();
 
         if (dataSource == null) {
             throw new InternalServerErrorException("The data source is null.");
         }
 
-        Result<Integer> containingIDOfProjectAdded = new Result<Integer>();
-
         try {
-            containingIDOfProjectAdded.data = addProject(dataSource, project);
+            return Integer.toString(addProject(dataSource, project));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful.");
         }
-
-        return containingIDOfProjectAdded;
     }
 
     @PUT

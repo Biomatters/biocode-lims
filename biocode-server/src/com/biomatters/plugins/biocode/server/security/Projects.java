@@ -64,7 +64,7 @@ public class Projects {
 
     @POST
     @Consumes({"application/json", "application/xml"})
-    @Produces("application/json;qs=1")
+    @Produces("application/xml;qs=0.5")
     public Result<Integer> addProject(Project project) {
         DataSource dataSource = LIMSInitializationListener.getDataSource();
 

@@ -301,7 +301,7 @@ public class Projects {
             } else {
                 addProjectStatement.setInt(4, project.parentProjectID);
             }
-            addProjectStatement.setBoolean(5, false);
+            addProjectStatement.setBoolean(5, project.isPublic);
 
             SqlUtilities.beginTransaction(connection);
 
@@ -443,15 +443,15 @@ public class Projects {
 
         Role existingRole = getRole(dataSource, projectID, username);
 
-        if (existingRole.id == role.id) {
-            return;
-        }
-
         String assignRoleQuery;
 
         if (existingRole == null) {
             assignRoleQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.PROJECT_ROLE_TABLE_NAME + "(role, username, project_id) VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(3) + ")";
         } else {
+            if (existingRole.id == role.id) {
+                return;
+            }
+
             assignRoleQuery = "UPDATE " + BiocodeServerLIMSDatabaseConstants.PROJECT_ROLE_TABLE_NAME + " SET role=? WHERE username=? AND project_id=?";
         }
 

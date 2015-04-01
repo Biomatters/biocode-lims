@@ -236,7 +236,9 @@ public class SqlUtilities {
     }
 
     public static void commitTransaction(Connection connection) throws SQLException {
-        connection.commit();
+        if (connection.getAutoCommit() == false) {
+            connection.commit();
+        }
         connection.setAutoCommit(true);
     }
 

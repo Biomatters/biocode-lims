@@ -1,4 +1,4 @@
-package com.biomatters.plugins.biocode.server.security;
+package com.biomatters.plugins.biocode.server;
 
 import javax.xml.bind.annotation.XmlRootElement;
 

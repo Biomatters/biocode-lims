@@ -1,4 +1,4 @@
-package com.biomatters.plugins.biocode.server.security;
+package com.biomatters.plugins.biocode.server;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.Arrays;
@@ -27,16 +27,16 @@ public class Role {
         this.description = description;
     }
 
-    static Role forId(int id) {
+    public static Role getRole(int roleID) {
         for (Role role  : values()) {
-            if(role.id == id) {
+            if(role.id == roleID) {
                 return role;
             }
         }
         return null;
     }
 
-    static List<Role> values() {
+    public static List<Role> values() {
         return Arrays.asList(ADMIN, WRITER, READER);
     }
 

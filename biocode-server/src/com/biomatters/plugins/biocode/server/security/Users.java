@@ -1,6 +1,7 @@
 package com.biomatters.plugins.biocode.server.security;
 
 import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
+import com.biomatters.plugins.biocode.server.User;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -138,6 +139,10 @@ public class Users {
      * @throws SQLException if a problem occurs communicating with the database
      */
     static User createUserFromResultSetRow(ResultSet resultSet) throws SQLException {
+        if (resultSet == null) {
+            throw new IllegalArgumentException("resultSet is null.");
+        }
+
         String username = resultSet.getString(BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE);
 
         if (username == null) {
@@ -339,7 +344,7 @@ public class Users {
     }
 
     /**
-     * @return The current logged in {@link com.biomatters.plugins.biocode.server.security.User}
+     * @return The current logged in {@link com.biomatters.plugins.biocode.server.User}
      */
     public static User getLoggedInUser() throws InternalServerErrorException {
         UserDetails userDetails = getLoggedInUserDetails();

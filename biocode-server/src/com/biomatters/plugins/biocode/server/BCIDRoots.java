@@ -2,7 +2,6 @@ package com.biomatters.plugins.biocode.server;
 
 import com.biomatters.plugins.biocode.labbench.lims.BCIDRoot;
 import com.biomatters.plugins.biocode.server.security.BiocodeServerLIMSDatabaseConstants;
-import com.biomatters.plugins.biocode.server.security.User;
 import com.biomatters.plugins.biocode.server.security.Users;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 

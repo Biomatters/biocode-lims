@@ -1,5 +1,7 @@
 package com.biomatters.plugins.biocode.server.security;
 
+import com.biomatters.plugins.biocode.server.Role;
+
 import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.Response;

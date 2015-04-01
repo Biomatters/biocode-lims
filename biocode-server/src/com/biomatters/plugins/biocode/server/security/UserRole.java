@@ -1,5 +1,8 @@
 package com.biomatters.plugins.biocode.server.security;
 
+import com.biomatters.plugins.biocode.server.Role;
+import com.biomatters.plugins.biocode.server.User;
+
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.ArrayList;
 import java.util.List;

@@ -7,6 +7,9 @@ import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.ExtractionReaction;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
 import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
+import com.biomatters.plugins.biocode.server.Project;
+import com.biomatters.plugins.biocode.server.Role;
+import com.biomatters.plugins.biocode.server.User;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 

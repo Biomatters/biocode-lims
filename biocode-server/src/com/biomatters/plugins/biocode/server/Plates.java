@@ -8,7 +8,6 @@ import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.ExtractionReaction;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
 import com.biomatters.plugins.biocode.server.security.AccessUtilities;
-import com.biomatters.plugins.biocode.server.security.Role;
 import com.biomatters.plugins.biocode.server.security.Users;
 
 import jebl.util.ProgressListener;

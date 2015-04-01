@@ -4,6 +4,7 @@ import com.biomatters.plugins.biocode.labbench.lims.DatabaseScriptRunner;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.lims.SqlLimsConnection;
 import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
+import com.biomatters.plugins.biocode.server.User;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;

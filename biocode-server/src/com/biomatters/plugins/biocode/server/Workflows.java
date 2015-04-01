@@ -5,7 +5,6 @@ import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.WorkflowDocument;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
 import com.biomatters.plugins.biocode.server.security.AccessUtilities;
-import com.biomatters.plugins.biocode.server.security.Role;
 import com.biomatters.plugins.biocode.server.security.Users;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import jebl.util.ProgressListener;
@@ -24,7 +23,6 @@ import java.util.*;
  */
 @Path("workflows")
 public class Workflows {
-
     @GET
     @Produces("application/xml")
     @Consumes("text/plain")

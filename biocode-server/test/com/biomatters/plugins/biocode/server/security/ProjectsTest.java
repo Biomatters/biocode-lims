@@ -7,6 +7,9 @@ import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
 import com.biomatters.plugins.biocode.labbench.lims.DatabaseScriptRunner;
 import com.biomatters.plugins.biocode.labbench.lims.SqlLimsConnection;
+import com.biomatters.plugins.biocode.server.Project;
+import com.biomatters.plugins.biocode.server.Role;
+import com.biomatters.plugins.biocode.server.User;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -162,7 +165,7 @@ public class ProjectsTest extends Assert {
         assertEquals(1, inDatabase.get(0).userRoles.size());
         assertEquals(Role.ADMIN, inDatabase.get(0).userRoles.get(user1));
 
-        Projects.deleteRole(dataSource, 1, user1.username);
+        Projects.removeProjectRoles(dataSource, 1, Collections.singletonList(user1.username));
         inDatabase = Projects.getProjects(dataSource, Collections.singletonList(1));
         assertTrue(inDatabase.get(0).userRoles.isEmpty());
     }

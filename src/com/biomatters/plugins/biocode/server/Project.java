@@ -1,7 +1,6 @@
-package com.biomatters.plugins.biocode.server.security;
+package com.biomatters.plugins.biocode.server;
 
 import javax.xml.bind.annotation.XmlRootElement;
-import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -19,22 +18,6 @@ public class Project {
     public Map<User, Role> userRoles = new HashMap<User, Role>();
 
     public Project() {
-    }
-
-    /**
-     *
-     * @return The role the current user has in the project.  Will fetch from parent groups if the user is not
-     * part of the current project.
-     */
-    public Role getRoleForUser(User user) throws SQLException {
-        Role role = userRoles.get(user);
-        if (role != null) {
-            return role;
-        } else if (parentProjectID != -1) {
-            return new Projects().getProject(parentProjectID).getRoleForUser(user);
-        } else {
-            return null;
-        }
     }
 
     @Override

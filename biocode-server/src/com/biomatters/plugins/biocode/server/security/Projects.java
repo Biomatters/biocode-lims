@@ -1,7 +1,8 @@
 package com.biomatters.plugins.biocode.server.security;
 
+import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
-import com.biomatters.plugins.biocode.server.LIMSInitializationListener;
+import com.biomatters.plugins.biocode.server.*;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 
@@ -30,7 +31,7 @@ public class Projects {
         try {
             return Response.ok(new GenericEntity<List<Project>>(getProjects(LIMSInitializationListener.getDataSource(), Collections.<Integer>emptySet())){}).build();
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of the projects was unsuccessful.");
+            throw new InternalServerErrorException("The retrieval of the projects was unsuccessful: " + e.getMessage());
         }
     }
 
@@ -49,11 +50,11 @@ public class Projects {
         try {
             retrievedProjects = getProjects(dataSource, Collections.singleton(projectID));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of the project with ID " + projectID + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The retrieval of project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
 
         if (retrievedProjects.isEmpty()) {
-            throw new NotFoundException("Project with ID " + projectID + " could not be found.");
+            throw new NotFoundException("A project with ID " + projectID + " could not be found.");
         } else if (retrievedProjects.size() > 1) {
             throw new InternalServerErrorException("More than 1 project with ID " + projectID + " was found.");
         }
@@ -74,7 +75,7 @@ public class Projects {
         try {
             return Integer.toString(addProject(dataSource, project));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful.");
+            throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful: " + e.getMessage());
         }
     }
 
@@ -91,7 +92,7 @@ public class Projects {
         try {
             updateProject(LIMSInitializationListener.getDataSource(), project);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The updating of project " + project.name + " was unsuccessful.");
+            throw new InternalServerErrorException("The update of project " + project.name + " was unsuccessful: " + e.getMessage());
         }
     }
 
@@ -107,7 +108,7 @@ public class Projects {
         try {
             deleteProject(dataSource, id);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The deletion of project with ID " + id + " was unsuccessful.");
+            throw new InternalServerErrorException("The deletion of project with ID " + id + " was unsuccessful: " + e.getMessage());
         }
     }
 
@@ -136,11 +137,11 @@ public class Projects {
         try {
             role = getRole(dataSource, projectID, username);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of the project role was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The retrieval of user " + username + "'s role for project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
 
         if (role == null) {
-            throw new NotFoundException("An assigned role for user " + username + " in project with ID " + projectID + " was not found.");
+            throw new NotFoundException("A role for user " + username + " in project with ID " + projectID + " was not found.");
         }
 
         return role;
@@ -166,7 +167,7 @@ public class Projects {
         try {
             assignRole(dataSource, projectID, username, role);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " for project with ID " + projectID + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " in project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
     }
 
@@ -184,9 +185,59 @@ public class Projects {
         }
 
         try {
-            deleteRole(dataSource, projectID, username);
+            removeProjectRoles(dataSource, projectID, Collections.singleton(username));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The deletion of the project role of user " + username + " for project with ID " + projectID + " was unsuccessful.");
+            throw new InternalServerErrorException("The deletion of user " + username + "'s role in project with ID " + projectID + " was unsuccessful: " + e.getMessage());
+        }
+    }
+
+    @GET
+    @Produces("application/xml")
+    @Path("{id}/workflows")
+    public XMLSerializableList<Workflow> listWorkflowsAssignedToProject(@PathParam("id")int projectID) {
+        DataSource dataSource = LIMSInitializationListener.getDataSource();
+
+        if (dataSource == null) {
+            throw new InternalServerErrorException("The data source is null.");
+        }
+
+        try {
+            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsAssignedToProject(dataSource, projectID)));
+        } catch (SQLException e) {
+            throw new InternalServerErrorException("The retrieval of workflows assigned to project with ID " + projectID + " was unsuccessful: " + e.getMessage());
+        }
+    }
+
+    @POST
+    @Consumes({"application/json", "application/xml"})
+    @Path("{id}/workflows/{workflowID}")
+    public void assignWorkflowToProject(@PathParam("id")int projectID, @PathParam("workflowID")int workflowID) {
+        DataSource dataSource = LIMSInitializationListener.getDataSource();
+
+        if (dataSource == null) {
+            throw new InternalServerErrorException("The data source is null.");
+        }
+
+        try {
+            assignWorkflowsToProject(dataSource, projectID, Collections.singletonList(workflowID));
+        } catch (SQLException e) {
+            throw new InternalServerErrorException("The assignment of workflow with ID " + workflowID + " to project with ID " + projectID + " was unsuccessful: " + e.getMessage());
+        }
+    }
+
+    @DELETE
+    @Path("{id}/workflows/{workflowID}")
+    public void unassignWorkflowFromProjects(@PathParam("id")int projectID, @PathParam("workflowID")int workflowID) {
+        DataSource dataSource = LIMSInitializationListener.getDataSource();
+
+        if (dataSource == null) {
+            throw new InternalServerErrorException("The data source is null.");
+        }
+
+        try {
+            unassignWorkflowsFromProjects(dataSource, Collections.singletonList(workflowID));
+        } catch (SQLException e) {
+            throw new InternalServerErrorException("The unassignment of workflow with ID " + workflowID + " from project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
     }
 
@@ -214,7 +265,7 @@ public class Projects {
             projectsUserHasAtLeastRoleFor.addAll(allProjects);
         } else {
             for (Project project : allProjects) {
-                Role userRoleForProject = project.getRoleForUser(user);
+                Role userRoleForProject = getRoleForUser(project, user);
                 if (userRoleForProject != null && userRoleForProject.isAtLeast(role)) {
                     projectsUserHasAtLeastRoleFor.add(project);
                 }
@@ -227,18 +278,19 @@ public class Projects {
     /**
      *
      * @param dataSource To use to obtain a connection to the database
-     * @param idsOfProjectsToRetrieve A list of project IDs for which to retrieve projects or an empty list if all projects are to be retrieved
+     * @param projectIDs A list of project IDs for which to retrieve projects or an empty list if all projects are to be retrieved
      * @return A list of projects matching the specified ids or all projects if no ids were specified.
      */
-    static List<Project> getProjects(DataSource dataSource, Collection<Integer> idsOfProjectsToRetrieve) throws SQLException {
+    static List<Project> getProjects(DataSource dataSource, Collection<Integer> projectIDs) throws SQLException {
         if (dataSource == null) {
             throw new IllegalArgumentException("dataSource is null.");
         }
-        if (idsOfProjectsToRetrieve == null) {
-            throw new IllegalArgumentException("idsOfProjectsToKeep is null.");
+        if (projectIDs == null) {
+            throw new IllegalArgumentException("projectIDs is null.");
         }
 
-        idsOfProjectsToRetrieve = new HashSet<Integer>(idsOfProjectsToRetrieve);
+        projectIDs = new HashSet<Integer>(projectIDs);
+
         Connection connection = null;
         PreparedStatement getProjectsStatement = null;
         ResultSet getProjectsResultSet = null;
@@ -249,17 +301,16 @@ public class Projects {
                     "LEFT OUTER JOIN project_role ON project.id = project_role.project_id " +
                     "LEFT OUTER JOIN users ON users.username = project_role.username " +
                     "LEFT OUTER JOIN authorities ON users.username = authorities.username " +
-                    (idsOfProjectsToRetrieve.isEmpty() ? "" : "WHERE project.id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(idsOfProjectsToRetrieve.size()) + ")") +
+                    (projectIDs.isEmpty() ? "" : "WHERE project.id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(projectIDs.size()) + ") ") +
                     "ORDER BY project.id"
             );
 
             int statementObjectIndex = 1;
-            for (Integer idOfProjectToRetrieve : idsOfProjectsToRetrieve) {
+            for (Integer idOfProjectToRetrieve : projectIDs) {
                 getProjectsStatement.setInt(statementObjectIndex++, idOfProjectToRetrieve);
             }
 
-            getProjectsResultSet = getProjectsStatement.executeQuery();
-            return createProjectsFromResultSet(getProjectsResultSet);
+            return createProjectsFromResultSet(getProjectsStatement.executeQuery());
         } finally {
             SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(getProjectsStatement);
@@ -276,20 +327,19 @@ public class Projects {
         }
 
         Connection connection = null;
-        PreparedStatement retrieveMaxProjectIDStatement = null;
+        PreparedStatement retrieveMaxExistingProjectIDStatement = null;
         PreparedStatement addProjectStatement = null;
-        ResultSet retrieveMaxProjectIDResultSet = null;
+        ResultSet retrieveMaxExistingProjectIDResultSet = null;
         try {
             connection = dataSource.getConnection();
 
-            retrieveMaxProjectIDStatement = connection.prepareStatement("SELECT MAX(id) FROM " + BiocodeServerLIMSDatabaseConstants.PROJECT_TABLE_NAME);
-            retrieveMaxProjectIDResultSet = retrieveMaxProjectIDStatement.executeQuery();
-            retrieveMaxProjectIDResultSet.next();
-            int projectID = retrieveMaxProjectIDResultSet.getInt(1) + 1;
+            retrieveMaxExistingProjectIDStatement = connection.prepareStatement("SELECT MAX(id) FROM " + BiocodeServerLIMSDatabaseConstants.PROJECT_TABLE_NAME);
+            retrieveMaxExistingProjectIDResultSet = retrieveMaxExistingProjectIDStatement.executeQuery();
+            retrieveMaxExistingProjectIDResultSet.next();
+            int projectID = retrieveMaxExistingProjectIDResultSet.getInt(1) + 1;
 
             addProjectStatement = connection.prepareStatement(
-                    "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.PROJECT_TABLE_NAME +
-                    "(id, name, description, parent_project_id, is_public) " +
+                    "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.PROJECT_TABLE_NAME + "(id, name, description, parent_project_id, is_public) " +
                     "VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(5) + ")"
             );
 
@@ -309,15 +359,15 @@ public class Projects {
                 throw new InternalServerErrorException("The addition of project " + project.name + " was unsuccessful.");
             }
 
-            addProjectRoles(connection, project.userRoles, projectID);
+            addProjectRoles(dataSource, project.userRoles, projectID);
 
             SqlUtilities.commitTransaction(connection);
 
             return projectID;
         } finally {
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(retrieveMaxProjectIDStatement, addProjectStatement);
-            SqlUtilities.cleanUpResultSets(retrieveMaxProjectIDResultSet);
+            SqlUtilities.cleanUpStatements(retrieveMaxExistingProjectIDStatement, addProjectStatement);
+            SqlUtilities.cleanUpResultSets(retrieveMaxExistingProjectIDResultSet);
         }
     }
 
@@ -330,7 +380,6 @@ public class Projects {
         PreparedStatement deleteProjectStatement = null;
         try {
             connection = dataSource.getConnection();
-
             deleteProjectStatement = connection.prepareStatement("DELETE FROM " + BiocodeServerLIMSDatabaseConstants.PROJECT_TABLE_NAME + " WHERE id=?");
 
             deleteProjectStatement.setInt(1, projectID);
@@ -350,12 +399,16 @@ public class Projects {
             throw new IllegalArgumentException("project is null.");
         }
 
-        PreparedStatement updateProjectStatement = null;
         Connection connection = null;
+        PreparedStatement updateProjectStatement = null;
         try {
             connection = dataSource.getConnection();
 
-            updateProjectStatement = connection.prepareStatement("UPDATE project SET name=?, description=?, parent_project_id=?, is_public=? WHERE id=?");
+            updateProjectStatement = connection.prepareStatement(
+                    "UPDATE " + BiocodeServerLIMSDatabaseConstants.PROJECT_TABLE_NAME +
+                    " SET name=?, description=?, parent_project_id=?, is_public=? " +
+                    "WHERE id=?"
+            );
 
             updateProjectStatement.setString(1, project.name);
             updateProjectStatement.setString(2, project.description);
@@ -369,11 +422,12 @@ public class Projects {
 
             SqlUtilities.beginTransaction(connection);
 
-            if (updateProjectStatement.executeUpdate() != 1) {
-                throw new InternalServerErrorException("More than 1 project was updated. The updates will be undone.");
+            if (updateProjectStatement.executeUpdate() == 0) {
+                throw new InternalServerErrorException("Project with ID " + project.id + " could not be updated.");
             }
-            removeProjectRoles(connection, project.id, Collections.<String>emptySet());
-            addProjectRoles(connection, project.userRoles, project.id);
+
+            removeProjectRoles(dataSource, project.id, Collections.<String>emptySet());
+            addProjectRoles(dataSource, project.userRoles, project.id);
 
             SqlUtilities.commitTransaction(connection);
         } finally {
@@ -382,51 +436,38 @@ public class Projects {
         }
     }
 
-    static void removeProjectRoles(Connection connection, int projectID, Collection<String> usernames) throws SQLException {
-        if (connection == null) {
-            throw new IllegalArgumentException("connection is null.");
+    static void removeProjectRoles(DataSource dataSource, int projectID, Collection<String> usernames) throws SQLException {
+        if (dataSource == null) {
+            throw new IllegalArgumentException("dataSource is null.");
         }
         if (usernames == null) {
             throw new IllegalArgumentException("usernames is null.");
         }
+        if (usernames.isEmpty()) {
+            return;
+        }
 
         usernames = new HashSet<String>(usernames);
 
-        String partialQuery =
-                " FROM " + BiocodeServerLIMSDatabaseConstants.PROJECT_ROLE_TABLE_NAME +
-                " WHERE project_id=?" +
-                (usernames.isEmpty() ? "" : " AND username IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(usernames.size()) + ")");
-
+        Connection connection = null;
         PreparedStatement removeProjectRolesStatement = null;
-        PreparedStatement retrieveProjectRolesStatement = null;
-        ResultSet retrieveProjectRolesResultSet = null;
         try {
-            removeProjectRolesStatement = connection.prepareStatement("DELETE " + partialQuery);
-            retrieveProjectRolesStatement = connection.prepareStatement("SELECT * " + partialQuery);
+            connection = dataSource.getConnection();
+            removeProjectRolesStatement = connection.prepareStatement(
+                    "DELETE FROM " + BiocodeServerLIMSDatabaseConstants.PROJECT_ROLE_TABLE_NAME +
+                    " WHERE project_id=? " +
+                    "AND username IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(usernames.size()) + ")");
 
             removeProjectRolesStatement.setObject(1, projectID);
-            retrieveProjectRolesStatement.setObject(1, projectID);
-
-            int i = 2;
+            int statementObjectIndex = 2;
             for (String username : usernames) {
-                removeProjectRolesStatement.setObject(i, username);
-                retrieveProjectRolesStatement.setObject(i, username);
-                i++;
+                removeProjectRolesStatement.setObject(statementObjectIndex++, username);
             }
-
-            SqlUtilities.beginTransaction(connection);
 
             removeProjectRolesStatement.executeUpdate();
-
-            retrieveProjectRolesResultSet = retrieveProjectRolesStatement.executeQuery();
-            if (retrieveProjectRolesResultSet.next()) {
-                throw new InternalServerErrorException("The removal of 1 or more project roles was unsuccessful.");
-            }
-
-            SqlUtilities.commitTransaction(connection);
         } finally {
-            SqlUtilities.cleanUpStatements(removeProjectRolesStatement, retrieveProjectRolesStatement);
-            SqlUtilities.cleanUpResultSets(retrieveProjectRolesResultSet);
+            SqlUtilities.closeConnection(connection);
+            SqlUtilities.cleanUpStatements(removeProjectRolesStatement);
         }
     }
 
@@ -442,6 +483,10 @@ public class Projects {
         }
 
         Role existingRole = getRole(dataSource, projectID, username);
+
+        if (existingRole.id == role.id) {
+            return;
+        }
 
         String assignRoleQuery;
 
@@ -459,7 +504,6 @@ public class Projects {
         PreparedStatement assignRoleStatement = null;
         try {
             connection = dataSource.getConnection();
-
             assignRoleStatement = connection.prepareStatement(assignRoleQuery);
 
             assignRoleStatement.setObject(1, role.id);
@@ -467,7 +511,7 @@ public class Projects {
             assignRoleStatement.setObject(3, projectID);
 
             if (assignRoleStatement.executeUpdate() == 0) {
-                throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " for project with ID " + projectID + " was unsuccessful.");
+                throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " in project with ID " + projectID + " was unsuccessful.");
             }
         } finally {
             SqlUtilities.closeConnection(connection);
@@ -475,20 +519,246 @@ public class Projects {
         }
     }
 
-    static void deleteRole(DataSource dataSource, int projectID, String username) throws SQLException {
+    private static void addProjectRoles(DataSource dataSource, Map<User, Role> userToRole, int projectID) throws SQLException {
         if (dataSource == null) {
             throw new IllegalArgumentException("dataSource is null.");
         }
-        if (username == null) {
-            throw new IllegalArgumentException("username is null.");
+        if (userToRole == null) {
+            throw new IllegalArgumentException("userToRole is null.");
+        }
+        if (userToRole.isEmpty()) {
+            return;
         }
 
         Connection connection = null;
+        PreparedStatement addProjectRolesStatement = null;
         try {
             connection = dataSource.getConnection();
-            removeProjectRoles(connection, projectID, Collections.singleton(username));
+            addProjectRolesStatement = connection.prepareStatement(
+                    "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.PROJECT_ROLE_TABLE_NAME + "(project_id, username, role) " +
+                    "VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(3) + ")"
+            );
+
+            addProjectRolesStatement.setObject(1, projectID);
+            for (Map.Entry<User, Role> userAndRole : userToRole.entrySet()) {
+                addProjectRolesStatement.setString(2, userAndRole.getKey().username);
+                addProjectRolesStatement.setInt(3, userAndRole.getValue().id);
+                addProjectRolesStatement.addBatch();
+            }
+
+            SqlUtilities.beginTransaction(connection);
+
+            int[] additionResults = addProjectRolesStatement.executeBatch();
+            for (int additionResult : additionResults) {
+                if (additionResult != 1 && additionResult != PreparedStatement.SUCCESS_NO_INFO) {
+                    throw new InternalServerErrorException("The addition of 1 or more project roles was unsuccessful. Successful additions will be undone.");
+                }
+            }
+
+            SqlUtilities.commitTransaction(connection);
         } finally {
             SqlUtilities.closeConnection(connection);
+            SqlUtilities.cleanUpStatements(addProjectRolesStatement);
+        }
+    }
+
+    private static Role getRole(DataSource dataSource, int projectID, String username) throws SQLException {
+        Role role = null;
+
+        List<Project> projects = getProjects(dataSource, Collections.singletonList(projectID));
+
+        if (projects.isEmpty()) {
+            throw new InternalServerErrorException("No project with ID " + projectID + " was found.");
+        }
+        if (projects.size() != 1) {
+            throw new InternalServerErrorException("More than 1 project with projectID " + projectID + " was found.");
+        }
+
+        for (Map.Entry<User, Role> entry : projects.get(0).userRoles.entrySet()) {
+            if (username.equals(entry.getKey().username)) {
+                role = entry.getValue();
+                break;
+            }
+        }
+
+        return role;
+    }
+
+    static Set<Workflow> getWorkflowsAssignedToProject(DataSource dataSource, int projectID) throws SQLException {
+        if (dataSource == null) {
+            throw new IllegalArgumentException("dataSource is null.");
+        }
+
+        Set<Workflow> workflowsAssignedToProject = new HashSet<Workflow>();
+
+        Connection connection = null;
+        PreparedStatement retrieveWorkflowsAssignedToProjectStatement = null;
+        ResultSet retrieveWorkflowsAssignedToProjectResultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            retrieveWorkflowsAssignedToProjectStatement = connection.prepareStatement(
+                    "SELECT workflow.* " +
+                    "FROM workflow, " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                    " WHERE " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".project_id=? " +
+                    "AND workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME+ ".workflow_id "
+            );
+
+            retrieveWorkflowsAssignedToProjectStatement.setInt(1, projectID);
+
+            retrieveWorkflowsAssignedToProjectResultSet = retrieveWorkflowsAssignedToProjectStatement.executeQuery();
+            while (retrieveWorkflowsAssignedToProjectResultSet.next()) {
+                workflowsAssignedToProject.add(new Workflow(retrieveWorkflowsAssignedToProjectResultSet));
+            }
+        } finally {
+            SqlUtilities.closeConnection(connection);
+            SqlUtilities.cleanUpStatements(retrieveWorkflowsAssignedToProjectStatement);
+            SqlUtilities.cleanUpResultSets(retrieveWorkflowsAssignedToProjectResultSet);
+        }
+
+        return workflowsAssignedToProject;
+    }
+
+    static void assignWorkflowsToProject(DataSource dataSource, int projectID, Collection<Integer> workflowIDs) throws SQLException {
+        if (dataSource == null) {
+            throw new IllegalArgumentException("dataSource is null.");
+        }
+        if (workflowIDs == null) {
+            throw new IllegalArgumentException("workflowIDs is null.");
+        }
+        if (workflowIDs.isEmpty()) {
+            return;
+        }
+
+        workflowIDs = new HashSet<Integer>(workflowIDs);
+
+        Connection connection = null;
+        PreparedStatement retrieveWorkflowsAssignedToProjectsStatement = null;
+        PreparedStatement assignWorkflowsToProjectStatement = null;
+        ResultSet retrieveWorkflowsAssignedToProjectsResultSet = null;
+        ResultSet assignWorkflowsToProjectResultSet = null;
+        Set<Integer> idsOfWorkflowsAssignedToProjects = new HashSet<Integer>();
+        Set<Integer> idsOfWorkflowsNotAssignedToProjects = new HashSet<Integer>(workflowIDs);
+        int[] assignmentResults;
+        try {
+            connection = dataSource.getConnection();
+
+            retrieveWorkflowsAssignedToProjectsStatement = connection.prepareStatement(
+                    "SELECT workflow_id " +
+                    "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                    " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
+            );
+
+            int statementObjectIndex = 1;
+            for (Integer workflowID : workflowIDs) {
+                retrieveWorkflowsAssignedToProjectsStatement.setInt(statementObjectIndex++, workflowID);
+            }
+
+            retrieveWorkflowsAssignedToProjectsResultSet = retrieveWorkflowsAssignedToProjectsStatement.executeQuery();
+            while (retrieveWorkflowsAssignedToProjectsResultSet.next()) {
+                idsOfWorkflowsAssignedToProjects.add(retrieveWorkflowsAssignedToProjectsResultSet.getInt(1));
+            }
+
+            idsOfWorkflowsNotAssignedToProjects.removeAll(idsOfWorkflowsAssignedToProjects);
+
+            SqlUtilities.beginTransaction(connection);
+
+            if (!idsOfWorkflowsNotAssignedToProjects.isEmpty()) {
+                assignWorkflowsToProjectStatement = connection.prepareStatement(
+                        "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + "(workflow_id, project_id) " +
+                        "VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
+                );
+
+                assignWorkflowsToProjectStatement.setInt(2, projectID);
+                for (Integer workflowID : idsOfWorkflowsNotAssignedToProjects) {
+                    assignWorkflowsToProjectStatement.setInt(1, workflowID);
+                    assignWorkflowsToProjectStatement.addBatch();
+                }
+
+                assignmentResults = assignWorkflowsToProjectStatement.executeBatch();
+                for (int assignmentResult : assignmentResults) {
+                    if (assignmentResult != 1 && assignmentResult != PreparedStatement.SUCCESS_NO_INFO) {
+                        throw new InternalServerErrorException("The assignment of 1 or more workflows to project with ID " + projectID + " was unsuccessful. Changes will be undone.");
+                    }
+                }
+            }
+
+            if (!idsOfWorkflowsAssignedToProjects.isEmpty()) {
+                assignWorkflowsToProjectStatement = connection.prepareStatement(
+                        "UPDATE " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                        " SET project_id=? " +
+                        "WHERE workflow_id=?"
+                );
+
+                assignWorkflowsToProjectStatement.setInt(1, projectID);
+                for (Integer workflowID : idsOfWorkflowsNotAssignedToProjects) {
+                    assignWorkflowsToProjectStatement.setInt(2, workflowID);
+                    assignWorkflowsToProjectStatement.addBatch();
+                }
+
+                assignmentResults = assignWorkflowsToProjectStatement.executeBatch();
+                for (int assignmentResult : assignmentResults) {
+                    if (assignmentResult != 1 && assignmentResult != PreparedStatement.SUCCESS_NO_INFO) {
+                        throw new InternalServerErrorException("The assignment of 1 or more workflows to project with ID " + projectID + " was unsuccessful. The successful assignments will be undone.");
+                    }
+                }
+            }
+
+            SqlUtilities.commitTransaction(connection);
+        } finally {
+            SqlUtilities.closeConnection(connection);
+            SqlUtilities.cleanUpStatements(retrieveWorkflowsAssignedToProjectsStatement, assignWorkflowsToProjectStatement);
+            SqlUtilities.cleanUpResultSets(retrieveWorkflowsAssignedToProjectsResultSet, assignWorkflowsToProjectResultSet);
+        }
+    }
+
+    static void unassignWorkflowsFromProjects(DataSource dataSource, Collection<Integer> workflowIDs) throws SQLException {
+        if (dataSource == null) {
+            throw new IllegalArgumentException("dataSource is null.");
+        }
+        if (workflowIDs == null) {
+            throw new IllegalArgumentException("workflowIDs is null.");
+        }
+        if (workflowIDs.isEmpty()) {
+            return;
+        }
+
+        workflowIDs = new HashSet<Integer>(workflowIDs);
+
+        Connection connection = null;
+        PreparedStatement unassignStatementsFromProjectsStatement = null;
+        try {
+            connection = dataSource.getConnection();
+            unassignStatementsFromProjectsStatement = connection.prepareStatement(
+                    "DELETE * " +
+                            "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                            " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
+            );
+
+            int statementObjectIndex = 1;
+            for (Integer workflowID : workflowIDs) {
+                unassignStatementsFromProjectsStatement.setInt(statementObjectIndex++, workflowID);
+            }
+
+            unassignStatementsFromProjectsStatement.executeUpdate();
+        } finally {
+            SqlUtilities.closeConnection(connection);
+            SqlUtilities.cleanUpStatements(unassignStatementsFromProjectsStatement);
+        }
+    }
+
+    /**
+     *
+     * @return The role the current user has in the project.  Will fetch from parent groups if the user is not
+     * part of the current project.
+     */
+    public static Role getRoleForUser(Project project, User user) throws SQLException {
+        Role role = project.userRoles.get(user);
+        if (role != null) {
+            return role;
+        } else if (project.parentProjectID != -1) {
+            return getRoleForUser(new Projects().getProject(project.parentProjectID), user);
+        } else {
+            return null;
         }
     }
 
@@ -519,70 +789,10 @@ public class Projects {
 
             User user = Users.createUserFromResultSetRow(resultSet);
             if (user != null) {
-                project.userRoles.put(user, Role.forId(resultSet.getInt("role")));
+                project.userRoles.put(user, Role.getRole(resultSet.getInt("role")));
             }
         }
 
         return new ArrayList<Project>(projectIDToProject.values());
-    }
-
-    private static void addProjectRoles(Connection connection, Map<User, Role> userToRole, int idOfProjectToAddRoleFor) throws SQLException {
-        if (connection == null) {
-            throw new IllegalArgumentException("connection is null.");
-        }
-        if (userToRole == null) {
-            throw new IllegalArgumentException("userToRole is null.");
-        }
-        if (userToRole.isEmpty()) {
-            return;
-        }
-
-        PreparedStatement addProjectRolesStatement = null;
-        try {
-            addProjectRolesStatement = connection.prepareStatement(
-                    "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.PROJECT_ROLE_TABLE_NAME +
-                    "(project_id, username, role) " +
-                    "VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(3) + ")"
-            );
-
-            addProjectRolesStatement.setObject(1, idOfProjectToAddRoleFor);
-            for (Map.Entry<User, Role> userAndRole : userToRole.entrySet()) {
-                addProjectRolesStatement.setString(2, userAndRole.getKey().username);
-                addProjectRolesStatement.setInt(3, userAndRole.getValue().id);
-                addProjectRolesStatement.addBatch();
-            }
-
-            SqlUtilities.beginTransaction(connection);
-
-            int[] updateResults = addProjectRolesStatement.executeBatch();
-            for (int updateResult : updateResults) {
-                if (updateResult != 1 && updateResult != PreparedStatement.SUCCESS_NO_INFO) {
-                    throw new InternalServerErrorException("The addition of 1 or more project roles was unsuccessful. The successful additions will be undone.");
-                }
-            }
-
-            SqlUtilities.commitTransaction(connection);
-        } finally {
-            SqlUtilities.cleanUpStatements(addProjectRolesStatement);
-        }
-    }
-
-    private static Role getRole(DataSource dataSource, int projectID, String username) throws SQLException {
-        Role role = null;
-
-        List<Project> projects = getProjects(dataSource, Collections.singletonList(projectID));
-
-        if (projects.size() != 1) {
-            throw new InternalServerErrorException("More than 1 project was retrieved for projectID.");
-        }
-
-        for (Map.Entry<User, Role> entry : projects.get(0).userRoles.entrySet()) {
-            if (username.equals(entry.getKey().username)) {
-                role = entry.getValue();
-                break;
-            }
-        }
-
-        return role;
     }
 }

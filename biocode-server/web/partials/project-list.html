@@ -1,10 +1,19 @@
 <div class="container" ng-hide="errorMessage">
     <div class="header">
         <h1>Project List</h1>
+        <button type="button" class="btn btn-primary btn-lg" onclick="location='#/create-project'">Create Project</button>
+        <button type="button" class="btn btn-primary btn-lg" ng-click="onDeleteProjects()">Delete Selected</button>
     </div>
     <div class="row project-list-row">
         <table class="table tree table-bordered table-striped">
             <tbody>
+            <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Description</th>
+                <th>Select</th>
+            </tr>
+            </thead>
             <tr ng-repeat="project in projects" class="{{project.cls}}" id="{{project.id}}">
                 <td>
                     <span ng-repeat="n in [] | range:project.level" class="treegrid-indent"></span>
@@ -15,6 +24,7 @@
                 <td>
                     {{project.description}}
                 </td>
+                <td><input type="checkbox"></td>
             </tr>
             </tbody>
         </table>

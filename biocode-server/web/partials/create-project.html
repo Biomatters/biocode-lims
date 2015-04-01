@@ -1,0 +1,31 @@
+<div class="container">
+    <div class="row inforow">
+        <table class="table" border="0">
+            <tbody>
+            <tr>
+                <td>Display name</td>
+                <td><input type="text" id="name" ng-model="project.name"></td>
+            </tr>
+            <tr>
+                <td>Description</td>
+                <td><input type="text" id="description" ng-model="project.description"></td>
+            </tr>
+            <tr>
+                <td>Parent Project</td>
+                <td>
+                    <select class="form-control" ng-model="project.parentProjectID">
+                        <option value="-1" selected>None</option>
+                        <option ng-repeat="project in projects" value="{{project.id}}">{{project.name}}</option>
+                    </select>
+                </td>
+                <div ng-init="project.parentProjectID=-1"/>
+            </tr>
+            <tr>
+                <td>Is Public</td>
+                <td><input type="checkbox" ng-model="project.isPublic"></td>
+            </tr>
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-primary btn-lg" ng-click="onCreateProject()">Create</button>
+    </div>
+</div>

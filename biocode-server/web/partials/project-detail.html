@@ -1,11 +1,36 @@
 <div class="container">
     <div class="header projectHeader">
         <h1>{{project.name}}</h1>
+        <button type="button" class="btn btn-primary btn-lg" ng-click="onUpdateProject()">Update</button>
+        <button type="button" class="btn btn-primary btn-lg delBtn" ng-click="onDeleteProject()">Delete</button>
     </div>
-    <div class="row">
+    <div class="row inforow">
+        <table class="table" border="0">
+            <tbody>
+            <tr>
+                <td>Display name</td>
+                <td><input type="text" id="name" ng-model="project.name"></td>
+            </tr>
+            <tr>
+                <td>Description</td>
+                <td><input type="text" id="description" ng-model="project.description"></td>
+            </tr>
+            <tr>
+                <td>Parent Project</td>
+                <td>
+                    <select class="form-control" ng-model="parentProjectOpt" ng-options="opt as opt.label for opt in options">
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Is Public</td>
+                <td><input type="checkbox" ng-model="project.isPublic"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="row project-users">
         <h2>Users</h2>
-    </div>
-    <div class="row">
         <div class="filter-lable">
             <label>Filter by role : </label>
         </div>

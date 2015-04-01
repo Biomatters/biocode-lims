@@ -8,6 +8,7 @@ var rolesUrl = "biocode/roles";
 var BCIDRootsURL = "biocode/bcid-roots";
 
 var usersPage = "#/users";
+var projectPage = "#/projects";
 var loggedInUserPage = "/logged-in-user";
 
 var projectMap = null;
@@ -15,52 +16,101 @@ var projects = null;
 
 var biocodeControllers = angular.module('biocodeControllers', []);
 
+function updteLevel(node, level) {
+    node.level = level;
+    for (var i = 0; i < node.children.length; i++) {
+        updteLevel(node.children[i], level + 1);
+    }
+
+    if (node.children.length > 0) {
+        return level + 1;
+    } else {
+        return level;
+    }
+}
+
+function initProjects($scope, $http, callback) {
+    $http.get(projectsUrl).success(function (data) {
+        $scope.projectMap = new Object();
+        for (var i = 0; i < data.length; i++) {
+            $scope.projectMap[data[i].id] = data[i];
+            data[i].parentRoles = new Array();
+            data[i].level = 0;
+            data[i].cls = 'treegrid-' + data[i].id;
+            data[i].children = new Array();
+        }
+
+        var maxLevel = 0;
+        for (var i = 0; i < data.length; i++) {
+            if (data[i].parentProjectID == -1) {
+                continue;
+            }
+
+            var p = $scope.projectMap[data[i].parentProjectID];
+            p.children.push(data[i]);
+            var tmp = updteLevel(data[i], p.level + 1);
+            if (tmp > maxLevel) {
+                maxLevel = tmp;
+            }
+
+            data[i].cls = data[i].cls + ' treegrid-parent-' + p.id;
+            p.hasChild = 'true';
+            p.cls = p.cls + ' treegrid-expanded'
+        }
+
+        var tmpArray = new Array();
+        for (var i = 0; i <= maxLevel; i++) {
+            for (var j = 0; j < data.length; j++) {
+                if (data[j].level == i) {
+                    tmpArray.push(data[j]);
+                }
+            }
+        }
+
+        $scope.projects = new Array();
+        for(var i = 0; i < tmpArray.length; i++) {
+            var proj = tmpArray[i];
+            var parentId = proj.parentProjectID;
+            if (parentId == -1) {
+                $scope.projects[i] = proj;
+            } else {
+                for (var j = 0; j < i; j++) {
+                    if ($scope.projects[j].id == parentId) {
+                        $scope.projects.splice(j + 1, 0, proj);
+                        break;
+                    }
+                }
+            }
+        }
+
+        projects = $scope.projects;
+        projectMap = $scope.projectMap;
+        callback();
+    }).error(function(data, status) {
+        showError($scope, status, data, "projects");
+    });
+}
+
+function isAssignable(currentProject, optionProject) {
+    if (currentProject.id == optionProject.id) {
+        return false;
+    }
+
+    for (var i = 0; i < currentProject.children.length; i++) {
+        if (!isAssignable(currentProject.children[i], optionProject)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 biocodeControllers.controller('projectListCtrl', ['$scope', '$http',
     function($scope, $http) {
         $('.navbar-nav li').attr('class', '');
         $('li#projects').attr('class', 'active');
-        $http.get(projectsUrl).success(function (data) {
-            $scope.projectMap = new Object();
-            for (var i = 0; i < data.length; i++) {
-                $scope.projectMap[data[i].id] = data[i];
-                data[i].parentRoles = new Array();
-                data[i].level = 0;
-                data[i].hasChild = 'false';
-                data[i].cls = 'treegrid-' + data[i].id;
 
-                if (data[i].parentProjectId == -1) {
-                    continue;
-                }
-
-                var p = $scope.projectMap[data[i].parentProjectId];
-                data[i].level = p.level + 1;
-                data[i].cls = data[i].cls + ' treegrid-parent-' + p.id;
-                p.hasChild = 'true';
-                p.cls = p.cls + ' treegrid-expanded'
-            }
-
-            $scope.projects = new Array();
-            for(var i = 0; i < data.length; i++) {
-                var proj = data[i];
-                var parentId = proj.parentProjectId;
-                if (parentId == -1) {
-                    $scope.projects[i] = proj;
-                } else {
-                    for (var j = 0; j < i; j++) {
-                        if ($scope.projects[j].id == parentId) {
-                            $scope.projects.splice(j + 1, 0, proj);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            projects = $scope.projects;
-            projectMap = $scope.projectMap;
-        }).error(function(data, status) {
-            showError($scope, status, data, "projects");
-        });
-
+        initProjects($scope, $http, function(){});
         $scope.isFirst = true;
         $scope.collapseOrExpend = function(target) {
             if ($scope.isFirst) {
@@ -88,44 +138,61 @@ biocodeControllers.controller('projectListCtrl', ['$scope', '$http',
 
             $scope.isFirst = false;
         };
+
+        $scope.onDeleteProjects = function() {
+            var inputs = $(":checked") ;
+            var delProjects = new Object();
+            for (var i = 0; i < inputs.size(); i++) {
+                var input = inputs[i];
+                var id = $(input.parentNode.parentNode).attr('id');
+                delProjects[id] = true;
+                $http.delete(projectsUrl + '/' + id).success(function(){
+                    initProjects($scope, $http, function(){});
+                    $scope.isFirst = true;
+                });
+            }
+        }
     }]);
 
 biocodeControllers.controller('projectDetailCtrl', ['$scope', '$http', '$routeParams',
     function($scope, $http, $routeParams) {
         $('.navbar-nav li').attr('class', '');
         $('li#projects').attr('class', 'active');
-        initProject();
 
-        function initProject() {
-            $http.get(projectsUrl).success(function (data) {
-                projectMap = new Object();
-                for (var i = 0; i < data.length; i++) {
-                    projectMap[data[i].id] = data[i];
-                    data[i].parentRoles = new Array();
-                    data[i].level = 0;
-                    data[i].hasChild = 'false';
-                    data[i].cls = 'treegrid-' + data[i].id;
+        initProjects($scope, $http, function(){
+            $scope.project = $scope.projectMap[$routeParams.projectId];
+            optionMap = new Object();
+            $scope.options = new Array();
+            $scope.options.push({label: "--None--", value: -1});
 
-                    if (data[i].parentProjectId == -1) {
-                        continue;
-                    }
-
-                    var p = projectMap[data[i].parentProjectId];
-                    data[i].level = p.level + 1;
-                    data[i].cls = data[i].cls + ' treegrid-parent-' + p.id;
-                    p.hasChild = 'true';
-                    p.cls = p.cls + ' treegrid-expanded'
+            var data = $scope.projects
+            for (var i = 0; i < data.length; i++) {
+                if (data[i].id != $routeParams.projectId && isAssignable($scope.project, $scope.projectMap[data[i].id])) {
+                    var opt = {label: data[i].name, value: data[i].id};
+                    $scope.options.push(opt);
+                    optionMap[data[i].id] = opt;
                 }
+            }
 
-                projects = data;
-                $scope.project = projectMap[$routeParams.projectId];
-                $scope.userRoles = $scope.project.userRoles.entry;
+            if ($scope.project.parentProjectID == -1) {
+                $scope.parentProjectOpt = $scope.options[0];
+            } else {
+                $scope.parentProjectOpt = optionMap[$scope.project.parentProjectID];
+            }
+
+            $scope.userRoles = $scope.project.userRoles.entry;
+
+            $http.get(rolesUrl).success(function (data) {
+                $scope.roles = data;
+            });
+        });
+
+        $scope.onUpdateProject = function() {
+            $scope.project.parentProjectID = $scope.parentProjectOpt.value;
+            $http.put(projectsUrl + '/' + $scope.project.id, $scope.project).success(function(){
+                alert('Update successful');
             });
         }
-
-        $http.get(rolesUrl).success(function (data) {
-            $scope.roles = data;
-        });
 
         $scope.onAllCheckBox = function(target) {
             $('td input').prop('checked', target.checked);
@@ -143,6 +210,12 @@ biocodeControllers.controller('projectDetailCtrl', ['$scope', '$http', '$routePa
                     });
                 }
             }
+        }
+
+        $scope.onDeleteProject = function() {
+            $http.delete(projectsUrl + '/' + $scope.project.id).success(function(){
+                window.location = projectPage;
+            });
         }
     }]);
 
@@ -226,11 +299,11 @@ biocodeControllers.controller('userDetailCtrl', ['$scope', '$http', '$routeParam
                         }
                     }
 
-                    if (data[i].parentProjectId == -1) {
+                    if (data[i].parentProjectID == -1) {
                         continue;
                     }
 
-                    var p = $scope.projectMap[data[i].parentProjectId];
+                    var p = $scope.projectMap[data[i].parentProjectID];
                     data[i].parentRoles.push(p.roles);
                     data[i].level = p.level + 1;
                     data[i].cls = data[i].cls + ' treegrid-parent-' + p.id;
@@ -336,6 +409,22 @@ biocodeControllers.controller('createuserCtrl', ['$scope', '$http',
 
             $http.post(usersUrl, $scope.user).success(function (data, status, headers) {
                 window.location = usersPage + '/' + $scope.user.username;
+            });
+        }
+    }]);
+
+biocodeControllers.controller('createProjectCtrl', ['$scope', '$http',
+    function($scope, $http) {
+        $('.navbar-nav li').attr('class', '');
+        $('li#projects').attr('class', 'active');
+
+        $http.get(projectsUrl).success(function (data) {
+            $scope.projects = data;
+        });
+
+        $scope.onCreateProject = function() {
+            $http.post(projectsUrl, $scope.project).success(function (data, status, headers) {
+                window.location = projectPage + '/' + data;
             });
         }
     }]);

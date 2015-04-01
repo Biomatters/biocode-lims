@@ -31,41 +31,42 @@
     margin-bottom: -10px;
 }
 
-.userinforow {
+.inforow {
     width: 40%;
     margin-top: 45px;
     text-align: right;
 }
 
-.userinforow .table > tbody > tr > td:first-child,
+.inforow .table > tbody > tr > td:first-child,
 .password-row .table > tbody > tr > td:first-child {
     border-top: none;
     width: 150px;
     text-align: right;
 }
 
-.userinforow .table > tbody > tr > td:last-child,
+.inforow .table > tbody > tr > td:last-child,
 .password-row .table > tbody > tr > td:last-child {
     border-top: none;
     text-align: left;
 }
 
-.userinforow .table > tbody > tr > td:last-child >input {
-    text-align: center;
+.inforow .table > tbody > tr > td:last-child >input,
+.inforow .table > tbody > tr > td:last-child >select {
+    text-indent: 10px;
     margin-left: 10px;
     width: 92%;
 }
 
-.userinforow button {
+.inforow button {
     margin-right: 24px;
 }
 
 .projectHeader h1{
-    float: none;
+    float: left;
 }
 
 .project-list-row {
-    margin-top: 100px;
+    margin-top: 40px;
 }
 
 #user-role-row h3 {
@@ -86,4 +87,8 @@
 
 .pass-dialog button {
     margin: 0;
+}
+
+.project-users {
+    margin-top: 0;
 }

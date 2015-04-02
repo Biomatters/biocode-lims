@@ -22,12 +22,6 @@ public class Projects {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     public Response list() {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
             return Response.ok(new GenericEntity<List<Project>>(getProjects(LIMSInitializationListener.getDataSource(), Collections.<Integer>emptySet())){}).build();
         } catch (SQLException e) {
@@ -39,16 +33,10 @@ public class Projects {
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{id}")
     public Project getProject(@PathParam("id")int projectID) {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         List<Project> retrievedProjects;
 
         try {
-            retrievedProjects = getProjects(dataSource, Collections.singleton(projectID));
+            retrievedProjects = getProjects(LIMSInitializationListener.getDataSource(), Collections.singleton(projectID));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -66,14 +54,8 @@ public class Projects {
     @Consumes({"application/json", "application/xml"})
     @Produces("text/plain")
     public String addProject(Project project) {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
-            return Integer.toString(addProject(dataSource, project));
+            return Integer.toString(addProject(LIMSInitializationListener.getDataSource(), project));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful: " + e.getMessage());
         }
@@ -99,14 +81,8 @@ public class Projects {
     @DELETE
     @Path("{id}")
     public void deleteProject(@PathParam("id")int id) {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
-            deleteProject(dataSource, id);
+            deleteProject(LIMSInitializationListener.getDataSource(), id);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The deletion of project with ID " + id + " was unsuccessful: " + e.getMessage());
         }
@@ -127,15 +103,9 @@ public class Projects {
             throw new IllegalArgumentException("username is null.");
         }
 
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         Role role;
         try {
-            role = getRole(dataSource, projectID, username);
+            role = getRole(LIMSInitializationListener.getDataSource(), projectID, username);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of user " + username + "'s role for project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -158,14 +128,8 @@ public class Projects {
             throw new IllegalArgumentException("role is null.");
         }
 
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
-            assignRole(dataSource, projectID, username, role);
+            assignRole(LIMSInitializationListener.getDataSource(), projectID, username, role);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " in project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -178,14 +142,8 @@ public class Projects {
             throw new IllegalArgumentException("username is null.");
         }
 
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
-            removeProjectRoles(dataSource, projectID, Collections.singleton(username));
+            removeProjectRoles(LIMSInitializationListener.getDataSource(), projectID, Collections.singleton(username));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The deletion of user " + username + "'s role in project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -195,14 +153,8 @@ public class Projects {
     @Produces("application/xml")
     @Path("{id}/workflows")
     public XMLSerializableList<Workflow> listWorkflowsAssignedToProject(@PathParam("id")int projectID) {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
-            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsAssignedToProject(dataSource, projectID)));
+            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsAssignedToProject(LIMSInitializationListener.getDataSource(), projectID)));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of workflows assigned to project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -212,14 +164,8 @@ public class Projects {
     @Consumes({"application/json", "application/xml"})
     @Path("{id}/workflows/{workflowID}")
     public void assignWorkflowToProject(@PathParam("id")int projectID, @PathParam("workflowID")int workflowID) {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
-            assignWorkflowsToProject(dataSource, projectID, Collections.singletonList(workflowID));
+            assignWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectID, Collections.singletonList(workflowID));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The assignment of workflow with ID " + workflowID + " to project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -228,14 +174,8 @@ public class Projects {
     @DELETE
     @Path("{id}/workflows/{workflowID}")
     public void unassignWorkflowFromProjects(@PathParam("id")int projectID, @PathParam("workflowID")int workflowID) {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-        if (dataSource == null) {
-            throw new InternalServerErrorException("The data source is null.");
-        }
-
         try {
-            unassignWorkflowsFromProjects(dataSource, Collections.singletonList(workflowID));
+            unassignWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), Collections.singletonList(workflowID));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The unassignment of workflow with ID " + workflowID + " from project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -353,15 +293,9 @@ public class Projects {
             }
             addProjectStatement.setBoolean(5, project.isPublic);
 
-            SqlUtilities.beginTransaction(connection);
-
             if (addProjectStatement.executeUpdate() == 0) {
                 throw new InternalServerErrorException("The addition of project " + project.name + " was unsuccessful.");
             }
-
-            addProjectRoles(dataSource, project.userRoles, projectID);
-
-            SqlUtilities.commitTransaction(connection);
 
             return projectID;
         } finally {
@@ -551,7 +485,7 @@ public class Projects {
             int[] additionResults = addProjectRolesStatement.executeBatch();
             for (int additionResult : additionResults) {
                 if (additionResult != 1 && additionResult != PreparedStatement.SUCCESS_NO_INFO) {
-                    throw new InternalServerErrorException("The addition of 1 or more project roles was unsuccessful. Successful additions will be undone.");
+                    throw new InternalServerErrorException("The addition of 1 or more project roles was unsuccessful. Changes will be undone.");
                 }
             }
 
@@ -698,7 +632,7 @@ public class Projects {
                 assignmentResults = assignWorkflowsToProjectStatement.executeBatch();
                 for (int assignmentResult : assignmentResults) {
                     if (assignmentResult != 1 && assignmentResult != PreparedStatement.SUCCESS_NO_INFO) {
-                        throw new InternalServerErrorException("The assignment of 1 or more workflows to project with ID " + projectID + " was unsuccessful. The successful assignments will be undone.");
+                        throw new InternalServerErrorException("The assignment of 1 or more workflows to project with ID " + projectID + " was unsuccessful. Changes will be undone.");
                     }
                 }
             }
@@ -730,8 +664,8 @@ public class Projects {
             connection = dataSource.getConnection();
             unassignStatementsFromProjectsStatement = connection.prepareStatement(
                     "DELETE * " +
-                            "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
-                            " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
+                    "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                    " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
             );
 
             int statementObjectIndex = 1;

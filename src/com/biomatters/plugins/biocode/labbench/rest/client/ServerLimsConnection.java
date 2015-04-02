@@ -12,6 +12,7 @@ import com.biomatters.plugins.biocode.labbench.lims.LimsSearchResult;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
+import com.biomatters.plugins.biocode.server.Project;
 import com.biomatters.plugins.biocode.server.RestQueryUtils;
 import com.biomatters.plugins.biocode.server.StringMap;
 import com.biomatters.plugins.biocode.server.XMLSerializableList;
@@ -690,6 +691,28 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
+    private static final String PROJECTS = "projects";
+
+    public List<Project> getAllProjects() throws DatabaseServiceException {
+        try {
+            return (List<Project>)target.path(PROJECTS).request(MediaType.APPLICATION_ATOM_XML_TYPE).get().getEntity();
+        } catch (WebApplicationException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        } catch (ProcessingException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        }
+    }
+
+    public void assignWorkflowUnderProject() throws DatabaseServiceException {
+        try {
+
+        } catch (WebApplicationException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        } catch (ProcessingException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        }
+    }
+
     @Override
     public boolean supportReporting() {
         return false;
@@ -700,31 +723,10 @@ public class ServerLimsConnection extends LIMSConnection {
         throw new UnsupportedOperationException("Does not support getting a SQL Connection");
     }
 
-//    @Override
-//    public Condition[] getFieldConditions(Class fieldClass) {
-//        List<Condition> valid = new ArrayList<Condition>();
-//        for (Condition condition : super.getFieldConditions(fieldClass)) {
-//            if(RestQueryUtils.supportsConditionForRestQuery(condition)) {
-//                valid.add(condition);
-//            }
-//        }
-//        return valid.toArray(new Condition[valid.size()]);
-//    }
-
     public static <T> List<T> getListFromResponse(Response response, GenericType<List<T>> type) {
         if(response.getStatus() == 204) {  // HTTP 204 is No Content
             return Collections.emptyList();
         }
         return response.readEntity(type);
-    }
-
-    public static List<String> convertToStringList(Collection<Integer> integerList) {
-        List<String> stringList = new ArrayList<String>();
-
-        for (Integer integer : integerList) {
-            stringList.add(String.valueOf(integer));
-        }
-
-        return stringList;
     }
 }

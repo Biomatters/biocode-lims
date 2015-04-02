@@ -23,11 +23,13 @@ import java.util.*;
 public class ReverseAssemblySequencesOperation extends DocumentOperation {
     private static final String TOOLTIP_TEXT = "Select sequence documents from LIMS to reverse complement.";
 
+    @Override
     public GeneiousActionOptions getActionOptions() {
         GeneiousActionOptions geneiousActionOptions = new GeneiousActionOptions("Reverse Complement Sequences", TOOLTIP_TEXT).setInPopupMenu(true, 1);
         return GeneiousActionOptions.createSubmenuActionOptions(BiocodePlugin.getSuperBiocodeAction(), geneiousActionOptions);
     }
 
+    @Override
     public DocumentSelectionSignature[] getSelectionSignatures() {
         return new DocumentSelectionSignature[] { new DocumentSelectionSignature(SequenceDocument.class, 1, Integer.MAX_VALUE) };
     }

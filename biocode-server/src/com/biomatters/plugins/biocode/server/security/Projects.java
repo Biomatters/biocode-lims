@@ -124,7 +124,7 @@ public class Projects {
         return userToRole.entrySet().iterator().next().getValue();
     }
 
-    @POST
+    @PUT
     @Consumes({"application/json", "application/xml"})
     @Path("{id}/roles/{username}")
     public void assignProjectRole(@PathParam("id")int projectID, @PathParam("username")String username, Role role) {

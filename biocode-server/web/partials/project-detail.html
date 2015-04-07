@@ -59,10 +59,10 @@
             </tr>
             </thead>
             <tbody>
-            <tr ng-repeat="userRole in userRoles | filter : {key : keyword, value : keyRole}">
-                <td><a href="#/users/{{userRole.key.username}}">{{userRole.key.username}}</a></td>
-                <td>{{userRole.key.email}}</td>
-                <td>{{userRole.value.name}}</td>
+            <tr ng-repeat="userRole in userRoles | filter : {user : keyword, role : keyRole}">
+                <td><a href="#/users/{{userRole.user.username}}">{{userRole.user.username}}</a></td>
+                <td>{{userRole.user.email}}</td>
+                <td>{{userRole.role.name}}</td>
                 <td><input type="checkbox" class="checkbox"></td>
             </tr>
             </tbody>

@@ -180,7 +180,11 @@ biocodeControllers.controller('projectDetailCtrl', ['$scope', '$http', '$routePa
                 $scope.parentProjectOpt = optionMap[$scope.project.parentProjectID];
             }
 
-            $scope.userRoles = $scope.project.userRoles.entry;
+            $http.get(projectsUrl + '/' + $scope.project.id + '/roles').success(function (data) {
+                $scope.userRoles = data;
+            }).error(function(data, status) {
+                showError($scope, status, data, "projects");
+            });
 
             $http.get(rolesUrl).success(function (data) {
                 $scope.roles = data;
@@ -266,67 +270,51 @@ biocodeControllers.controller('userDetailCtrl', ['$scope', '$http', '$routeParam
         $('.navbar-nav li').attr('class', '');
         $('li#users').attr('class', 'active');
         $scope.newPass = '';
-        $http.get(usersUrl + '/' + $routeParams.userId).success(function (data) {
-            $scope.user = data;
-            initProjects();
-        });
+        init();
 
-        function initProjects() {
-            $http.get(projectsUrl).success(function (data) {
-                $scope.projectMap = new Object();
+        function init () {
+            initProjects($scope, $http, function () {
                 $scope.roles = new Array();
-                var roleTmp = new Object();
-                for (var i = 0; i < data.length; i++) {
-                    $scope.projectMap[data[i].id] = data[i];
-                    data[i].parentRoles = new Array();
-                    data[i].roles = new Array();
-                    data[i].rolesMap = new Array();
-                    data[i].level = 0;
-                    data[i].hasChild = 'false';
-                    data[i].cls = 'treegrid-' + data[i].id;
+                $scope.optionRoles = new Array();
 
-                    for (var j = 0; j < data[i].userRoles.entry.length; j++) {
-                        if (roleTmp[data[i].userRoles.entry[j].value.id] !== true) {
-                            data[i].roles.push(data[i].userRoles.entry[j].value);
-                            roleTmp[data[i].userRoles.entry[j].value.id] = true;
-                        }
+                $http.get(usersUrl + '/' + $routeParams.userId).success(function (data) {
+                    $scope.user = data;
+                });
 
-                        data[i].rolesMap[data[i].userRoles.entry[j].value.id] = data[i].userRoles.entry[j].value;
-
-                        if (data[i].userRoles.entry[j].key.username === $scope.user.username) {
-                            var role = {projectId : data[i].id, projectName : data[i].name, roleName : data[i].userRoles.entry[j].value.name, description : data[i].userRoles.entry[j].value.description};
-                            $scope.roles.push(role);
-                        }
-                    }
-
-                    if (data[i].parentProjectID == -1) {
-                        continue;
-                    }
-
-                    var p = $scope.projectMap[data[i].parentProjectID];
-                    data[i].parentRoles.push(p.roles);
-                    data[i].level = p.level + 1;
-                    data[i].cls = data[i].cls + ' treegrid-parent-' + p.id;
-                    p.hasChild = 'true';
-                    p.cls = p.cls + ' treegrid-expanded'
+                for (var i  = 0; i < $scope.projects.length; i++) {
+                    fillRolesForProject($scope.projects[i]);
                 }
 
-                $scope.projects = data;
-                projects = $scope.projects;
-                projectMap = $scope.projectMap;
+                $http.get(rolesUrl).success(function (data) {
+                    $scope.projectRoles = data;
+                    $scope.projectRolesMap = new Object();
+
+                    for (var i = 0; i < data.length; i++) {
+                        $scope.projectRolesMap[data[i].id] = data[i];
+                    }
+                });
+
+                $http.get(usersUrl + loggedInUserPage).success(function(data) {
+                    $scope.loggedInUser = data;
+                });
             });
+        }
 
-            $http.get(rolesUrl).success(function (data) {
-                $scope.projectRoles = data;
-                $scope.projectRolesMap = new Object();
-
-                for (var i = 0; i < data.length; i++) {
-                    $scope.projectRolesMap[data[i].id] = data[i];
+        function fillRolesForProject (project) {
+            $http.get(projectsUrl + '/' + project.id + '/roles').success(function (data) {
+                project.userRoles = data;
+                var i = 0;
+                for (; i < data.length; i++) {
+                    if (data[i].user.username == $scope.user.username) {
+                        project.roleName = data[i].role.name;
+                        $scope.roles.push(project);
+                        break;
+                    }
                 }
-            });
 
-            $http.get(usersUrl + loggedInUserPage).success(function(data) {
-                $scope.loggedInUser = data;
+                if (i == data.length) {
+                    $scope.optionRoles.push(project);
+                }
             });
         }
 
@@ -367,7 +355,7 @@ biocodeControllers.controller('userDetailCtrl', ['$scope', '$http', '$routeParam
 
                     var url = projectsUrl + '/' + projectId + '/roles/' + $scope.user.username;
                     $http.delete(url).success(function(){
-                        initProjects();
+                        window.location.reload();
                     });
                 }
             }
@@ -380,7 +368,7 @@ biocodeControllers.controller('userDetailCtrl', ['$scope', '$http', '$routeParam
         $scope.onAssignRole = function() {
             var url = projectsUrl + '/' + $scope.projId + '/roles/' + $scope.user.username;
             $http.put(url, $scope.projectRolesMap[$scope.roleId]).success(function (data, status, headers) {
-                initProjects();
+                init();
             });
         }
 

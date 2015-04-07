@@ -88,7 +88,7 @@ public class ProjectsTest extends Assert {
         Projects.addProject(dataSource, p);
         assertEquals(1, Projects.getProjects(dataSource, Collections.singletonList(1)).size());
 
-        Projects.deleteProject(dataSource, 1);
+        Projects.removeProject(dataSource, 1);
         assertTrue(Projects.getProjects(dataSource, Collections.<Integer>emptyList()).isEmpty());
     }
 
@@ -107,7 +107,7 @@ public class ProjectsTest extends Assert {
 
         assertEquals(2, projectList.size());
 
-        Projects.deleteProject(dataSource, 1);
+        Projects.removeProject(dataSource, 1);
 
         projectList = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
 
@@ -140,11 +140,13 @@ public class ProjectsTest extends Assert {
         p.name = "Test";
         p.userRoles.put(user1, Role.WRITER);
         Projects.addProject(dataSource, p);
+        Projects.addProjectRoles(dataSource, 1, p.userRoles);
 
         List<Project> inDatabase = Projects.getProjects(dataSource, Collections.singletonList(1));
+        Map<User, Role> userRole = Projects.getProjectRoles(dataSource, 1, Collections.singleton("user1"));
         assertEquals(1, inDatabase.size());
-        assertEquals(1, inDatabase.get(0).userRoles.size());
-        assertEquals(Role.WRITER, inDatabase.get(0).userRoles.get(user1));
+        assertEquals(1, userRole.size());
+        assertEquals(Role.WRITER, userRole.get(user1));
     }
 
     @Test
@@ -156,14 +158,14 @@ public class ProjectsTest extends Assert {
         p.name = "Test";
         p.userRoles.put(user1, Role.WRITER);
         Projects.addProject(dataSource, p);
-
-        Projects.assignRole(dataSource, 1, user1.username, Role.ADMIN);
+        Projects.addProjectRoles(dataSource, 1, p.userRoles);
 
         List<Project> inDatabase = Projects.getProjects(dataSource, Collections.singletonList(1));
+        Map<User, Role> userRole = Projects.getProjectRoles(dataSource, 1, Collections.singleton("user1"));
 
         assertEquals(1, inDatabase.size());
-        assertEquals(1, inDatabase.get(0).userRoles.size());
-        assertEquals(Role.ADMIN, inDatabase.get(0).userRoles.get(user1));
+        assertEquals(1, userRole.size());
+        assertEquals(Role.WRITER, userRole.get(user1));
 
         Projects.removeProjectRoles(dataSource, 1, Collections.singletonList(user1.username));
         inDatabase = Projects.getProjects(dataSource, Collections.singletonList(1));

@@ -17,6 +17,14 @@ public class Project {
 
     public Map<User, Role> userRoles = new HashMap<User, Role>();
 
+    public Project(Integer id, String name, String description, Integer parentProjectID, boolean isPublic) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.parentProjectID = parentProjectID;
+        this.isPublic = isPublic;
+    }
+
     public Project() {
     }
 

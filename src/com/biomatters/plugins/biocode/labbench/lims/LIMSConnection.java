@@ -83,6 +83,8 @@ public abstract class LIMSConnection {
 
     public static final DocumentField SEQUENCE_ID = DocumentField.createIntegerField("LIMS Sequence ID", "The Unique ID of this sequence in LIMS", "LimsSequenceId", false, false);
 
+    public static final DocumentField BIOCODE_SERVER_PROJECT_FIELD = DocumentField.createStringField("Project", "", "project.name", true, false);
+
     String serverUrn;
 
     public abstract int addAssembly(boolean isPass, String notes, String technician, FailureReason failureReason, String failureNotes, boolean addChromatograms, AssembledSequence seq, List<Integer> reactionIds, Cancelable cancelable) throws DatabaseServiceException;

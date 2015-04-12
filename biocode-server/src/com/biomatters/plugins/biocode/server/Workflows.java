@@ -28,19 +28,18 @@ public class Workflows {
     @Consumes("text/plain")
     public XMLSerializableList<WorkflowDocument> getWorkflows(@QueryParam("ids")String idListAsString) {
         try {
-            final Set<String> extractionIds = new HashSet<String>();
-            final List<WorkflowDocument> results = LIMSInitializationListener.getLimsConnection().getWorkflowsById(
-                    Sequences.getIntegerListFromString(idListAsString), ProgressListener.EMPTY);
-            for (WorkflowDocument result : results) {
-                extractionIds.add(result.getWorkflow().getExtractionId());
+            List<WorkflowDocument> workflowDocuments = LIMSInitializationListener.getLimsConnection().getWorkflowsById(Sequences.getIntegerListFromString(idListAsString), ProgressListener.EMPTY);
+
+            Set<Integer> workflowIDs = new HashSet<Integer>();
+            for (WorkflowDocument workflowDocument : workflowDocuments) {
+                workflowIDs.add(workflowDocument.getId());
             }
-            AccessUtilities.checkUserHasRoleForExtractionIDs(extractionIds, Users.getLoggedInUser(), Role.READER);
-            return new XMLSerializableList<WorkflowDocument>(WorkflowDocument.class, results);
+
+            AccessUtilities.checkUserHasRoleForWorkflows(workflowIDs, Users.getLoggedInUser(), Role.READER);
+
+            return new XMLSerializableList<WorkflowDocument>(WorkflowDocument.class, workflowDocuments);
         } catch (DatabaseServiceException e) {
-            throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST)
-                                                       .entity(e.getMessage())
-                                                       .type(MediaType.TEXT_PLAIN_TYPE)
-                                                       .build());
+            throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).type(MediaType.TEXT_PLAIN_TYPE).build());
         }
     }
 
@@ -48,14 +47,26 @@ public class Workflows {
     @Path("{id}")
     @Produces("application/xml")
     public Workflow get(@PathParam("id")String workflowName) throws NoContentException {
-        if(workflowName == null || workflowName.trim().isEmpty()) {
+        if (workflowName == null || workflowName.trim().isEmpty()) {
             throw new BadRequestException("Must specify ids");
         }
+
         try {
             List<Workflow> workflows = LIMSInitializationListener.getLimsConnection().getWorkflowsByName(Collections.singletonList(workflowName));
-            Workflow result = workflows.get(0);
-            AccessUtilities.checkUserHasRoleForExtractionIDs(Collections.singletonList(result.getExtractionId()), Users.getLoggedInUser(), Role.READER);
-            return result;
+
+            if (workflows.size() > 1) {
+                throw new InternalServerErrorException("More than one workflow with name " + workflowName + " was found.");
+            }
+
+            if (workflows.isEmpty()) {
+                return null;
+            }
+
+            Workflow workflow = workflows.get(0);
+
+            AccessUtilities.checkUserHasRoleForWorkflows(Collections.singletonList(workflow.getId()), Users.getLoggedInUser(), Role.READER);
+
+            return workflow;
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
@@ -64,7 +75,7 @@ public class Workflows {
     @PUT
     @Consumes("text/plain")
     @Path("{id}/name")
-    public void renameWorkflow(@PathParam("id") int id, String newName) {
+    public void renameWorkflow(@PathParam("id")int id, String newName) {
         try {
             AccessUtilities.checkUserHasRoleForWorkflows(Collections.singleton(id), Users.getLoggedInUser(), Role.WRITER);
             LIMSInitializationListener.getLimsConnection().renameWorkflow(id, newName);

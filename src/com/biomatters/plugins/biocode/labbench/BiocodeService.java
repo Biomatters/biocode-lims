@@ -794,6 +794,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                                 }
                             })
                     );
+
                 }
 
                 if(callback.isCanceled()) {

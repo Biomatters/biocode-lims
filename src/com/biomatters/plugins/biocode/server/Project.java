@@ -1,5 +1,7 @@
 package com.biomatters.plugins.biocode.server;
 
+import com.biomatters.geneious.publicapi.documents.XMLSerializable;
+
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.*;
 

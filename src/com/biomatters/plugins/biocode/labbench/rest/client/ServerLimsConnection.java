@@ -12,10 +12,9 @@ import com.biomatters.plugins.biocode.labbench.lims.LimsSearchResult;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
-import com.biomatters.plugins.biocode.server.Project;
-import com.biomatters.plugins.biocode.server.RestQueryUtils;
-import com.biomatters.plugins.biocode.server.StringMap;
-import com.biomatters.plugins.biocode.server.XMLSerializableList;
+import com.biomatters.plugins.biocode.server.*;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import jebl.util.Cancelable;
 import jebl.util.ProgressListener;
 
@@ -39,9 +38,26 @@ import java.util.*;
  *          Created on 4/04/14 11:14 AM
  */
 public class ServerLimsConnection extends LIMSConnection {
+    private static final String SEARCH_BASE_PATH            = "search";
+    private static final String PROJECTS_BASE_PATH          = "projects";
+    private static final String WORKFLOWS_BASE_PATH         = "workflows";
+    private static final String PLATES_BASE_PATH            = "plates";
+    private static final String FAILURE_REASONS_BASE_PATH   = "failuresReasons";
+    private static final String PERMISSIONS_BASE_PATH       = "permissions";
+    private static final String SEQUENCES_BASE_PATH         = "sequences";
+    private static final String REACTIONS_BASE_PATH         = "reactions";
+    private static final String EXTRACTIONS_BASE_PATH       = "extractions";
+    private static final String TISSUES_BASE_PATH           = "tissues";
+    private static final String INFO_BASE_PATH              = "info";
+    private static final String COCKTAILS_BASE_PATH         = "cocktails";
+    private static final String THERMOCYCLES_BASE_PATH      = "thermocycles";
+    private static final String BCIDROOTS_BASE_PATH         = "bcid-roots";
+
+
     private String username;
     WebTarget target;
-    private static Map<String, String> BCIDRoots = new HashMap<String, String>();
+    private static Map<String, String> BCIDRootsCache = new HashMap<String, String>();
+    private static Map<Project, Collection<Workflow>> projectToWorkflowsMappingCache = new HashMap<Project, Collection<Workflow>>();
 
     @Override
     protected void _connect(PasswordOptions options) throws ConnectionException {
@@ -69,19 +85,17 @@ public class ServerLimsConnection extends LIMSConnection {
 
     @Override
     public LimsSearchResult getMatchingDocumentsFromLims(Query query, Collection<String> tissueIdsToMatch, Cancelable cancelable) throws DatabaseServiceException {
-        updateBCIDRoots();
+        updateBCIDRootsCache();
+        updateProjectsToWorkflowsMappingCache();
 
         String tissueIdsToMatchString = tissueIdsToMatch == null ? null : StringUtilities.join(",", tissueIdsToMatch);
-
-        boolean downloadWorkflows = BiocodeService.isDownloadWorkflows(query);
-        boolean downloadPlates = BiocodeService.isDownloadPlates(query);
         try {
-            WebTarget target = this.target.path("search")
+            WebTarget target = this.target.path(SEARCH_BASE_PATH)
                     .queryParam("q", RestQueryUtils.geneiousQueryToRestQueryString(query))
                     .queryParam("matchTissues", tissueIdsToMatch != null)
                     .queryParam("showTissues", BiocodeService.isDownloadTissues(query))
-                    .queryParam("showWorkflows", downloadWorkflows)
-                    .queryParam("showPlates", downloadPlates)
+                    .queryParam("showWorkflows", BiocodeService.isDownloadWorkflows(query))
+                    .queryParam("showPlates", BiocodeService.isDownloadPlates(query))
                     .queryParam("showSequences", BiocodeService.isDownloadSequences(query));
             Invocation.Builder request = target.request(MediaType.APPLICATION_XML_TYPE);
             return request.post(Entity.entity(tissueIdsToMatchString, MediaType.TEXT_PLAIN_TYPE), LimsSearchResult.class);
@@ -94,17 +108,15 @@ public class ServerLimsConnection extends LIMSConnection {
 
     @Override
     public List<WorkflowDocument> getWorkflowsById_(Collection<Integer> workflowIds, Cancelable cancelable) throws DatabaseServiceException {
-        if(workflowIds.isEmpty()) {
+        if (workflowIds.isEmpty()) {
             return Collections.emptyList();
         }
+
         try {
-            Invocation.Builder request = target.path("workflows")
+             return target.path(WORKFLOWS_BASE_PATH)
                     .queryParam("ids", StringUtilities.join(",", workflowIds))
-                    .request(MediaType.APPLICATION_XML_TYPE);
-            return request.get(
-                    new GenericType<XMLSerializableList<WorkflowDocument>>() {
-                    }
-            ).getList();
+                    .request(MediaType.APPLICATION_XML_TYPE)
+                    .get(new GenericType<XMLSerializableList<WorkflowDocument>>(){}).getList();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -114,17 +126,23 @@ public class ServerLimsConnection extends LIMSConnection {
 
     @Override
     public List<Plate> getPlates_(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException {
-        if(plateIds.isEmpty()) {
+        if (plateIds.isEmpty()) {
             return Collections.emptyList();
         }
+
         try {
-            Invocation.Builder request = target.path("plates")
+            List<Plate> plates = target.path(PLATES_BASE_PATH)
                     .queryParam("ids", StringUtilities.join(",", plateIds))
-                    .request(MediaType.APPLICATION_XML_TYPE);
-            return request.get(
-                    new GenericType<XMLSerializableList<Plate>>() {
-                    }
-            ).getList();
+                    .request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Plate>>() {
+                    }).getList();
+
+            for (Plate plate : plates) {
+                for (Reaction reaction : plate.getReactions()) {
+                    setProjectValues(reaction);
+                }
+            }
+
+            return plates;
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -132,10 +150,41 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
+    private void setProjectValues(Reaction reaction) {
+        if (reaction == null) {
+            throw new IllegalArgumentException("reation is null.");
+        }
+
+        ReactionOptions reactionOptions = reaction.getOptions();
+        Workflow workflow = reaction.getWorkflow();
+        if (reactionOptions instanceof HasProjectOptions && workflow != null) {
+            HasProjectOptions hasProjectOptions = (HasProjectOptions)reaction.getOptions();
+
+            hasProjectOptions.setPossibleProjects(projectToWorkflowsMappingCache.keySet());
+
+            Project projectUnderWhichReactionIsAssigned = getProject(projectToWorkflowsMappingCache, workflow.getId());
+            if (projectUnderWhichReactionIsAssigned != null) {
+                hasProjectOptions.setSelectedPossibleProject(projectUnderWhichReactionIsAssigned);
+            }
+        }
+    }
+
+    private Project getProject(Map<Project, Collection<Workflow>> projectToWorkflows, int workflowID) {
+        for (Map.Entry<Project, Collection<Workflow>> projectAndWorkflows : projectToWorkflows.entrySet()) {
+            for (Workflow workflow : projectAndWorkflows.getValue()) {
+                if (workflow.getId() == workflowID) {
+                    return projectAndWorkflows.getKey();
+                }
+            }
+        }
+        return null;
+    }
+
+
     @Override
     public void savePlates(List<Plate> plates, ProgressListener progress) throws BadDataException, DatabaseServiceException {
         try {
-            Invocation.Builder request = target.path("plates").request();
+            Invocation.Builder request = target.path(PLATES_BASE_PATH).request();
             Response response = request.put(Entity.entity(new XMLSerializableList<Plate>(Plate.class, plates), MediaType.APPLICATION_XML_TYPE));
             if (response.getStatus() != Response.Status.OK.getStatusCode() && response.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
                 Dialogs.showMessageDialog("Could not add plate: " + response.readEntity(String.class));
@@ -150,10 +199,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<Plate> getEmptyPlates(Collection<Integer> plateIds) throws DatabaseServiceException {
         try {
-            return target.path("plates").path("empty").request(MediaType.APPLICATION_XML_TYPE).get(
-                    new GenericType<XMLSerializableList<Plate>>() {
-                    }
-            ).getList();
+            return target.path(PLATES_BASE_PATH).path("empty").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Plate>>(){}).getList();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -164,7 +210,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void saveReactions(Reaction[] reactions, Reaction.Type type, ProgressListener progress) throws DatabaseServiceException {
         try {
-            Invocation.Builder request = target.path("plates").path("reactions").queryParam("type", type.name()).request();
+            Invocation.Builder request = target.path(PLATES_BASE_PATH).path("reactions").queryParam("type", type.name()).request();
             request.put(Entity.entity(
                     new XMLSerializableList<Reaction>(Reaction.class, Arrays.asList(reactions)),
                     MediaType.APPLICATION_XML_TYPE));
@@ -179,7 +225,7 @@ public class ServerLimsConnection extends LIMSConnection {
     public Set<Integer> deletePlates(List<Plate> plates, ProgressListener progress) throws DatabaseServiceException {
         String result;
         try {
-            Invocation.Builder request = target.path("plates").path("delete").request(MediaType.TEXT_PLAIN_TYPE);
+            Invocation.Builder request = target.path(PLATES_BASE_PATH).path("delete").request(MediaType.TEXT_PLAIN_TYPE);
             Response response = request.post(Entity.entity(new XMLSerializableList<Plate>(Plate.class, plates), MediaType.APPLICATION_XML_TYPE));
             result = response.readEntity(String.class);
         } catch (WebApplicationException e) {
@@ -206,7 +252,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void renamePlate(int id, String newName) throws DatabaseServiceException {
         try {
-            Invocation.Builder request = target.path("plates").path(id + "/name").request();
+            Invocation.Builder request = target.path(PLATES_BASE_PATH).path(id + "/name").request();
             Response response = request.put(Entity.entity(newName, MediaType.TEXT_PLAIN_TYPE));
             response.close();
         } catch (WebApplicationException e) {
@@ -219,7 +265,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<FailureReason> getPossibleFailureReasons() {
         try {
-            return target.path("failureReasons").request(MediaType.APPLICATION_XML_TYPE).get(
+            return target.path(FAILURE_REASONS_BASE_PATH).request(MediaType.APPLICATION_XML_TYPE).get(
                     new GenericType<List<FailureReason>>() {
                     }
             );
@@ -234,7 +280,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public boolean deleteAllowed(String tableName) {
         try {
-            return target.path("permissions").path("delete").path(tableName).request(MediaType.TEXT_PLAIN_TYPE).get(Boolean.class);
+            return target.path(PERMISSIONS_BASE_PATH).path("delete").path(tableName).request(MediaType.TEXT_PLAIN_TYPE).get(Boolean.class);
         } catch (WebApplicationException e) {
             return false;
         } catch (ProcessingException e) {
@@ -245,7 +291,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<AssembledSequence> getAssemblySequences_(Collection<Integer> sequenceIds, Cancelable cancelable, boolean includeFailed) throws DatabaseServiceException {
         try {
-            return target.path("sequences").
+            return target.path(SEQUENCES_BASE_PATH).
                     queryParam("includeFailed", includeFailed).
                     queryParam("ids", StringUtilities.join(",", sequenceIds)).
                     request(MediaType.APPLICATION_XML_TYPE).get(
@@ -267,7 +313,7 @@ public class ServerLimsConnection extends LIMSConnection {
             assemblyIDAsStringToAssemblySequenceToSet.put(String.valueOf(assemblyIDAndAssemblySequenceToSet.getKey()), assemblyIDAndAssemblySequenceToSet.getValue());
         }
         try {
-            target.path("sequences").path("update").request().put(Entity.entity(new StringMap(assemblyIDAsStringToAssemblySequenceToSet), MediaType.APPLICATION_XML_TYPE));
+            target.path(SEQUENCES_BASE_PATH).path("update").request().put(Entity.entity(new StringMap(assemblyIDAsStringToAssemblySequenceToSet), MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -279,7 +325,7 @@ public class ServerLimsConnection extends LIMSConnection {
     public int addAssembly(boolean isPass, String notes, String technician, FailureReason failureReason, String failureNotes, boolean addChromatograms, AssembledSequence seq, List<Integer> reactionIds, Cancelable cancelable) throws DatabaseServiceException {
         //not sure if this need batch
         try {
-            WebTarget resource = target.path("sequences").
+            WebTarget resource = target.path(SEQUENCES_BASE_PATH).
                     queryParam("isPass", isPass).
                     queryParam("notes", notes).
                     queryParam("technician", technician).
@@ -301,7 +347,7 @@ public class ServerLimsConnection extends LIMSConnection {
     public void deleteSequences(List<Integer> sequencesToDelete) throws DatabaseServiceException {
         try {
             for (int id : sequencesToDelete) {
-                target.path("sequences").path(Integer.toString(id)).request().delete();
+                target.path(SEQUENCES_BASE_PATH).path(Integer.toString(id)).request().delete();
             }
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -314,7 +360,7 @@ public class ServerLimsConnection extends LIMSConnection {
     public void setSequenceStatus(boolean submitted, List<Integer> ids) throws DatabaseServiceException {
         try {
             for (Integer id : ids) {
-                target.path("sequences").path("" + id).path("submitted").request().put(Entity.entity(submitted, MediaType.TEXT_PLAIN_TYPE));
+                target.path(SEQUENCES_BASE_PATH).path("" + id).path("submitted").request().put(Entity.entity(submitted, MediaType.TEXT_PLAIN_TYPE));
             }
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -326,7 +372,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void deleteSequencesForWorkflowId(Integer workflowId, String extractionId) throws DatabaseServiceException {
         try {
-            target.path("workflows").path("" + workflowId).path("sequences").path(extractionId).request().delete();
+            target.path(WORKFLOWS_BASE_PATH).path("" + workflowId).path("sequences").path(extractionId).request().delete();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -337,7 +383,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public Map<String, String> getTissueIdsForExtractionIds_(String tableName, List<String> extractionIds) throws DatabaseServiceException {
         try {
-            return target.path("plates").path("tissues").
+            return target.path(PLATES_BASE_PATH).path("tissues").
                     queryParam("type", tableName).
                     queryParam("extractionIds", StringUtilities.join(",", extractionIds)).
                     request(MediaType.APPLICATION_XML_TYPE).
@@ -352,7 +398,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<ExtractionReaction> getExtractionsForIds_(List<String> extractionIds) throws DatabaseServiceException {
         try {
-            return target.path("plates").path("extractions").
+            return target.path(PLATES_BASE_PATH).path("extractions").
                     queryParam("ids", StringUtilities.join(",", extractionIds)).
                     request(MediaType.APPLICATION_XML_TYPE).
                     get(new GenericType<XMLSerializableList<ExtractionReaction>>() {
@@ -371,7 +417,7 @@ public class ServerLimsConnection extends LIMSConnection {
             for (int reactionId : reactionIds) {
                 List<MemoryFile> memoryFiles;
                 try {
-                    Response response = target.path("reactions").path("" + reactionId).path("traces").
+                    Response response = target.path(REACTIONS_BASE_PATH).path("" + reactionId).path("traces").
                             request(MediaType.APPLICATION_XML_TYPE).get();
                     memoryFiles = getListFromResponse(response, new GenericType<List<MemoryFile>>() { });
                 } catch (NotFoundException e) {
@@ -419,7 +465,7 @@ public class ServerLimsConnection extends LIMSConnection {
         try {
             final Set<String> ret = new HashSet<String>();
             ret.addAll(Arrays.asList(
-                    target.path("tissues").path("extractions").queryParam("tissues",
+                    target.path(TISSUES_BASE_PATH).path("extractions").queryParam("tissues",
                             StringUtilities.join(",", tissueIds)).request(MediaType.TEXT_PLAIN_TYPE).get(String.class).split("\\n")
             ));
             return ret;
@@ -434,7 +480,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<ExtractionReaction> getExtractionsFromBarcodes_(List<String> barcodes) throws DatabaseServiceException {
         try {
-            return target.path("extractions").
+            return target.path(EXTRACTIONS_BASE_PATH).
                     queryParam("barcodes", StringUtilities.join(",", barcodes)).
                     request(MediaType.APPLICATION_XML_TYPE).
                     get(new GenericType<XMLSerializableList<ExtractionReaction>>() {
@@ -451,7 +497,7 @@ public class ServerLimsConnection extends LIMSConnection {
         try {
             Map<Integer, List<GelImage>> images = new HashMap<Integer, List<GelImage>>();
             for (Integer plateId : plateIds) {
-                Response response = target.path("plates").path(String.valueOf(plateId)).path("gels").
+                Response response = target.path(PLATES_BASE_PATH).path(String.valueOf(plateId)).path("gels").
                         request(MediaType.APPLICATION_XML_TYPE).get();
                 if(response.getStatus() == 204) {
                     return Collections.emptyMap();
@@ -469,7 +515,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void setProperty(String key, String value) throws DatabaseServiceException {
         try {
-            target.path("info").path("properties").path(key).request().put(Entity.entity(value, MediaType.TEXT_PLAIN_TYPE));
+            target.path(INFO_BASE_PATH).path("properties").path(key).request().put(Entity.entity(value, MediaType.TEXT_PLAIN_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -480,15 +526,13 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public String getProperty(String key) throws DatabaseServiceException {
         try {
-            return target.path("info").path("properties").path(key).request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
+            return target.path(INFO_BASE_PATH).path("properties").path(key).request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         }
     }
-
-    private static final String WORKFLOWS = "workflows";
 
     @Override
     public List<Workflow> getWorkflowsByName(Collection<String> workflowNames) throws DatabaseServiceException {
@@ -501,7 +545,7 @@ public class ServerLimsConnection extends LIMSConnection {
                 if (id.isEmpty()) {
                     continue;
                 }
-                data.add(target.path(WORKFLOWS).path(id).request(MediaType.APPLICATION_XML_TYPE).get(Workflow.class));
+                data.add(target.path(WORKFLOWS_BASE_PATH).path(id).request(MediaType.APPLICATION_XML_TYPE).get(Workflow.class));
             }
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -514,7 +558,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public Map<String, String> getWorkflowNames(List<String> idsToCheck, List<String> loci, Reaction.Type reactionType) throws DatabaseServiceException {
         try {
-            return target.path("extractions").path(WORKFLOWS).
+            return target.path(EXTRACTIONS_BASE_PATH).path("workflows").
                     queryParam("extractionIds", StringUtilities.join(",", idsToCheck)).
                     queryParam("loci", StringUtilities.join(",", loci)).
                     queryParam("type", reactionType.name()).
@@ -529,7 +573,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void renameWorkflow(int id, String newName) throws DatabaseServiceException {
         try {
-            Invocation.Builder request = target.path(WORKFLOWS).path(id + "/name").request();
+            Invocation.Builder request = target.path(WORKFLOWS_BASE_PATH).path(id + "/name").request();
             request.put(Entity.entity(newName, MediaType.TEXT_PLAIN_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -541,7 +585,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void testConnection() throws DatabaseServiceException {
         try {
-            target.path("info").path("details").request(MediaType.TEXT_PLAIN_TYPE).get();
+            target.path(INFO_BASE_PATH).path("details").request(MediaType.TEXT_PLAIN_TYPE).get();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -549,12 +593,10 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    private static final String COCKTAILS = "cocktails";
-
     @Override
     public Collection<String> getPlatesUsingCocktail(Reaction.Type type, int cocktailId) throws DatabaseServiceException {
         try {
-            String platesList = target.path(COCKTAILS).path(type.name()).path("" + cocktailId).path("plates").request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
+            String platesList = target.path(COCKTAILS_BASE_PATH).path(type.name()).path("" + cocktailId).path("plates").request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
             return Arrays.asList(platesList.split("\\n"));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -566,7 +608,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void addCocktails(List<? extends Cocktail> cocktails) throws DatabaseServiceException {
         try {
-            target.path(COCKTAILS).request().put(Entity.entity(
+            target.path(COCKTAILS_BASE_PATH).request().put(Entity.entity(
                     new XMLSerializableList<Cocktail>(Cocktail.class, new ArrayList<Cocktail>(cocktails)),
                     MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
@@ -579,7 +621,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void deleteCocktails(List<? extends Cocktail> deletedCocktails) throws DatabaseServiceException {
         try {
-            target.path(COCKTAILS).path("delete").request().post(Entity.entity(
+            target.path(COCKTAILS_BASE_PATH).path("delete").request().post(Entity.entity(
                     new XMLSerializableList<Cocktail>(Cocktail.class, new ArrayList<Cocktail>(deletedCocktails)),
                     MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
@@ -592,7 +634,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<PCRCocktail> getPCRCocktailsFromDatabase() throws DatabaseServiceException {
         try {
-            return target.path(COCKTAILS).path(Cocktail.Type.pcr.name()).request(MediaType.APPLICATION_XML_TYPE).get(
+            return target.path(COCKTAILS_BASE_PATH).path(Cocktail.Type.pcr.name()).request(MediaType.APPLICATION_XML_TYPE).get(
                     new GenericType<XMLSerializableList<PCRCocktail>>() {
                     }
             ).getList();
@@ -606,7 +648,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<CycleSequencingCocktail> getCycleSequencingCocktailsFromDatabase() throws DatabaseServiceException {
         try {
-            return target.path(COCKTAILS).path(Cocktail.Type.cyclesequencing.name()).request(MediaType.APPLICATION_XML_TYPE).get(
+            return target.path(COCKTAILS_BASE_PATH).path(Cocktail.Type.cyclesequencing.name()).request(MediaType.APPLICATION_XML_TYPE).get(
                     new GenericType<XMLSerializableList<CycleSequencingCocktail>>() {
                     }
             ).getList();
@@ -617,15 +659,10 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    private static final String THERMOCYCLES = "thermocycles";
-
     @Override
     public List<Thermocycle> getThermocyclesFromDatabase(Thermocycle.Type type) throws DatabaseServiceException {
         try {
-            return target.path(THERMOCYCLES).path(type.name()).request(MediaType.APPLICATION_XML_TYPE).get(
-                    new GenericType<XMLSerializableList<Thermocycle>>() {
-                    }
-            ).getList();
+            return target.path(THERMOCYCLES_BASE_PATH).path(type.name()).request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Thermocycle>>(){}).getList();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -633,14 +670,14 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    private static final String BCIDROOTS = "bcid-roots";
-
-    private void updateBCIDRoots() throws DatabaseServiceException {
+    private void updateBCIDRootsCache() throws DatabaseServiceException {
         try {
-            List<BCIDRoot> BCIDRootsList = target.path(BCIDROOTS).request(MediaType.APPLICATION_JSON_TYPE).get(new GenericType<List<BCIDRoot>>() {});
-            BCIDRoots.clear();
-            for (BCIDRoot val : BCIDRootsList) {
-                BCIDRoots.put(val.type, val.value);
+            List<BCIDRoot> BCIDRoots = target.path(BCIDROOTS_BASE_PATH).request(MediaType.APPLICATION_JSON_TYPE).get(new GenericType<List<BCIDRoot>>() {});
+
+            BCIDRootsCache.clear();
+
+            for (BCIDRoot val : BCIDRoots) {
+                BCIDRootsCache.put(val.type, val.value);
             }
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -649,12 +686,12 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    public Map<String, String> getBCIDRoots() { return BCIDRoots; }
+    public Map<String, String> getBCIDRoots() { return Collections.unmodifiableMap(BCIDRootsCache); }
 
     @Override
     public void addThermoCycles(Thermocycle.Type type, List<Thermocycle> cycles) throws DatabaseServiceException {
         try {
-            target.path(THERMOCYCLES).path(type.name()).request().post(Entity.entity(
+            target.path(THERMOCYCLES_BASE_PATH).path(type.name()).request().post(Entity.entity(
                     new XMLSerializableList<Thermocycle>(Thermocycle.class, cycles), MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -666,7 +703,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public void deleteThermoCycles(Thermocycle.Type type, List<Thermocycle> cycles) throws DatabaseServiceException {
         try {
-            target.path(THERMOCYCLES).path(type.name()).path("delete").request().post(Entity.entity(
+            target.path(THERMOCYCLES_BASE_PATH).path(type.name()).path("delete").request().post(Entity.entity(
                     new XMLSerializableList<Thermocycle>(Thermocycle.class, cycles), MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
@@ -678,7 +715,7 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public List<String> getPlatesUsingThermocycle(int thermocycleId) throws DatabaseServiceException {
         try {
-            String result = target.path(THERMOCYCLES).path("" + thermocycleId).path("plates").request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
+            String result = target.path(THERMOCYCLES_BASE_PATH).path("" + thermocycleId).path("plates").request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
             if (result == null) {
                 return Collections.emptyList();
             } else {
@@ -691,11 +728,19 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    private static final String PROJECTS = "projects";
-
-    public List<Project> getAllProjects() throws DatabaseServiceException {
+    private void updateProjectsToWorkflowsMappingCache() throws DatabaseServiceException {
         try {
-            return (List<Project>)target.path(PROJECTS).request(MediaType.APPLICATION_ATOM_XML_TYPE).get().getEntity();
+            Multimap<Project, Workflow> projectToWorkflows = ArrayListMultimap.<Project, Workflow>create();
+
+            for (Project project : target.path(PROJECTS_BASE_PATH).request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<List<Project>>(){})) {
+                projectToWorkflows.putAll(
+                        project,
+                        target.path(PROJECTS_BASE_PATH).path(Integer.toString(project.id)).path("workflows").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Workflow>>() {
+                        }).getList()
+                );
+            }
+
+            projectToWorkflowsMappingCache = projectToWorkflows.asMap();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -703,9 +748,23 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    public void assignWorkflowUnderProject() throws DatabaseServiceException {
+    public void assignWorkflowToProject(int workflowID, int projectID) throws DatabaseServiceException {
         try {
+            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectID)).path("workflows").request().post(Entity.entity(Integer.toString(workflowID), MediaType.TEXT_PLAIN_TYPE));
 
+            updateProjectsToWorkflowsMappingCache();
+        } catch (WebApplicationException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        } catch (ProcessingException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        }
+    }
+
+    public void unassignWorkflowFromProject(int workflowID, int projectID) throws DatabaseServiceException {
+        try {
+            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectID)).path("workflows").path(Integer.toString(workflowID)).request().delete();
+
+            updateProjectsToWorkflowsMappingCache();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {

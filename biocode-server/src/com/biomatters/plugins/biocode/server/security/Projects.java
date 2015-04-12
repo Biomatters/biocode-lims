@@ -174,12 +174,14 @@ public class Projects {
 
     @POST
     @Consumes({"application/json", "application/xml"})
-    @Path("{id}/workflows/{workflowID}")
-    public void assignWorkflowToProject(@PathParam("id")int projectID, @PathParam("workflowID")int workflowID) {
+    @Path("{id}/workflows")
+    public void assignWorkflowToProject(@PathParam("id")int projectID, String workflowID) {
         try {
-            assignWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectID, Collections.singletonList(workflowID));
+            assignWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectID, Collections.singletonList(Integer.valueOf(workflowID)));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The assignment of workflow with ID " + workflowID + " to project with ID " + projectID + " was unsuccessful: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            throw new InternalServerErrorException("Invalid workflow ID: " + e.getMessage());
         }
     }
 

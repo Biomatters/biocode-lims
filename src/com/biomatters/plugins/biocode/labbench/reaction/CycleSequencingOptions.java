@@ -13,6 +13,9 @@ import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.TextAreaOption;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
+import com.biomatters.plugins.biocode.server.HasProjectOptions;
+import com.biomatters.plugins.biocode.server.Project;
+import com.biomatters.plugins.biocode.server.ProjectUtilities;
 import org.jdom.Element;
 import org.virion.jam.util.SimpleListener;
 
@@ -34,7 +37,7 @@ import java.util.*;
  *          <p/>
  *          Created on 24/06/2009 7:35:20 PM
  */
-public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReaction> {
+public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReaction> implements HasProjectOptions {
     public static void main(String[] args) {
         try{
           String url="http://genesetdb.auckland.ac.nz/HyperTestRemote.php?genelist=foxl1,foxl2&id=symbol&db=All&fdr=0.05";
@@ -56,6 +59,9 @@ public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReact
     private ButtonOption cocktailButton;
     private Option<String, ? extends JComponent> labelOption;
     private com.biomatters.plugins.biocode.labbench.ButtonOption tracesButton;
+
+    private ComboBoxOption<OptionValue> projectsOption;
+    private static final OptionValue NO_PROJECT_OPTION_VALUE = new OptionValue("No project", "None");
 
     static final String SEQ_RESULTS_BUTTON_NAME = "viewSeqResults";
     public static final String PRIMER_OPTION_ID = "primer";
@@ -277,6 +283,39 @@ public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReact
 
         labelOption = new LabelOption(LABEL_OPTION_ID, "Total Volume of Reaction: 0uL");
         addCustomOption(labelOption);
+
+        projectsOption = addComboBoxOption("projects", "Projects", Collections.singletonList(NO_PROJECT_OPTION_VALUE), NO_PROJECT_OPTION_VALUE);
+    }
+
+    @Override
+    public void setPossibleProjects(Collection<Project> projects) {
+        if (projects == null) {
+            throw new IllegalArgumentException("projects is null.");
+        }
+
+        List<OptionValue> possibleProjects = new ArrayList<OptionValue>();
+
+        possibleProjects.add(NO_PROJECT_OPTION_VALUE);
+        possibleProjects.addAll(ProjectUtilities.projectsToOptionValues(projects));
+
+        projectsOption.setPossibleValues(possibleProjects);
+    }
+
+    @Override
+    public void setSelectedPossibleProject(Project project) {
+        if (project == null) {
+            throw new IllegalArgumentException("project is null.");
+        }
+        if (!ProjectUtilities.contains(projectsOption.getPossibleOptionValues(), project)) {
+            throw new IllegalArgumentException("project is not a possible project.");
+        }
+
+        projectsOption.setValue(ProjectUtilities.projectsToOptionValues(Collections.singleton(project)).get(0));
+    }
+
+    @Override
+    public int getIDOfSelectedPossibleProject() {
+        return ProjectUtilities.getProjectID(projectsOption.getValue());
     }
 
     private List<OptionValue> getCocktails() {

@@ -231,7 +231,6 @@ public class Plate implements XMLSerializable {
         reactions = newReactions;
     }
 
-
     public Thermocycle getThermocycle() {
         return thermocycle;
     }

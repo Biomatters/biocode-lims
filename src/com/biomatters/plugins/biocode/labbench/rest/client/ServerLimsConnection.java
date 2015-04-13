@@ -131,55 +131,15 @@ public class ServerLimsConnection extends LIMSConnection {
         }
 
         try {
-            List<Plate> plates = target.path(PLATES_BASE_PATH)
+            return target.path(PLATES_BASE_PATH)
                     .queryParam("ids", StringUtilities.join(",", plateIds))
-                    .request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Plate>>() {
-                    }).getList();
-
-            for (Plate plate : plates) {
-                for (Reaction reaction : plate.getReactions()) {
-                    setProjectValues(reaction);
-                }
-            }
-
-            return plates;
+                    .request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Plate>>(){}).getList();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         }
     }
-
-    private void setProjectValues(Reaction reaction) {
-        if (reaction == null) {
-            throw new IllegalArgumentException("reation is null.");
-        }
-
-        ReactionOptions reactionOptions = reaction.getOptions();
-        Workflow workflow = reaction.getWorkflow();
-        if (reactionOptions instanceof HasProjectOptions && workflow != null) {
-            HasProjectOptions hasProjectOptions = (HasProjectOptions)reaction.getOptions();
-
-            hasProjectOptions.setPossibleProjects(projectToWorkflowsMappingCache.keySet());
-
-            Project projectUnderWhichReactionIsAssigned = getProject(projectToWorkflowsMappingCache, workflow.getId());
-            if (projectUnderWhichReactionIsAssigned != null) {
-                hasProjectOptions.setSelectedPossibleProject(projectUnderWhichReactionIsAssigned);
-            }
-        }
-    }
-
-    private Project getProject(Map<Project, Collection<Workflow>> projectToWorkflows, int workflowID) {
-        for (Map.Entry<Project, Collection<Workflow>> projectAndWorkflows : projectToWorkflows.entrySet()) {
-            for (Workflow workflow : projectAndWorkflows.getValue()) {
-                if (workflow.getId() == workflowID) {
-                    return projectAndWorkflows.getKey();
-                }
-            }
-        }
-        return null;
-    }
-
 
     @Override
     public void savePlates(List<Plate> plates, ProgressListener progress) throws BadDataException, DatabaseServiceException {

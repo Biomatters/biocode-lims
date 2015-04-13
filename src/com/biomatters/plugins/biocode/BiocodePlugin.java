@@ -370,7 +370,8 @@ public class BiocodePlugin extends GeneiousPlugin {
                 new AddAssemblyResultsToLimsOperation(false, false),
                 new MarkSequencesAsSubmittedInLimsOperation(),
                 new GenerateBOLDTraceSubmissionOperation(),
-                new ReverseAssemblySequencesOperation()
+                new ReverseAssemblySequencesOperation(),
+                new ProjectAssignmentOperation()
 //                new WorkflowBuilder(),  // Used as a one off to import raw Biocode data into Darwin
 //                new MetagenomicsDocumentOperation()
                 //new ImportLimsOperation()

@@ -12,9 +12,6 @@ import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.TextAreaOption;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
-import com.biomatters.plugins.biocode.server.HasProjectOptions;
-import com.biomatters.plugins.biocode.server.Project;
-import com.biomatters.plugins.biocode.server.ProjectUtilities;
 import org.jdom.Element;
 import org.virion.jam.util.SimpleListener;
 
@@ -29,14 +26,11 @@ import java.util.*;
  *          <p/>
  *          Created on 23/06/2009 12:45:32 PM
  */
-public class PCROptions extends ReactionOptions<PCRReaction> implements HasProjectOptions {
+public class PCROptions extends ReactionOptions<PCRReaction> {
 
     private ButtonOption cocktailButton;
     private Option<String, ? extends JComponent> labelOption;
     private ComboBoxOption cocktailOption;
-
-    private ComboBoxOption<OptionValue> projectsOption;
-    public static final OptionValue NO_PROJECT_OPTION_VALUE = new OptionValue("No project", "None");
 
     public static final String PRIMER_OPTION_ID = "primer";
     public static final String PRIMER_REVERSE_OPTION_ID = "revPrimer";
@@ -197,39 +191,6 @@ public class PCROptions extends ReactionOptions<PCRReaction> implements HasProje
 
         labelOption = new LabelOption(LABEL_OPTION_ID, "Total Volume of Reaction: 0uL");
         addCustomOption(labelOption);
-
-        projectsOption = addComboBoxOption("projects", "Projects", Collections.singletonList(NO_PROJECT_OPTION_VALUE), NO_PROJECT_OPTION_VALUE);
-    }
-
-    @Override
-    public void setPossibleProjects(Collection<Project> projects) {
-        if (projects == null) {
-            throw new IllegalArgumentException("projects is null.");
-        }
-
-        List<OptionValue> possibleProjects = new ArrayList<OptionValue>();
-
-        possibleProjects.add(NO_PROJECT_OPTION_VALUE);
-        possibleProjects.addAll(ProjectUtilities.projectsToOptionValues(projects));
-
-        projectsOption.setPossibleValues(possibleProjects);
-    }
-
-    @Override
-    public void setSelectedPossibleProject(Project project) {
-        if (project == null) {
-            throw new IllegalArgumentException("project is null.");
-        }
-        if (!ProjectUtilities.contains(projectsOption.getPossibleOptionValues(), project)) {
-            throw new IllegalArgumentException("project is not a possible project.");
-        }
-
-        projectsOption.setValue(ProjectUtilities.projectsToOptionValues(Collections.singleton(project)).get(0));
-    }
-
-    @Override
-    public int getIDOfSelectedPossibleProject() {
-        return ProjectUtilities.getProjectID(projectsOption.getValue());
     }
 
     private List<OptionValue> getCocktails() {

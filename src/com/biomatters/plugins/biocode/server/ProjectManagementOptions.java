@@ -1,6 +1,5 @@
 package com.biomatters.plugins.biocode.server;
 
-import com.biomatters.geneious.publicapi.components.Dialogs;
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
@@ -10,7 +9,6 @@ import org.virion.jam.util.SimpleListener;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 /**
@@ -71,7 +69,7 @@ public class ProjectManagementOptions extends Options {
             public void objectChanged() {
                 refreshWorkflowList();
 
-                if (projectList.getValue().getName().equals("-1")) {
+                if (projectList.getValue().equals(NONE_PROJECT_OPTION_VALUE)) {
                     workflowInput.setEnabled(false);
                     addWorkflowButton.setEnabled(false);
                     removeWorkflowButton.setEnabled(false);
@@ -131,6 +129,7 @@ public class ProjectManagementOptions extends Options {
             workflowsNotAddedToAProjectOptionValues.add(new OptionValue(String.valueOf(idAndName.getKey()), idAndName.getValue()));
         }
 
+        sortProjectOrWorkflowOptionValues(workflowsNotAddedToAProjectOptionValues);
         return workflowsNotAddedToAProjectOptionValues;
     }
 
@@ -141,11 +140,12 @@ public class ProjectManagementOptions extends Options {
             Project project = projectAndWorkflows.getKey();
             OptionValue projectOptionValue = new OptionValue(String.valueOf(project.id), project.name);
 
-            Collection<OptionValue> workflowOptionValues = new ArrayList<OptionValue>();
+            List<OptionValue> workflowOptionValues = new ArrayList<OptionValue>();
             for (Workflow workflow : projectAndWorkflows.getValue()) {
                 workflowOptionValues.add(new OptionValue(String.valueOf(workflow.getId()), workflow.getName()));
             }
 
+            sortProjectOrWorkflowOptionValues(workflowOptionValues);
             projectToWorkflowsOptionValues.put(projectOptionValue, workflowOptionValues);
         }
 
@@ -161,23 +161,12 @@ public class ProjectManagementOptions extends Options {
     }
 
     private void setMessage(final String value) {
-        Exception exception = null;
-        try {
-            ThreadUtilities.invokeAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    message.setValue(value);
-                }
-            });
-        } catch (InvocationTargetException e) {
-            exception = e;
-        } catch (InterruptedException e) {
-            exception = e;
-        }
-
-        if (exception != null) {
-            Dialogs.showMessageDialog("An error occurred while trying to display a message: " + exception.getMessage());
-        }
+        ThreadUtilities.invokeNowOrWait(new Runnable() {
+            @Override
+            public void run() {
+                message.setValue(value);
+            }
+        });
     }
 
     private List<OptionValue> getWorkflows(OptionValue projectValue) {
@@ -201,5 +190,48 @@ public class ProjectManagementOptions extends Options {
         }
 
         return workflowList.toString();
+    }
+
+    private static void sortProjectOrWorkflowOptionValues(List<OptionValue> optionValues) {
+        Collections.sort(optionValues, new ProjectOrWorkflowOptionValueComparator());
+    }
+
+    private static class ProjectOrWorkflowOptionValueComparator implements Comparator<OptionValue> {
+        @Override
+        public int compare(OptionValue o1, OptionValue o2) {
+            if (o1 == o2) {
+                return 0;
+            }
+
+            if (o1 == null) {
+                return -1;
+            }
+
+            if (o2 == null) {
+                return 1;
+            }
+
+            int o1Id, o2Id;
+
+            try {
+                o1Id = Integer.valueOf(o1.getName());
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+
+            try {
+                o2Id = Integer.valueOf(o2.getName());
+            } catch (NumberFormatException e) {
+                return 1;
+            }
+
+            if (o1Id > o2Id) {
+                return 1;
+            } else if (o1Id < o2Id) {
+                return -1;
+            } else {
+                return 0;
+            }
+        }
     }
 }

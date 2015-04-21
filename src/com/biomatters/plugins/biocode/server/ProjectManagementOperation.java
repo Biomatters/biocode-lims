@@ -6,7 +6,7 @@ import com.biomatters.geneious.publicapi.plugin.*;
 import com.biomatters.plugins.biocode.BiocodePlugin;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
-import com.biomatters.plugins.biocode.labbench.lims.ProjectLimsConnection;
+import com.biomatters.plugins.biocode.labbench.lims.ProjectLIMSConnection;
 import jebl.util.ProgressListener;
 
 import java.util.Collections;
@@ -42,11 +42,11 @@ public class ProjectManagementOperation extends DocumentOperation {
 
         try {
             LIMSConnection limsConnection = BiocodeService.getInstance().getActiveLIMSConnection();
-            if (!(limsConnection instanceof ProjectLimsConnection)) {
+            if (!(limsConnection instanceof ProjectLIMSConnection)) {
                 throw new DocumentOperationException("Please connect to a lims database that supports projects.");
             }
 
-            return new ProjectManagementOptions((ProjectLimsConnection)limsConnection);
+            return new ProjectManagementOptions((ProjectLIMSConnection)limsConnection);
         } catch (DatabaseServiceException e) {
             throw new DocumentOperationException(e.getMessage(), e);
         }

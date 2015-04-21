@@ -1,13 +1,16 @@
 package com.biomatters.plugins.biocode.server;
 
+import com.biomatters.geneious.publicapi.components.Dialogs;
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.plugin.Options;
+import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
 import com.biomatters.plugins.biocode.labbench.Workflow;
-import com.biomatters.plugins.biocode.labbench.lims.ProjectLimsConnection;
+import com.biomatters.plugins.biocode.labbench.lims.ProjectLIMSConnection;
 import org.virion.jam.util.SimpleListener;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 /**
@@ -24,10 +27,10 @@ public class ProjectManagementOptions extends Options {
 
     private static final OptionValue NONE_PROJECT_OPTION_VALUE = new OptionValue("-1", "None");
 
-    private ProjectLimsConnection projectLimsConnection;
+    private ProjectLIMSConnection projectLimsConnection;
     private Map<OptionValue, Collection<OptionValue>> projectToWorkflows = new HashMap<OptionValue, Collection<OptionValue>>();
 
-    public ProjectManagementOptions(ProjectLimsConnection projectLimsConnection) {
+    public ProjectManagementOptions(ProjectLIMSConnection projectLimsConnection) {
         this.projectLimsConnection = projectLimsConnection;
         refreshLocalMappingOfProjectToWorkflows();
         initOptions();
@@ -158,7 +161,23 @@ public class ProjectManagementOptions extends Options {
     }
 
     private void setMessage(final String value) {
-        message.setValue(value);
+        Exception exception = null;
+        try {
+            ThreadUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    message.setValue(value);
+                }
+            });
+        } catch (InvocationTargetException e) {
+            exception = e;
+        } catch (InterruptedException e) {
+            exception = e;
+        }
+
+        if (exception != null) {
+            Dialogs.showMessageDialog("An error occurred while trying to display a message: " + exception.getMessage());
+        }
     }
 
     private List<OptionValue> getWorkflows(OptionValue projectValue) {

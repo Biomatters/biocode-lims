@@ -9,7 +9,7 @@ import com.biomatters.geneious.publicapi.documents.sequence.NucleotideSequenceDo
 import com.biomatters.geneious.publicapi.plugin.*;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
-import com.biomatters.plugins.biocode.labbench.rest.client.ServerLimsConnection;
+import com.biomatters.plugins.biocode.labbench.rest.client.ServerLIMSConnection;
 import jebl.util.ProgressListener;
 import org.jdom.Element;
 import org.virion.jam.util.SimpleListener;
@@ -132,11 +132,11 @@ public class WorkflowDocument extends MuitiPartDocument {
             try {
                 limsConnection = BiocodeService.getInstance().getActiveLIMSConnection();
 
-                if (!(limsConnection instanceof ServerLimsConnection)) {
+                if (!(limsConnection instanceof ServerLIMSConnection)) {
                     return "";
                 }
 
-                String workflowBCIDRoot = ((ServerLimsConnection) limsConnection).getBCIDRoots().get("workflow");
+                String workflowBCIDRoot = ((ServerLIMSConnection) limsConnection).getBCIDRoots().get("workflow");
 
                 if (workflowBCIDRoot == null || workflow == null) {
                     return "";

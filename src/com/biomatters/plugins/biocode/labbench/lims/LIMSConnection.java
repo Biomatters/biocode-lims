@@ -8,7 +8,7 @@ import com.biomatters.plugins.biocode.labbench.*;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
-import com.biomatters.plugins.biocode.labbench.rest.client.ServerLimsConnection;
+import com.biomatters.plugins.biocode.labbench.rest.client.ServerLIMSConnection;
 import jebl.util.Cancelable;
 import jebl.util.ProgressListener;
 
@@ -138,7 +138,7 @@ public abstract class LIMSConnection {
     public static enum AvailableLimsTypes {
         local(LocalLIMSConnection.class, "Built-in MySQL Database", "Create and connect to LIMS databases on your local computer (stored with your Geneious data)"),
         remote(MysqlLIMSConnection.class, "Remote MySQL Database", "Connect to a LIMS database on a remote MySQL server"),
-        server(ServerLimsConnection.class, "Biocode Server", "Connect to an instance of the Biocode Server.");
+        server(ServerLIMSConnection.class, "Biocode Server", "Connect to an instance of the Biocode Server.");
         private final Class limsClass;
         private final String label;
         private final String description;
@@ -408,12 +408,12 @@ public abstract class LIMSConnection {
      */
     public final void retrieveWorkflowsById(Collection<Integer> workflowIds, final LimsSearchCallback<WorkflowDocument> callback) throws DatabaseServiceException {
         performRetrieval(workflowIds, new Operation<Integer, WorkflowDocument>() {
-            @Override
-            List<WorkflowDocument> doIt(Collection<Integer> inputs, Cancelable cancelable) throws DatabaseServiceException {
-                return getWorkflowsById_(inputs, callback);
-            }
-        },
-        callback);
+                    @Override
+                    List<WorkflowDocument> doIt(Collection<Integer> inputs, Cancelable cancelable) throws DatabaseServiceException {
+                        return getWorkflowsById_(inputs, callback);
+                    }
+                },
+                callback);
     }
 
     /**

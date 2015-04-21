@@ -166,18 +166,35 @@ public class Projects {
     @Path("{id}/workflows")
     public XMLSerializableList<Workflow> listWorkflowsAssignedToProject(@PathParam("id")int projectID) {
         try {
-            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsAssignedToProject(LIMSInitializationListener.getDataSource(), projectID)));
+            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsFromProject(LIMSInitializationListener.getDataSource(), projectID)));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of workflows assigned to project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
     }
 
-    @POST
-    @Consumes({"application/json", "application/xml"})
-    @Path("{id}/workflows")
-    public void assignWorkflowToProject(@PathParam("id")int projectID, String workflowID) {
+    @GET
+    @Produces("application/xml")
+    @Path("workflows/notAddedToAProject")
+    public StringMap getIDAndNameOfWorkflowsNotAddedToAProject() {
         try {
-            assignWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectID, Collections.singletonList(Integer.valueOf(workflowID)));
+            DataSource dataSource = LIMSInitializationListener.getDataSource();
+
+            if (dataSource == null) {
+                throw new IllegalStateException("dataSource is null.");
+            }
+
+            return getIDAndNameOfWorkflowsNotAddedToAProject(dataSource);
+        } catch (SQLException e) {
+            throw new InternalServerErrorException("The retrieval of the id and name of workflows not added to a project was unsuccessful: " + e.getMessage());
+        }
+    }
+
+    @POST
+    @Consumes({"text/plain"})
+    @Path("{id}/workflows")
+    public void addWorkflowToProject(@PathParam("id") int projectID, String workflowID) {
+        try {
+            addWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectID, Collections.singletonList(Integer.valueOf(workflowID)));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The assignment of workflow with ID " + workflowID + " to project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         } catch (NumberFormatException e) {
@@ -187,9 +204,9 @@ public class Projects {
 
     @DELETE
     @Path("{id}/workflows/{workflowID}")
-    public void unassignWorkflowsFromProjects(@PathParam("id")int projectID, @PathParam("workflowID")int workflowID) {
+    public void removeWorkflowsFromProjects(@PathParam("id") int projectID, @PathParam("workflowID") int workflowID) {
         try {
-            unassignWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), Collections.singletonList(workflowID));
+            removeWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), Collections.singletonList(workflowID));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The unassignment of workflow with ID " + workflowID + " from project with ID " + projectID + " was unsuccessful: " + e.getMessage());
         }
@@ -602,7 +619,7 @@ public class Projects {
         }
     }
 
-    static Set<Workflow> getWorkflowsAssignedToProject(DataSource dataSource, int projectID) throws SQLException {
+    static Set<Workflow> getWorkflowsFromProject(DataSource dataSource, int projectID) throws SQLException {
         if (dataSource == null) {
             throw new IllegalArgumentException("dataSource is null.");
         }
@@ -610,32 +627,65 @@ public class Projects {
         Set<Workflow> workflows = new HashSet<Workflow>();
 
         Connection connection = null;
-        PreparedStatement getWorkflowsAssignedToProjectStatement = null;
+        PreparedStatement getWorkflowsFromProjectStatement = null;
         ResultSet getWorkflowsResultSet = null;
         try {
             connection = dataSource.getConnection();
-            getWorkflowsAssignedToProjectStatement = connection.prepareStatement(
-                    "SELECT workflow.* FROM workflow, " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
-                    " WHERE " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".project_id=? " +
-                    "AND workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME+ ".workflow_id "
+            getWorkflowsFromProjectStatement = connection.prepareStatement(
+                    "SELECT workflow.* FROM workflow " +
+                            "LEFT OUTER JOIN " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                            " ON workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id" +
+                            " WHERE " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".project_id=?"
             );
 
-            getWorkflowsAssignedToProjectStatement.setInt(1, projectID);
+            getWorkflowsFromProjectStatement.setInt(1, projectID);
 
-            getWorkflowsResultSet = getWorkflowsAssignedToProjectStatement.executeQuery();
+            getWorkflowsResultSet = getWorkflowsFromProjectStatement.executeQuery();
             while (getWorkflowsResultSet.next()) {
                 workflows.add(new Workflow(getWorkflowsResultSet));
             }
         } finally {
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(getWorkflowsAssignedToProjectStatement);
+            SqlUtilities.cleanUpStatements(getWorkflowsFromProjectStatement);
             SqlUtilities.cleanUpResultSets(getWorkflowsResultSet);
         }
 
         return workflows;
     }
 
-    static void assignWorkflowsToProject(DataSource dataSource, int projectID, Collection<Integer> workflowIDs) throws SQLException {
+    static StringMap getIDAndNameOfWorkflowsNotAddedToAProject(DataSource dataSource) throws SQLException {
+        if (dataSource == null) {
+            throw new IllegalArgumentException("dataSource is null.");
+        }
+
+        Map<String, String> idAndNames = new HashMap<String, String>();
+
+        Connection connection = null;
+        PreparedStatement getIDAndNameOfWorkflowsNotAddedToAProjectStatement = null;
+        ResultSet getIDAndNameOfWorkflowsNotAddedToAProjectResultSet = null;
+        try {
+            connection = dataSource.getConnection();
+            getIDAndNameOfWorkflowsNotAddedToAProjectStatement = connection.prepareStatement(
+                "SELECT workflow.id AS id, workflow.name AS name " +
+                "FROM workflow LEFT JOIN " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                " ON workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id " +
+                "WHERE " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id IS NULL"
+            );
+
+            getIDAndNameOfWorkflowsNotAddedToAProjectResultSet = getIDAndNameOfWorkflowsNotAddedToAProjectStatement.executeQuery();
+            while (getIDAndNameOfWorkflowsNotAddedToAProjectResultSet.next()) {
+                idAndNames.put(Integer.toString(getIDAndNameOfWorkflowsNotAddedToAProjectResultSet.getInt("id")), getIDAndNameOfWorkflowsNotAddedToAProjectResultSet.getString("name"));
+            }
+        } catch (SQLException e) {
+          e.printStackTrace();
+        } finally {
+            SqlUtilities.closeConnection(connection);
+        }
+
+        return new StringMap(idAndNames);
+    }
+
+    static void addWorkflowsToProject(DataSource dataSource, int projectID, Collection<Integer> workflowIDs) throws SQLException {
         if (dataSource == null) {
             throw new IllegalArgumentException("dataSource is null.");
         }
@@ -649,40 +699,43 @@ public class Projects {
         workflowIDs = new HashSet<Integer>(workflowIDs);
 
         Connection connection = null;
-        PreparedStatement retrieveIDsOfWorkflowsAssignedToProjectStatement = null;
-        ResultSet retrieveIDsOfWorkflowsAssignedToProjectResultSet = null;
-        Set<Integer> idsOfWorkflowsAssignedToAProject = new HashSet<Integer>();
-        Set<Integer> idsOfWorkflowsNotAssignedToAProject = new HashSet<Integer>(workflowIDs);
+        PreparedStatement retrieveIDsOfWorkflowsFromProjectStatement = null;
+        ResultSet retrieveIDsOfWorkflowsFromProjectResultSet = null;
+        Set<Integer> idsOfWorkflowsAddedToAProject = new HashSet<Integer>();
+        Set<Integer> idsOfWorkflowsNotAddedToAProject = new HashSet<Integer>(workflowIDs);
         try {
             connection = dataSource.getConnection();
-            retrieveIDsOfWorkflowsAssignedToProjectStatement = connection.prepareStatement(
+            retrieveIDsOfWorkflowsFromProjectStatement = connection.prepareStatement(
                     "SELECT workflow_id FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
-                    " WHERE workflow.id IN (" + workflowIDs.size() + ")"
+                    " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
             );
 
-            retrieveIDsOfWorkflowsAssignedToProjectStatement.setInt(1, projectID);
-            int statementObjectIndex = 2;
+            int statementObjectIndex = 1;
             for (Integer workflowID : workflowIDs) {
-                retrieveIDsOfWorkflowsAssignedToProjectStatement.setInt(statementObjectIndex++, workflowID);
+                retrieveIDsOfWorkflowsFromProjectStatement.setInt(statementObjectIndex++, workflowID);
             }
 
-            retrieveIDsOfWorkflowsAssignedToProjectResultSet = retrieveIDsOfWorkflowsAssignedToProjectStatement.executeQuery();
-            while (retrieveIDsOfWorkflowsAssignedToProjectResultSet.next()) {
-                idsOfWorkflowsAssignedToAProject.add(retrieveIDsOfWorkflowsAssignedToProjectResultSet.getInt(1));
+            retrieveIDsOfWorkflowsFromProjectResultSet = retrieveIDsOfWorkflowsFromProjectStatement.executeQuery();
+            while (retrieveIDsOfWorkflowsFromProjectResultSet.next()) {
+                idsOfWorkflowsAddedToAProject.add(retrieveIDsOfWorkflowsFromProjectResultSet.getInt(1));
             }
 
-            idsOfWorkflowsNotAssignedToAProject.removeAll(idsOfWorkflowsAssignedToAProject);
+            idsOfWorkflowsNotAddedToAProject.removeAll(idsOfWorkflowsAddedToAProject);
 
             SqlUtilities.beginTransaction(connection);
 
-            insertWorkflowProjectMapping(dataSource, projectID, idsOfWorkflowsNotAssignedToAProject);
-            updateWorkflowProjectMapping(dataSource, projectID, idsOfWorkflowsAssignedToAProject);
+            if (!idsOfWorkflowsNotAddedToAProject.isEmpty()) {
+                insertWorkflowProjectMapping(dataSource, projectID, idsOfWorkflowsNotAddedToAProject);
+            }
+            if (!idsOfWorkflowsNotAddedToAProject.isEmpty()) {
+                updateWorkflowProjectMapping(dataSource, projectID, idsOfWorkflowsAddedToAProject);
+            }
 
             SqlUtilities.commitTransaction(connection);
         } finally {
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(retrieveIDsOfWorkflowsAssignedToProjectStatement);
-            SqlUtilities.cleanUpResultSets(retrieveIDsOfWorkflowsAssignedToProjectResultSet);
+            SqlUtilities.cleanUpStatements(retrieveIDsOfWorkflowsFromProjectStatement);
+            SqlUtilities.cleanUpResultSets(retrieveIDsOfWorkflowsFromProjectResultSet);
         }
     }
 
@@ -706,7 +759,7 @@ public class Projects {
             connection = dataSource.getConnection();
             addWorkflowsToProjectsStatement = connection.prepareStatement(
                     "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + "(workflow_id, project_id) " +
-                    "VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
+                    "VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(2) + ")"
             );
 
             addWorkflowsToProjectsStatement.setInt(2, projectID);
@@ -746,24 +799,24 @@ public class Projects {
         workflowIDs = new HashSet<Integer>(workflowIDs);
 
         Connection connection = null;
-        PreparedStatement assignProjectToWorkflowsStatement = null;
+        PreparedStatement updateProjectToWorkflowsStatement = null;
         try {
             connection = dataSource.getConnection();
-            assignProjectToWorkflowsStatement = connection.prepareStatement(
+            updateProjectToWorkflowsStatement = connection.prepareStatement(
                     "UPDATE " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
                     " SET project_id=? " +
                     "WHERE workflow_id=?"
             );
 
-            assignProjectToWorkflowsStatement.setInt(1, projectID);
+            updateProjectToWorkflowsStatement.setInt(1, projectID);
             for (Integer workflowID : workflowIDs) {
-                assignProjectToWorkflowsStatement.setInt(2, workflowID);
-                assignProjectToWorkflowsStatement.addBatch();
+                updateProjectToWorkflowsStatement.setInt(2, workflowID);
+                updateProjectToWorkflowsStatement.addBatch();
             }
 
             SqlUtilities.beginTransaction(connection);
 
-            int[] assignmentResults = assignProjectToWorkflowsStatement.executeBatch();
+            int[] assignmentResults = updateProjectToWorkflowsStatement.executeBatch();
             for (int assignmentResult : assignmentResults) {
                 if (assignmentResult != 1 && assignmentResult != PreparedStatement.SUCCESS_NO_INFO) {
                     throw new InternalServerErrorException("The assignment of project with ID " + projectID + " to 1 or more workflows was unsuccessful. Changes will be undone.");
@@ -773,11 +826,11 @@ public class Projects {
             SqlUtilities.commitTransaction(connection);
         } finally {
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(assignProjectToWorkflowsStatement);
+            SqlUtilities.cleanUpStatements(updateProjectToWorkflowsStatement);
         }
     }
 
-    static void unassignWorkflowsFromProjects(DataSource dataSource, Collection<Integer> workflowIDs) throws SQLException {
+    static void removeWorkflowsFromProjects(DataSource dataSource, Collection<Integer> workflowIDs) throws SQLException {
         if (dataSource == null) {
             throw new IllegalArgumentException("dataSource is null.");
         }
@@ -791,23 +844,23 @@ public class Projects {
         workflowIDs = new HashSet<Integer>(workflowIDs);
 
         Connection connection = null;
-        PreparedStatement removeWorkflowsAssignedToProjectStatement = null;
+        PreparedStatement removeWorkflowsFromProjectStatement = null;
         try {
             connection = dataSource.getConnection();
-            removeWorkflowsAssignedToProjectStatement = connection.prepareStatement(
-                    "DELETE * FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+            removeWorkflowsFromProjectStatement = connection.prepareStatement(
+                    "DELETE FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
                     " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
             );
 
             int statementObjectIndex = 1;
             for (Integer workflowID : workflowIDs) {
-                removeWorkflowsAssignedToProjectStatement.setInt(statementObjectIndex++, workflowID);
+                removeWorkflowsFromProjectStatement.setInt(statementObjectIndex++, workflowID);
             }
 
-            removeWorkflowsAssignedToProjectStatement.executeUpdate();
+            removeWorkflowsFromProjectStatement.executeUpdate();
         } finally {
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(removeWorkflowsAssignedToProjectStatement);
+            SqlUtilities.cleanUpStatements(removeWorkflowsFromProjectStatement);
         }
     }
 

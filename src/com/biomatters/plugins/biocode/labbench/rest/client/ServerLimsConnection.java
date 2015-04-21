@@ -5,10 +5,7 @@ import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceExceptio
 import com.biomatters.geneious.publicapi.databaseservice.Query;
 import com.biomatters.geneious.publicapi.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.labbench.*;
-import com.biomatters.plugins.biocode.labbench.lims.BCIDRoot;
-import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
-import com.biomatters.plugins.biocode.labbench.lims.LimsConnectionOptions;
-import com.biomatters.plugins.biocode.labbench.lims.LimsSearchResult;
+import com.biomatters.plugins.biocode.labbench.lims.*;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
@@ -37,7 +34,7 @@ import java.util.*;
  *          <p/>
  *          Created on 4/04/14 11:14 AM
  */
-public class ServerLimsConnection extends LIMSConnection {
+public class ServerLimsConnection extends ProjectLimsConnection {
     private static final String SEARCH_BASE_PATH            = "search";
     private static final String PROJECTS_BASE_PATH          = "projects";
     private static final String WORKFLOWS_BASE_PATH         = "workflows";
@@ -57,7 +54,6 @@ public class ServerLimsConnection extends LIMSConnection {
     private String username;
     WebTarget target;
     private static Map<String, String> BCIDRootsCache = new HashMap<String, String>();
-    private static Map<Project, Collection<Workflow>> projectToWorkflowsMappingCache = new HashMap<Project, Collection<Workflow>>();
 
     @Override
     protected void _connect(PasswordOptions options) throws ConnectionException {
@@ -86,7 +82,6 @@ public class ServerLimsConnection extends LIMSConnection {
     @Override
     public LimsSearchResult getMatchingDocumentsFromLims(Query query, Collection<String> tissueIdsToMatch, Cancelable cancelable) throws DatabaseServiceException {
         updateBCIDRootsCache();
-        updateProjectsToWorkflowsMappingCache();
 
         String tissueIdsToMatchString = tissueIdsToMatch == null ? null : StringUtilities.join(",", tissueIdsToMatch);
         try {
@@ -108,15 +103,29 @@ public class ServerLimsConnection extends LIMSConnection {
 
     @Override
     public List<WorkflowDocument> getWorkflowsById_(Collection<Integer> workflowIds, Cancelable cancelable) throws DatabaseServiceException {
-        if (workflowIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
         try {
-             return target.path(WORKFLOWS_BASE_PATH)
+            return target.path(WORKFLOWS_BASE_PATH)
                     .queryParam("ids", StringUtilities.join(",", workflowIds))
                     .request(MediaType.APPLICATION_XML_TYPE)
-                    .get(new GenericType<XMLSerializableList<WorkflowDocument>>(){}).getList();
+                    .get(new GenericType<XMLSerializableList<WorkflowDocument>>() {
+                    }).getList();
+        } catch (WebApplicationException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        } catch (ProcessingException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        }
+    }
+
+    @Override
+    public Map<Integer, String> getIDAndNameOfWorkflowsNotAddedToAProject() throws DatabaseServiceException {
+        try {
+            Map<Integer, String> idsAndNames = new HashMap<Integer, String>();
+
+            for (Map.Entry<String, String> idAndName : target.path(PROJECTS_BASE_PATH).path("workflows").path("notAddedToAProject").request(MediaType.APPLICATION_XML_TYPE).get(StringMap.class).getMap().entrySet()) {
+                idsAndNames.put(Integer.valueOf(idAndName.getKey()), idAndName.getValue());
+            }
+
+            return idsAndNames;
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -133,7 +142,9 @@ public class ServerLimsConnection extends LIMSConnection {
         try {
             return target.path(PLATES_BASE_PATH)
                     .queryParam("ids", StringUtilities.join(",", plateIds))
-                    .request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Plate>>(){}).getList();
+                    .request(MediaType.APPLICATION_XML_TYPE)
+                    .get(new GenericType<XMLSerializableList<Plate>>() {
+                    }).getList();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -646,7 +657,8 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    public Map<String, String> getBCIDRoots() { return Collections.unmodifiableMap(BCIDRootsCache); }
+    public Map<String, String> getBCIDRoots() {
+        return Collections.unmodifiableMap(BCIDRootsCache); }
 
     @Override
     public void addThermoCycles(Thermocycle.Type type, List<Thermocycle> cycles) throws DatabaseServiceException {
@@ -688,19 +700,19 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    private void updateProjectsToWorkflowsMappingCache() throws DatabaseServiceException {
+    @Override
+    public Map<Project, Collection<Workflow>> getProjectToWorkflows() throws DatabaseServiceException {
         try {
             Multimap<Project, Workflow> projectToWorkflows = ArrayListMultimap.<Project, Workflow>create();
 
             for (Project project : target.path(PROJECTS_BASE_PATH).request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<List<Project>>(){})) {
                 projectToWorkflows.putAll(
                         project,
-                        target.path(PROJECTS_BASE_PATH).path(Integer.toString(project.id)).path("workflows").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Workflow>>() {
-                        }).getList()
+                        target.path(PROJECTS_BASE_PATH).path(Integer.toString(project.id)).path("workflows").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Workflow>>(){}).getList()
                 );
             }
 
-            projectToWorkflowsMappingCache = projectToWorkflows.asMap();
+            return projectToWorkflows.asMap();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -708,11 +720,10 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    public void assignWorkflowToProject(int workflowID, int projectID) throws DatabaseServiceException {
+    @Override
+    public void addWorkflowToProject(int workflowID, int projectID) throws DatabaseServiceException {
         try {
             target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectID)).path("workflows").request().post(Entity.entity(Integer.toString(workflowID), MediaType.TEXT_PLAIN_TYPE));
-
-            updateProjectsToWorkflowsMappingCache();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -720,11 +731,10 @@ public class ServerLimsConnection extends LIMSConnection {
         }
     }
 
-    public void unassignWorkflowFromProject(int workflowID, int projectID) throws DatabaseServiceException {
+    @Override
+    public void removeWorkflowFromProject(int workflowID, int projectID) throws DatabaseServiceException {
         try {
             target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectID)).path("workflows").path(Integer.toString(workflowID)).request().delete();
-
-            updateProjectsToWorkflowsMappingCache();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {

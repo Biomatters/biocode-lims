@@ -783,6 +783,50 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                 LimsSearchResult limsResult = getActiveLIMSConnection().getMatchingDocumentsFromLims(query,
                         areBrowseQueries(fimsQueries) ? null : tissueIdsMatchingFimsQuery, callback);
 
+                Set<String> tissueIdsToDownload = new HashSet<String>();
+                if(isDownloadTissues(query) || isDownloadSequences(query)) {
+                    // Now add tissues that match the LIMS query
+                    // FimsSamples would have been downloaded as part of plate creation.  Collect them now.
+                    tissueIdsToDownload.addAll(limsResult.getTissueIds());
+                }
+
+                if(isDownloadTissues(query)) {
+                    boolean downloadAllSamplesFromFimsQuery = false;
+                    if(query instanceof BasicSearchQuery || areBrowseQueries(Collections.singletonList(query))) {
+                        downloadAllSamplesFromFimsQuery = true;
+                    } else if(query instanceof AdvancedSearchQueryTerm) {
+                        downloadAllSamplesFromFimsQuery = !fimsQueries.isEmpty();
+                    } else if(query instanceof CompoundSearchQuery) {
+                        CompoundSearchQuery compoundQuery = (CompoundSearchQuery) query;
+                        downloadAllSamplesFromFimsQuery = !fimsQueries.isEmpty() && (
+                                fimsQueries.size() == compoundQuery.getChildren().size() ||
+                                        compoundQuery.getOperator() == CompoundSearchQuery.Operator.OR
+                        );
+                    }
+                    if(downloadAllSamplesFromFimsQuery && tissueIdsMatchingFimsQuery != null) {
+                        tissueIdsToDownload.addAll(tissueIdsMatchingFimsQuery);
+                    }
+                }
+
+                List<FimsSample> tissueSamples = new ArrayList<FimsSample>();
+                try {
+                    if(!tissueIdsToDownload.isEmpty()) {
+                        callback.setMessage("Downloading " + BiocodeUtilities.getCountString("matching tissue", tissueIdsToDownload.size()) + "...");
+                        tissueSamples.addAll(activeFIMSConnection.retrieveSamplesForTissueIds(tissueIdsToDownload));
+                    }
+                } catch (ConnectionException e) {
+                    throw new DatabaseServiceException(e, e.getMessage(), false);
+                }
+                if(isDownloadTissues(query)) {
+                    for (FimsSample tissueSample : tissueSamples) {
+                        callback.add(new TissueDocument(tissueSample), Collections.<String, Object>emptyMap());
+                    }
+                }
+                if(callback.isCanceled()) {
+                    return;
+                }
+
+                final AtomicReference<Exception> plateRetrievalException = new AtomicReference<Exception>();
                 if(!limsResult.getPlateIds().isEmpty() && isDownloadPlates(query)) {
                     callback.setMessage("Downloading " + BiocodeUtilities.getCountString("matching plate document", limsResult.getPlateIds().size()) + "...");
                     getActiveLIMSConnection().retrievePlates(
@@ -790,11 +834,23 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                             LimsSearchCallback.forRetrievePluginDocumentCallback(callback, new Function<Plate, PlateDocument>() {
                                 @Override
                                 public PlateDocument apply(Plate plate) {
+                                    plate.initialiseReactions();
+                                    try {
+                                        ReactionUtilities.setFimsSamplesOnReactions(Arrays.asList(plate.getReactions()));
+                                    } catch (DatabaseServiceException e) {
+                                        plateRetrievalException.set(e);
+                                    } catch (ConnectionException e) {
+                                        plateRetrievalException.set(e);
+                                    }
                                     return new PlateDocument(plate);
                                 }
                             })
                     );
+                }
 
+                Exception e = plateRetrievalException.get();
+                if (e != null) {
+                    throw new DatabaseServiceException(e, e.getMessage(), false);
                 }
 
                 if(callback.isCanceled()) {
@@ -816,47 +872,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                     return;
                 }
 
-                Set<String> tissueIdsToDownload = new HashSet<String>();
-                if(isDownloadTissues(query) || isDownloadSequences(query)) {
-                    // Now add tissues that match the LIMS query
-                    // FimsSamples would have been downloaded as part of plate creation.  Collect them now.
-                    tissueIdsToDownload.addAll(limsResult.getTissueIds());
-                }
-
-                if(isDownloadTissues(query)) {
-                    boolean downloadAllSamplesFromFimsQuery = false;
-                    if(query instanceof BasicSearchQuery || areBrowseQueries(Collections.singletonList(query))) {
-                        downloadAllSamplesFromFimsQuery = true;
-                    } else if(query instanceof AdvancedSearchQueryTerm) {
-                        downloadAllSamplesFromFimsQuery = !fimsQueries.isEmpty();
-                    } else if(query instanceof CompoundSearchQuery) {
-                        CompoundSearchQuery compoundQuery = (CompoundSearchQuery) query;
-                        downloadAllSamplesFromFimsQuery = !fimsQueries.isEmpty() && (
-                                fimsQueries.size() == compoundQuery.getChildren().size() ||
-                                compoundQuery.getOperator() == CompoundSearchQuery.Operator.OR
-                        );
-                    }
-                    if(downloadAllSamplesFromFimsQuery && tissueIdsMatchingFimsQuery != null) {
-                        tissueIdsToDownload.addAll(tissueIdsMatchingFimsQuery);
-                    }
-                }
-                List<FimsSample> tissueSamples = new ArrayList<FimsSample>();
-                try {
-                    if(!tissueIdsToDownload.isEmpty()) {
-                        callback.setMessage("Downloading " + BiocodeUtilities.getCountString("matching tissue", tissueIdsToDownload.size()) + "...");
-                        tissueSamples.addAll(activeFIMSConnection.retrieveSamplesForTissueIds(tissueIdsToDownload));
-                    }
-                } catch (ConnectionException e) {
-                    throw new DatabaseServiceException(e, e.getMessage(), false);
-                }
-                if(isDownloadTissues(query)) {
-                    for (FimsSample tissueSample : tissueSamples) {
-                        callback.add(new TissueDocument(tissueSample), Collections.<String, Object>emptyMap());
-                    }
-                }
-                if(callback.isCanceled()) {
-                    return;
-                }
                 if(isDownloadSequences(query)) {
                     callback.setMessage("Downloading " + BiocodeUtilities.getCountString("matching sequence", limsResult.getSequenceIds().size()) + "...");
                     retrieveMatchingAssemblyDocumentsForIds(tissueSamples, limsResult.getSequenceIds(), callback, true);
@@ -1559,7 +1574,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
             if (!reaction.isEmpty()) {
                 if (reaction.getType() != Reaction.Type.Extraction && reaction.getLocus().equals("None")) {
-                    throw new BadDataException("Locus is not specified for reaction with extraction id " + reaction.getExtractionId());
+                    throw new BadDataException("Locus is not specified for reaction at well " + reaction.getLocationString());
                 }
                 reactionsToSave.add(reaction);
                 if(extractionId != null && tissueId != null && tissueId.toString().length() > 0) {

@@ -1443,7 +1443,6 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
     @Override
     public List<WorkflowDocument> getWorkflowsById_(Collection<Integer> workflowIds, Cancelable cancelable) throws DatabaseServiceException {
         Map<Integer, WorkflowDocument> byId = new HashMap<Integer, WorkflowDocument>();
-        Map<Integer, String> workflowToSampleId = new HashMap<Integer, String>();
 
         ConnectionWrapper connection = null;
         PreparedStatement selectWorkflow = null;
@@ -1465,8 +1464,8 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
             ResultSet workflowsSet = selectWorkflow.executeQuery();
             System.out.println("\tTook " + (System.currentTimeMillis() - start) + "ms to do LIMS (workflows) query");
 
-            while(workflowsSet.next()) {
-                if(cancelable.isCanceled()) {
+            while (workflowsSet.next()) {
+                if (cancelable.isCanceled()) {
                     return Collections.emptyList();
                 }
                 int workflowId = workflowsSet.getInt("workflow.id");
@@ -1477,40 +1476,16 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
                     WorkflowDocument newWorkflow = new WorkflowDocument(workflowsSet);
                     byId.put(workflowId, newWorkflow);
                 }
-
-                String sampleId = workflowsSet.getString("extraction.sampleId");
-                if (sampleId != null) {
-                    workflowToSampleId.put(workflowId, sampleId);
-                }
             }
             workflowsSet.close();
             setInitialTraceCountsForWorkflowDocuments(byId.values());
         } catch (SQLException e) {
-            throw new DatabaseServiceException(e, "Failed to retrieve workflow documents: " + e.getMessage(),false);
+            throw new DatabaseServiceException(e, "Failed to retrieve workflow documents: " + e.getMessage(), false);
         } finally {
             SqlUtilities.cleanUpStatements(selectWorkflow);
             returnConnection(connection);
         }
 
-        if (!workflowToSampleId.isEmpty()) {
-            try {
-                // Instantiation of a ExtractionReaction's FIMS sample relies on it being in the cache.
-                // So pre-cache all the samples we need in one query and hold a reference so they don't get garbage collected
-                @SuppressWarnings("UnusedDeclaration")
-                List<FimsSample> samples = BiocodeService.getInstance().getActiveFIMSConnection().retrieveSamplesForTissueIds(workflowToSampleId.values());
-
-                for (Map.Entry<Integer, String> entry : workflowToSampleId.entrySet()) {
-                    WorkflowDocument workflowDocument = byId.get(entry.getKey());
-                    Reaction reaction = workflowDocument.getMostRecentReaction(Reaction.Type.Extraction);
-                    FimsSample sample = BiocodeService.getInstance().getActiveFIMSConnection().getFimsSampleFromCache(entry.getValue());
-                    if (reaction != null && reaction.getFimsSample() == null) {
-                        reaction.setFimsSample(sample);
-                    }
-                }
-            } catch (ConnectionException e) {
-                throw new DatabaseServiceException(e, "Unable to retrieve FIMS samples", false);
-            }
-        }
         return new ArrayList<WorkflowDocument>(byId.values());
     }
 
@@ -1571,9 +1546,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
 
     private List<Plate> getPlatesFromResultSet(ResultSet resultSet, Cancelable cancelable) throws SQLException, ConnectionException, DatabaseServiceException {
         Map<Integer, Plate> plates = new HashMap<Integer, Plate>();
-        final Set<String> totalErrors = new HashSet<String>();
 
-        int previousId = -1;
         while (resultSet.next()) {
             if(cancelable.isCanceled()) {
                 return Collections.emptyList();
@@ -1584,20 +1557,6 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
                 continue;  // Plate was deleted
             }
 
-            if (previousId >= 0 && previousId != plateId) {
-                final Plate prevPlate = plates.get(previousId);
-                if (prevPlate != null) {
-                    Runnable runnable = new Runnable() {
-                        public void run() {
-                            prevPlate.initialiseReactions();
-                        }
-                    };
-                    ThreadUtilities.invokeNowOrWait(runnable);
-                    plates.put(previousId, prevPlate);
-                }
-            }
-            previousId = plateId;
-
             if (plates.get(plateId) == null) {
                 plate = new Plate(resultSet);
                 plates.put(plate.getId(), plate);
@@ -1607,37 +1566,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
             plate.addReaction(resultSet);
         }
 
-        if (previousId >= 0) {
-            Plate prevPlate = plates.get(previousId);
-            if (prevPlate != null) {
-                prevPlate.initialiseReactions();
-                plates.put(previousId, prevPlate);
-
-            }
-        }
         setInitialTraceCountsForPlates(plates);
-
-        Collection<Reaction> allReactions = new ArrayList<Reaction>();
-        for (Plate plate : plates.values()) {
-            allReactions.addAll(Arrays.asList(plate.getReactions()));
-        }
-
-        ReactionUtilities.setFimsSamplesOnReactions(allReactions);
-
-        final StringBuilder sb = new StringBuilder("");
-        for (String line : totalErrors)
-            sb.append(line);
-
-        if (sb.length() > 0) {
-            Runnable runnable = new Runnable() {
-                public void run() {
-                    if (sb.toString().contains("connection")) {
-                        Dialogs.showMoreOptionsDialog(new Dialogs.DialogOptions(new String[]{"OK"}, "Connection Error"), "There was an error connecting to the server.  Try logging out and logging in again.", sb.toString());
-                    }
-                }
-            };
-            ThreadUtilities.invokeNowOrLater(runnable);
-        }
 
         return new ArrayList<Plate>(plates.values());
     }
@@ -3535,7 +3464,12 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
             return extractionsThatExist;
         }
 
-        StringBuilder sql = new StringBuilder("SELECT * FROM extraction, plate WHERE plate.id = extraction.plate AND extraction.extractionId IN ");
+        StringBuilder sql = new StringBuilder(
+                "SELECT * FROM extraction " +
+                "INNER JOIN plate on extraction.plate=plate.id " +
+                "INNER JOIN workflow on extraction.id=workflow.extractionId " +
+                "WHERE extraction.extractionId IN "
+        );
         SqlUtilities.appendSetOfQuestionMarks(sql, extractionIds.size());
 
         ConnectionWrapper connection = null;

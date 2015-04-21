@@ -85,8 +85,7 @@ public class Plate implements XMLSerializable {
         else {
             init(size, type, false);
         }
-        int thermocycleId = resultSet.getInt("plate.thermocycle");
-        setThermocycleFromId(thermocycleId);
+        thermocycleId = resultSet.getInt("plate.thermocycle");
     }
 
     private void setThermocycleFromId(int thermocycleId) {
@@ -274,6 +273,7 @@ public class Plate implements XMLSerializable {
      * If you have created the plate from a resultSet, you should call this method before doing anything with the plate.
      */
     public void initialiseReactions() {
+        setThermocycleFromId(getThermocycleId());
         for(int i=0; i < rows; i++) {
             for(int j = 0; j < cols; j++) {
                 final int index = cols * i + j;
@@ -563,7 +563,9 @@ public class Plate implements XMLSerializable {
             plateElement.addContent(new Element("thermocycle").setText(""+getThermocycle().getId()));
         }
         for(Reaction r : reactions) {
-            plateElement.addContent(XMLSerializer.classToXML("reaction",r));
+            if (r != null) {
+                plateElement.addContent(XMLSerializer.classToXML("reaction", r));
+            }
         }
         if(images != null) {
             for(GelImage gi : images) {

@@ -69,7 +69,9 @@ public class AccessUtilities {
         Set<String> extractionIds = new HashSet<String>();
 
         for (Reaction reaction : reactions) {
-            extractionIds.add(reaction.getExtractionId());
+            if (reaction != null) {
+                extractionIds.add(reaction.getExtractionId());
+            }
         }
 
         checkUserHasRoleForExtractionIDs(extractionIds, user, role);
@@ -109,7 +111,7 @@ public class AccessUtilities {
             return;
         }
 
-        workflowIDs = new HashSet<Integer>();
+        workflowIDs = new HashSet<Integer>(workflowIDs);
 
         Connection connection = null;
         PreparedStatement retrieveIDsOfProjectsThatGovernWorkflowsStatement = null;
@@ -166,6 +168,7 @@ public class AccessUtilities {
         Connection connection = null;
         PreparedStatement retrieveExtractionIDsUserHasRoleForStatement = null;
         ResultSet retrieveExtractionIDsUserHasRoleForResultSet = null;
+
         try {
             DataSource dataSource = LIMSInitializationListener.getDataSource();
 
@@ -177,21 +180,17 @@ public class AccessUtilities {
 
             connection = dataSource.getConnection();
             retrieveExtractionIDsUserHasRoleForStatement = connection.prepareStatement(
-                    "SELECT extraction.extractionId " +
-                    "FROM extraction, workflow, " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + " " +
-                    "WHERE extraction.id = workflow.extractionId " +
-                    "AND workflow.id = workflow_project.workflow_id " +
-                    "AND project_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(idsOfProjectsUserHasRoleFor.size()) + ")"
+                    "SELECT extraction.extractionId as extractionId, " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".project_id as projectId " +
+                    "FROM (extraction " +
+                    "LEFT OUTER JOIN workflow ON extraction.extractionId=workflow.extractionId) " +
+                    "LEFT OUTER JOIN " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + " ON workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id"
             );
-
-            int statementObjectIndex = 1;
-            for (Integer projectID : idsOfProjectsUserHasRoleFor) {
-                retrieveExtractionIDsUserHasRoleForStatement.setInt(statementObjectIndex++, projectID);
-            }
-
             retrieveExtractionIDsUserHasRoleForResultSet = retrieveExtractionIDsUserHasRoleForStatement.executeQuery();
             while (retrieveExtractionIDsUserHasRoleForResultSet.next()) {
-                extractionIDsUserHasRoleFor.add(retrieveExtractionIDsUserHasRoleForResultSet.getString(1));
+                int projectID = retrieveExtractionIDsUserHasRoleForResultSet.getInt("projectId");
+                if (projectID == 0 || idsOfProjectsUserHasRoleFor.contains(projectID)) {
+                    extractionIDsUserHasRoleFor.add(retrieveExtractionIDsUserHasRoleForResultSet.getString("extractionId"));
+                }
             }
         } catch (SQLException e) {
             throw new DatabaseServiceException("An error occurred while retrieving the IDs of workflows that user " + user.username + " has access to.", false);
@@ -275,7 +274,7 @@ public class AccessUtilities {
                 retrieveWorkflowIDsStatement.setInt(statementObjectIndex++, extractionDatabaseID);
             }
 
-            retrieveWorkflowIDsResultSet = retrieveWorkflowIDsStatement.getResultSet();
+            retrieveWorkflowIDsResultSet = retrieveWorkflowIDsStatement.executeQuery();
             while (retrieveWorkflowIDsResultSet.next()) {
                 workflowIDs.add(retrieveWorkflowIDsResultSet.getInt(1));
             }

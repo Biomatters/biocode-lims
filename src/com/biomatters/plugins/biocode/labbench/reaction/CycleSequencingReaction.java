@@ -135,9 +135,9 @@ public class CycleSequencingReaction extends Reaction<CycleSequencingReaction>{
         DocumentSelectionOption primerOption = (DocumentSelectionOption)options.getOption(CycleSequencingOptions.PRIMER_OPTION_ID);
         String primerName = r.getString("cyclesequencing.primerName");
         String primerSequence = r.getString("cyclesequencing.primerSequence");
-        if(primerSequence.length() > 0) {
-            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
-        }
+//        if(primerSequence.length() > 0) {
+//            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
+//        }
         options.setValue("direction", r.getString("direction"));
         //options.setValue("prAmount", r.getInt("cyclesequencing.primerAmount"));
         options.setValue("notes", r.getString("cyclesequencing.notes"));
@@ -155,15 +155,15 @@ public class CycleSequencingReaction extends Reaction<CycleSequencingReaction>{
             setGelImage(new GelImage(imageBytes, getLocationString()));
         }
 
-        int thermocycleId = r.getInt("plate.thermocycle");
-        if(thermocycleId >= 0) {
-            for(Thermocycle tc : BiocodeService.getInstance().getCycleSequencingThermocycles()) {
-                if(tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
-                    break;
-                }
-            }
-        }
+//        int thermocycleId = r.getInt("plate.thermocycle");
+//        if(thermocycleId >= 0) {
+//            for(Thermocycle tc : BiocodeService.getInstance().getCycleSequencingThermocycles()) {
+//                if(tc.getId() == thermocycleId) {
+//                    setThermocycle(tc);
+//                    break;
+//                }
+//            }
+//        }
 
         SequencingResult result = SequencingResult.fromResultSet(r);
         if(result != null) {

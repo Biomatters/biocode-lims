@@ -12,7 +12,6 @@ import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.fims.FIMSConnection;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
-import com.biomatters.plugins.biocode.BiocodeUtilities;
 
 import javax.swing.*;
 import java.awt.*;
@@ -63,7 +62,7 @@ public class PCRReaction extends Reaction<PCRReaction> {
         String primerName = r.getString("pcr.prName");
         String primerSequence = r.getString("pcr.prSequence");
         if(primerSequence != null && primerSequence.length() > 0) {
-            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
+//            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
         }
         //options.setValue("prAmount", r.getInt("pcr.prAmount"));
 
@@ -71,7 +70,7 @@ public class PCRReaction extends Reaction<PCRReaction> {
         String reversePrimerName = r.getString("pcr.revPrName");
         String reversePrimerSequence = r.getString("pcr.revPrSequence");
         if(reversePrimerSequence != null && reversePrimerSequence.length() > 0) {
-            reversePrimerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(reversePrimerName, reversePrimerSequence)));
+        //    reversePrimerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(reversePrimerName, reversePrimerSequence)));
         }
         //options.setValue("revPrAmount", r.getInt("pcr.revPrAmount"));
 
@@ -95,15 +94,15 @@ public class PCRReaction extends Reaction<PCRReaction> {
             setGelImage(new GelImage(imageBytes, getLocationString()));
         }
 
-        int thermocycleId = r.getInt("plate.thermocycle");
-        if(thermocycleId >= 0) {
-            for(Thermocycle tc : BiocodeService.getInstance().getPCRThermocycles()) {
-                if(tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
-                    break;
-                }
-            }
-        }
+//        int thermocycleId = r.getInt("plate.thermocycle");
+//        if(thermocycleId >= 0) {
+//            for(Thermocycle tc : BiocodeService.getInstance().getPCRThermocycles()) {
+//                if(tc.getId() == thermocycleId) {
+//                    setThermocycle(tc);
+//                    break;
+//                }
+//            }
+//        }
     }
 
     public ReactionOptions _getOptions() {

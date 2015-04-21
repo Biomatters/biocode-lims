@@ -11,7 +11,7 @@ import com.biomatters.plugins.biocode.labbench.FimsSample;
 import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
-import com.biomatters.plugins.biocode.labbench.rest.client.ServerLIMSConnection;
+import com.biomatters.plugins.biocode.labbench.rest.client.ServerLimsConnection;
 import org.jdom.Element;
 
 import javax.swing.*;
@@ -324,10 +324,10 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
             LIMSConnection limsConnection;
             try {
                 limsConnection = BiocodeService.getInstance().getActiveLIMSConnection();
-                if (!(limsConnection instanceof ServerLIMSConnection)) {
+                if (!(limsConnection instanceof ServerLimsConnection)) {
                     return "";
                 }
-                String extractionBCIDRoot = ((ServerLIMSConnection) limsConnection).getBCIDRoots().get("extraction");
+                String extractionBCIDRoot = ((ServerLimsConnection)limsConnection).getBCIDRoots().get("extraction");
                 Integer extractionId = getDatabaseIdOfExtraction();
                 if (extractionBCIDRoot == null || extractionBCIDRoot.isEmpty() || extractionId == null || extractionId == -1) {
                     return "";

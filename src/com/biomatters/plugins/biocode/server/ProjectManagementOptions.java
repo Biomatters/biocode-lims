@@ -4,7 +4,7 @@ import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceExceptio
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
 import com.biomatters.plugins.biocode.labbench.Workflow;
-import com.biomatters.plugins.biocode.labbench.lims.ProjectLIMSConnection;
+import com.biomatters.plugins.biocode.labbench.lims.ProjectLimsConnection;
 import org.virion.jam.util.SimpleListener;
 
 import java.awt.event.ActionEvent;
@@ -25,10 +25,10 @@ public class ProjectManagementOptions extends Options {
 
     private static final OptionValue NONE_PROJECT_OPTION_VALUE = new OptionValue("-1", "None");
 
-    private ProjectLIMSConnection projectLimsConnection;
+    private ProjectLimsConnection projectLimsConnection;
     private Map<OptionValue, Collection<OptionValue>> projectToWorkflows = new HashMap<OptionValue, Collection<OptionValue>>();
 
-    public ProjectManagementOptions(ProjectLIMSConnection projectLimsConnection) {
+    public ProjectManagementOptions(ProjectLimsConnection projectLimsConnection) {
         this.projectLimsConnection = projectLimsConnection;
         refreshLocalMappingOfProjectToWorkflows();
         initOptions();

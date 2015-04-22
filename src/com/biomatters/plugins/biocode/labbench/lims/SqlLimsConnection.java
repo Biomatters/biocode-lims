@@ -1375,7 +1375,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
         try {
             connection = getConnection();
             int reactionId;
-            ResultSet reactionIdResultSet = BiocodeService.getInstance().getActiveLIMSConnection().isLocal() ? connection.executeQuery("CALL IDENTITY();") : connection.executeQuery("SELECT last_insert_id()");
+            ResultSet reactionIdResultSet = isLocal() ? connection.executeQuery("CALL IDENTITY();") : connection.executeQuery("SELECT last_insert_id()");
             reactionIdResultSet.next();
             reactionId = reactionIdResultSet.getInt(1);
             return reactionId;
@@ -2389,7 +2389,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
         ConnectionWrapper connection = null;
         try {
             connection = getConnection();
-            PreparedStatement getLastId = BiocodeService.getInstance().getActiveLIMSConnection().isLocal() ?
+            PreparedStatement getLastId = isLocal() ?
                     connection.prepareStatement("CALL IDENTITY();") : connection.prepareStatement("SELECT last_insert_id()");
             switch(type) {
                 case Extraction:
@@ -3065,7 +3065,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
         }
     }
 
-    public static int addThermoCycle(ConnectionWrapper connection, Thermocycle thermocycle) throws SQLException, DatabaseServiceException {
+    public int addThermoCycle(ConnectionWrapper connection, Thermocycle thermocycle) throws SQLException, DatabaseServiceException {
         //create the thermocycle record
         PreparedStatement statement1 = connection.prepareStatement("INSERT INTO thermocycle (name, notes) VALUES (?, ?);\n");
         statement1.setString(1, thermocycle.getName());
@@ -3074,7 +3074,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
         statement1.close();
 
         //get the id of the thermocycle record
-        PreparedStatement statement = BiocodeService.getInstance().getActiveLIMSConnection().isLocal() ?
+        PreparedStatement statement = isLocal() ?
                 connection.prepareStatement("CALL IDENTITY();") :
                 connection.prepareStatement("SELECT last_insert_id()");
         ResultSet resultSet = statement.executeQuery();
@@ -3089,7 +3089,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
             statement2.close();
 
             //get the id of the cycle record
-            statement = BiocodeService.getInstance().getActiveLIMSConnection().isLocal() ?
+            statement = isLocal() ?
                 connection.prepareStatement("CALL IDENTITY();") :
                 connection.prepareStatement("SELECT last_insert_id()");
             resultSet = statement.executeQuery();
@@ -3395,7 +3395,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
                 getTracesStatement.setObject(i, reactionID);
             }
 
-            if (!BiocodeService.getInstance().getActiveLIMSConnection().isLocal()) {
+            if (!isLocal()) {
                 getTracesStatement.setFetchSize(Integer.MIN_VALUE);
             }
 

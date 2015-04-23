@@ -6,7 +6,6 @@ import com.biomatters.geneious.publicapi.plugin.DocumentSelectionOption;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.plugin.DocumentImportException;
 import com.biomatters.geneious.publicapi.components.Dialogs;
-import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.FimsSample;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
@@ -154,16 +153,6 @@ public class CycleSequencingReaction extends Reaction<CycleSequencingReaction>{
         if(imageBytes != null) {
             setGelImage(new GelImage(imageBytes, getLocationString()));
         }
-
-//        int thermocycleId = r.getInt("plate.thermocycle");
-//        if(thermocycleId >= 0) {
-//            for(Thermocycle tc : BiocodeService.getInstance().getCycleSequencingThermocycles()) {
-//                if(tc.getId() == thermocycleId) {
-//                    setThermocycle(tc);
-//                    break;
-//                }
-//            }
-//        }
 
         SequencingResult result = SequencingResult.fromResultSet(r);
         if(result != null) {

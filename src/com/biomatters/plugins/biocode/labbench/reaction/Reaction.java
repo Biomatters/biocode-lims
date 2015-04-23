@@ -409,8 +409,8 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
 
     public Element toXML() {
         Element element = new Element("Reaction");
-        if(getThermocycle() != null) {
-            element.addContent(new Element("thermocycle").setText(""+getThermocycle().getId()));
+        if(thermocycle != null) {
+            element.addContent(XMLSerializer.classToXML("thermocycle", thermocycle));
         }
         if(fimsSample != null) {
             element.addContent(XMLSerializer.classToXML("fimsSample", fimsSample));
@@ -461,7 +461,6 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
     }
 
     public void fromXML(Element element) throws XMLSerializationException {
-        String thermoCycleId = element.getChildText("thermocycle");
         setPosition(Integer.parseInt(element.getChildText("position")));
         Element locationStringElement = element.getChild("wellLabel");
         Element plateNameElement = element.getChild("plateName");
@@ -491,6 +490,10 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         if(fimsElement != null) {
             fimsSample = XMLSerializer.classFromXML(fimsElement, FimsSample.class);
         }
+        Element thermocycleElement = element.getChild("thermocycle");
+        if (thermocycleElement != null) {
+            thermocycle = XMLSerializer.classFromXML(thermocycleElement, Thermocycle.class);
+        }
         Element gelImageElement = element.getChild("gelimage");
         if(gelImageElement != null) {
             gelImage = XMLSerializer.classFromXML(gelImageElement, GelImage.class);
@@ -502,23 +505,6 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         } catch (ParseException e) {
             assert false : "Could not read the date "+element.getChildText("created");
             setCreated(new Date());
-        }
-        if(thermoCycleId != null) {
-            int tcId = Integer.parseInt(thermoCycleId);
-            for(Thermocycle tc : BiocodeService.getInstance().getPCRThermocycles()) {
-                if(tc.getId() == tcId) {
-                    setThermocycle(tc);
-                    break;
-                }
-            }
-            if(thermocycle == null) {
-                for(Thermocycle tc : BiocodeService.getInstance().getCycleSequencingThermocycles()) {
-                    if(tc.getId() == tcId) {
-                        setThermocycle(tc);
-                        break;
-                    }
-                }
-            }
         }
         Element workflowElement = element.getChild("workflow");
         if(workflowElement != null) {

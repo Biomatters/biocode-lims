@@ -26,6 +26,7 @@ public abstract class LIMSConnection {
     public static final int EXPECTED_SERVER_MAJOR_VERSION = 9;
     public static final String EXPECTED_SERVER_FULL_VERSION = "9.2";
     public static final int BATCH_SIZE = 200;
+    protected static final int STATEMENT_QUERY_TIMEOUT = 300;
 
     /**
      * Was used for a beta version. But since we didn't actually break backwards compatibility we reverted back to the old
@@ -222,14 +223,14 @@ public abstract class LIMSConnection {
     public Statement createStatement() throws SQLException {
         Connection connection = getConnectionInternal();
         Statement statement = connection.createStatement();
-        statement.setQueryTimeout(BiocodeService.STATEMENT_QUERY_TIMEOUT);
+        statement.setQueryTimeout(STATEMENT_QUERY_TIMEOUT);
         return statement;
     }
 
     public PreparedStatement createStatement(String sql) throws SQLException {
         Connection connection = getConnectionInternal();
         PreparedStatement statement = connection.prepareStatement(sql);
-        statement.setQueryTimeout(BiocodeService.STATEMENT_QUERY_TIMEOUT);
+        statement.setQueryTimeout(STATEMENT_QUERY_TIMEOUT);
         return statement;
     }
 

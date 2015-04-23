@@ -2155,7 +2155,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
 
             //replace the images
             if(plate.gelImagesHaveBeenDownloaded()) { //don't modify the gel images if we haven't downloaded them from the server or looked at them...
-                if(!BiocodeService.getInstance().deleteAllowed("gelimages")) {
+                if(!deleteAllowed("gelimages")) {
                     throw new SQLException("It appears that you do not have permission to delete GEL Images.  Please contact your System Administrator for assistance");
                 }
                 PreparedStatement deleteImagesStatement = connection.prepareStatement("DELETE FROM gelimages WHERE plate=" + plate.getId());
@@ -2671,7 +2671,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
                             if(((CycleSequencingReaction)reaction).getTraces() != null) {
                                 int reactionId = reaction.getId();
                                 for(Integer traceId : ((CycleSequencingReaction)reaction).getTracesToRemoveOnSave()) {
-                                    if(!BiocodeService.getInstance().deleteAllowed("traces")) {
+                                    if(!deleteAllowed("traces")) {
                                         throw new SQLException("It appears that you do not have permission to delete traces.  Please contact your System Administrator for assistance");
                                     }
                                     clearTracesStatement.setInt(1, traceId);
@@ -2888,7 +2888,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
     }
 
     public Set<Integer> deleteRecords(String tableName, String term, Iterable ids) throws DatabaseServiceException {
-        if (!BiocodeService.getInstance().deleteAllowed(tableName)) {
+        if (!deleteAllowed(tableName)) {
             throw new DatabaseServiceException("It appears that you do not have permission to delete from " + tableName + ".  Please contact your System Administrator for assistance", false);
         }
 
@@ -2949,7 +2949,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
         ConnectionWrapper connection = null;
         try {
             connection = getConnection();
-            if(!BiocodeService.getInstance().deleteAllowed("cocktail")) {
+            if(!deleteAllowed("cocktail")) {
                 throw new DatabaseServiceException("It appears that you do not have permission to delete cocktails.  Please contact your System Administrator for assistance", false);
             }
             for(Cocktail cocktail : deletedCocktails) {
@@ -3116,10 +3116,10 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
         String sql4 = "DELETE FROM "+type.databaseTable+" WHERE cycle =?";
         ConnectionWrapper connection = null;
         try {
-            if(!BiocodeService.getInstance().deleteAllowed("state") ||
-                !BiocodeService.getInstance().deleteAllowed("cycle") ||
-                !BiocodeService.getInstance().deleteAllowed("thermocycle") ||
-                !BiocodeService.getInstance().deleteAllowed(type.databaseTable)) {
+            if(!deleteAllowed("state") ||
+                !deleteAllowed("cycle") ||
+                !deleteAllowed("thermocycle") ||
+                !deleteAllowed(type.databaseTable)) {
                 throw new DatabaseServiceException("It appears that you do not have permission to delete thermocycles.  Please contact your System Administrator for assistance", false);
             }
 
@@ -3215,7 +3215,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
 
         protected PreparedStatement prepareStatement(String query) throws SQLException {
             PreparedStatement statement = connection.prepareStatement(query);
-            statement.setQueryTimeout(BiocodeService.STATEMENT_QUERY_TIMEOUT);
+            statement.setQueryTimeout(STATEMENT_QUERY_TIMEOUT);
             return statement;
         }
 

@@ -93,7 +93,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     ReportingService reportingService;
     private DisconnectCheckingThread disconnectCheckingThread;
     private boolean driverLoaded;
-    public static final int STATEMENT_QUERY_TIMEOUT = 300;
 
     private BiocodeService() {
     }
@@ -834,7 +833,26 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                             LimsSearchCallback.forRetrievePluginDocumentCallback(callback, new Function<Plate, PlateDocument>() {
                                 @Override
                                 public PlateDocument apply(Plate plate) {
+                                    if (plate.getReactionType().equals(Reaction.Type.PCR)) {
+                                        int plateThermocycleId = plate.getThermocycleId();
+                                        for (Thermocycle thermocycle : getPCRThermocycles()) {
+                                            if (plateThermocycleId == thermocycle.getId()) {
+                                                plate.setThermocycle(thermocycle);
+                                                break;
+                                            }
+                                        }
+                                    } else if (plate.getReactionType().equals(Reaction.Type.CycleSequencing)) {
+                                        int plateThermocycleId = plate.getThermocycleId();
+                                        for (Thermocycle thermocycle : getPCRThermocycles()) {
+                                            if (plateThermocycleId == thermocycle.getId()) {
+                                                plate.setThermocycle(thermocycle);
+                                                break;
+                                            }
+                                        }
+                                    }
+
                                     plate.initialiseReactions();
+
                                     try {
                                         ReactionUtilities.setFimsSamplesOnReactions(Arrays.asList(plate.getReactions()));
                                     } catch (DatabaseServiceException e) {

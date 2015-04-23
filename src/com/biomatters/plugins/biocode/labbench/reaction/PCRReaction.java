@@ -93,16 +93,6 @@ public class PCRReaction extends Reaction<PCRReaction> {
         if(imageBytes != null) {
             setGelImage(new GelImage(imageBytes, getLocationString()));
         }
-
-//        int thermocycleId = r.getInt("plate.thermocycle");
-//        if(thermocycleId >= 0) {
-//            for(Thermocycle tc : BiocodeService.getInstance().getPCRThermocycles()) {
-//                if(tc.getId() == thermocycleId) {
-//                    setThermocycle(tc);
-//                    break;
-//                }
-//            }
-//        }
     }
 
     public ReactionOptions _getOptions() {

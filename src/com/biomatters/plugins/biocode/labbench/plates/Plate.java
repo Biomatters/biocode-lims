@@ -4,15 +4,11 @@ import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializer;
 import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
-import com.biomatters.plugins.biocode.labbench.BiocodeService;
-import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.BiocodeUtilities;
 import org.jdom.Element;
 
 import java.awt.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -86,24 +82,6 @@ public class Plate implements XMLSerializable {
             init(size, type, false);
         }
         thermocycleId = resultSet.getInt("plate.thermocycle");
-    }
-
-    private void setThermocycleFromId(int thermocycleId) {
-        this.thermocycleId = thermocycleId;
-        if(thermocycleId >= 0) {
-            for(Thermocycle tc : BiocodeService.getInstance().getPCRThermocycles()) {
-                if(tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
-                    break;
-                }
-            }
-            for(Thermocycle tc : BiocodeService.getInstance().getCycleSequencingThermocycles()) {
-                if(tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
-                    break;
-                }
-            }
-        }
     }
 
     public static Size getSizeEnum(int size) {
@@ -273,7 +251,6 @@ public class Plate implements XMLSerializable {
      * If you have created the plate from a resultSet, you should call this method before doing anything with the plate.
      */
     public void initialiseReactions() {
-        setThermocycleFromId(getThermocycleId());
         for(int i=0; i < rows; i++) {
             for(int j = 0; j < cols; j++) {
                 final int index = cols * i + j;
@@ -294,7 +271,7 @@ public class Plate implements XMLSerializable {
                         }
                         Dimension preferredSize = reaction.getPreferredSize();
                         reaction.setBounds(new Rectangle(1+(preferredSize.width+1)* j1, 1+(preferredSize.height+1)* i1, preferredSize.width, preferredSize.height));
-                        reaction.setThermocycle(getThermocycle());
+                        reaction.setThermocycle(thermocycle);
                     }
                 };
                 ThreadUtilities.invokeNowOrWait(runnable);
@@ -514,15 +491,19 @@ public class Plate implements XMLSerializable {
         else {
             init(size, type, false);
         }
+        String thermocycleIdAsString = element.getChildText("thermocycleId");
+        if(thermocycleIdAsString != null) {
+            thermocycleId = Integer.parseInt(thermocycleIdAsString);
+        }
+        Element thermocycleElement = element.getChild("thermocycle");
+        if(thermocycleElement != null) {
+            thermocycle = XMLSerializer.classFromXML(thermocycleElement, Thermocycle.class);
+        }
         for(Element e : element.getChildren("reaction")) {
             Reaction r = XMLSerializer.classFromXML(e, Reaction.class);
             reactions[r.getPosition()] = r;
         }
         initialiseReactions();
-        String thermocycleId = element.getChildText("thermocycle");
-        if(thermocycleId != null) {
-            setThermocycleFromId(Integer.parseInt(thermocycleId));     
-        }
         List<Element> imagesList = element.getChildren("gelImage");
         if(imagesList != null && imagesList.size() > 0) {
             images = new ArrayList<GelImage>();
@@ -560,7 +541,10 @@ public class Plate implements XMLSerializable {
         }
         plateElement.addContent(new Element("isDeleted").setText(""+isDeleted));
         if(getThermocycle() != null) {
-            plateElement.addContent(new Element("thermocycle").setText(""+getThermocycle().getId()));
+            plateElement.addContent(new Element("thermocycleId").setText("" + getThermocycle().getId()));
+        }
+        if(thermocycle != null) {
+            plateElement.addContent(XMLSerializer.classToXML("thermocycle", thermocycle));
         }
         for(Reaction r : reactions) {
             if (r != null) {
@@ -573,7 +557,7 @@ public class Plate implements XMLSerializable {
             }
         }
 
-        
+
 
         return plateElement;
     }

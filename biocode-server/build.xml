@@ -1,0 +1,66 @@
+<project name="MooreaLabBench-sever" default="create-war" basedir=".">
+
+    <import file="../shared.xml"/>
+
+    <property name="plugin.classes" value="../classes"/>
+    <property name="plugin.lib" value="../lib"/>
+    <property name="warfile" value="${build}/BiocodeLIMS.war"/>
+
+    <property name="lib" value="web/WEB-INF/lib"/>
+
+    <path id="classpath">
+        <pathelement path="${plugin.classes}"/>
+        <fileset dir="${plugin.lib}"/>
+        <fileset dir="${lib}"/>
+    </path>
+
+    <target name="create-war" depends="clean,prepare,compile">
+        <war destfile="${warfile}" webxml="web/WEB-INF/web.xml">
+            <webinf dir="web/WEB-INF"/>
+            <classes dir="${plugin.classes}"/>
+            <classes dir="${classes}"/>
+            <lib dir="${plugin.lib}">
+                <exclude name="GeneiousPublicAPI*.jar"/>
+                <exclude name="jdom*.jar"/>
+                <exclude name="jebl*.jar"/>
+            </lib>
+            <lib dir="${lib}"/>
+            <fileset dir="web"/>
+            <fileset dir="${lib}">
+                <include name="images/*"/>
+            </fileset>
+            <classes dir="resources"/>
+        </war>
+    </target>
+
+    <target name="prepare" depends="shared.prepare">
+        <mkdir dir="${plugin.classes}"/>
+    </target>
+
+    <target name="clean" depends="shared.clean">
+        <delete file="${warfile}"/>
+        <delete dir="${plugin.classes}"/>
+    </target>
+
+    <target name="retrieve-build-dependencies" description="Retrieve all dependencies required to build the LIMS server war file" depends="shared.retrieve-build-dependencies">
+        <ant antfile="../build.xml" target="compile" inheritall="false"/>
+        <ant antfile="../build.xml" target="retrieve-test-dependencies" inheritall="false"/>
+
+        <copy todir="${lib}">
+            <fileset dir="${GeneiousFiles}">
+                <include name="iSeek.jar"/>
+            </fileset>
+            <fileset dir="${GeneiousFiles}/lib">
+                <!-- We can refine this list later.  For now we'll just take all the runtime libs minus the SOAP libraries -->
+                <include name="*.jar"/>
+                <exclude name="webservices-*.jar"/>
+            </fileset>
+        </copy>
+        <copy todir="${classes}">
+            <fileset dir="${GeneiousFiles}/resources">
+                <include name="images/*"/>
+                <include name="*.properties"/>
+            </fileset>
+        </copy>
+    </target>
+</project>

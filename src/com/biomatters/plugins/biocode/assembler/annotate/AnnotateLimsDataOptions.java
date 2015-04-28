@@ -105,6 +105,15 @@ public class AnnotateLimsDataOptions extends Options {
         return false;
     }
 
+    private static boolean containsOptionValueWithLabel(Collection<OptionValue> values, String label) {
+        for (OptionValue value : values) {
+            if (value.getLabel().equals(label)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void updateOptions() {
         boolean requiresSeparator = namePartOption.getPart() != 0 || idType.getValue().equals(BARCODE);
         afterLabel.setEnabled(requiresSeparator);

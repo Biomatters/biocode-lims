@@ -132,7 +132,7 @@ public class LIMSInitializationListener implements ServletContextListener {
             try {
                 portAsInt = Integer.parseInt(port);
             } catch (NumberFormatException e) {
-                System.err.println("The supplied LDAP port is invalid: " + port + ".");
+                System.err.println("Invalid LDAP configuration: Invalid port: " + port + ".");
                 return;
             }
 
@@ -181,7 +181,7 @@ public class LIMSInitializationListener implements ServletContextListener {
     }
 
     private void setLimsOptionsFromConfigFile(Connection connectionConfig, Properties config) throws ConfigurationException, DatabaseServiceException {
-        LimsConnectionOptions parentLimsOptions = (LimsConnectionOptions) connectionConfig.getLimsOptions();
+        LimsConnectionOptions parentLimsOptions = (LimsConnectionOptions)connectionConfig.getLimsOptions();
         String limsType = config.getProperty("lims.type");
         if (limsType == null) {
             throw new MissingPropertyException("lims.type");

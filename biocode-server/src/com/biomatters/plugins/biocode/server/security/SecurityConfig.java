@@ -77,14 +77,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(INFO_URL + "/**").permitAll()
                 .antMatchers(BASE_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
                 .anyRequest().permitAll().and()
-            .addFilter(filter())
-            .httpBasic();
+                .addFilter(filter())
+                .httpBasic();
 
         if (LIMSInitializationListener.getLDAPConfiguration() != null) {
             String LDAPAdminAuthority = LIMSInitializationListener.getLDAPConfiguration().getAdminAuthority();
             if (LDAPAdminAuthority != null && !LDAPAdminAuthority.isEmpty()) {
                 http.authorizeRequests()
-                    .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(LDAPAdminAuthority);
+                        .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(LDAPAdminAuthority);
             }
         }
     }

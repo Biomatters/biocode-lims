@@ -13,8 +13,7 @@ import java.util.Map;
  *         Created on 21/04/15 1:44 PM
  */
 public abstract class ProjectLimsConnection extends LIMSConnection {
-    public abstract Map<Integer, String> getIDAndNameOfWorkflowsNotAddedToAProject() throws DatabaseServiceException;
     public abstract Map<Project, Collection<Workflow>> getProjectToWorkflows() throws DatabaseServiceException;
-    public abstract void addWorkflowToProject(int workflowID, int projectID) throws DatabaseServiceException;
-    public abstract void removeWorkflowFromProject(int workflowID, int projectID) throws DatabaseServiceException;
+    public abstract void addWorkflowsToProject(Collection<Integer> workflowIds, int projectId) throws DatabaseServiceException;
+    public abstract void removeWorkflowsFromProject(Collection<Integer> workflowIds, int projectId) throws DatabaseServiceException;
 }

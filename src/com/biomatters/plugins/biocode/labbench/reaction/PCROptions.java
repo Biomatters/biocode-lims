@@ -12,6 +12,7 @@ import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.TextAreaOption;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
+import com.biomatters.plugins.biocode.server.Project;
 import org.jdom.Element;
 import org.virion.jam.util.SimpleListener;
 
@@ -31,12 +32,14 @@ public class PCROptions extends ReactionOptions<PCRReaction> {
     private ButtonOption cocktailButton;
     private Option<String, ? extends JComponent> labelOption;
     private ComboBoxOption cocktailOption;
+    private ComboBoxOption<OptionValue> projectOption;
 
     public static final String PRIMER_OPTION_ID = "primer";
     public static final String PRIMER_REVERSE_OPTION_ID = "revPrimer";
     static final String COCKTAIL_BUTTON_ID = "cocktailEdit";
     static final String LABEL_OPTION_ID = "label";
     static final String ADD_PRIMER_TO_LOCAL_ID = "addPrimers";
+    private static final OptionValue NONE_PROJECT_OPTION_VALUE = new OptionValue(Integer.toString(Project.NONE_PROJECT.id), Project.NONE_PROJECT.name);
     private ButtonOption addPrimersButton;
 
     public PCROptions(Class c) {
@@ -191,6 +194,8 @@ public class PCROptions extends ReactionOptions<PCRReaction> {
 
         labelOption = new LabelOption(LABEL_OPTION_ID, "Total Volume of Reaction: 0uL");
         addCustomOption(labelOption);
+
+        projectOption = addComboBoxOption("project", "Project", Collections.singletonList(NONE_PROJECT_OPTION_VALUE), NONE_PROJECT_OPTION_VALUE);
     }
 
     private List<OptionValue> getCocktails() {
@@ -216,5 +221,37 @@ public class PCROptions extends ReactionOptions<PCRReaction> {
         }
         cocktailOption.setPossibleValues(cocktails);
     }
-    
+
+    public void setPossibleProjects(Collection<Project> projects, Project defaultProject) {
+        if (projects == null) {
+            throw new IllegalArgumentException("projects is null.");
+        }
+        if (defaultProject == null) {
+            throw new IllegalArgumentException("defaultProject is null.");
+        }
+        if (!projects.contains(defaultProject)) {
+            throw new IllegalArgumentException("projects does not contain defaultProject.");
+        }
+        if (projectOption == null) {
+            throw new IllegalStateException("projectOption is not initialized.");
+        }
+
+        List<OptionValue> projectOptionValues = new ArrayList<OptionValue>();
+
+        for (Project project : projects) {
+            projectOptionValues.add(new OptionValue(String.valueOf(project.id), project.name));
+        }
+
+        projectOption.setPossibleValues(projectOptionValues);
+        for (OptionValue projectOptionValue : projectOptionValues) {
+            if (Integer.valueOf(projectOptionValue.getName()).equals(defaultProject.id) && projectOptionValue.getLabel().equals(defaultProject.name)) {
+                projectOption.setValue(projectOptionValue);
+                break;
+            }
+        }
+    }
+
+    public void setProjectOptionEnabled(boolean enabled) {
+        projectOption.setEnabled(enabled);
+    }
 }

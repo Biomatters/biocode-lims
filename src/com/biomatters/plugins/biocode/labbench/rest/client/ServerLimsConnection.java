@@ -117,23 +117,6 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     @Override
-    public Map<Integer, String> getIDAndNameOfWorkflowsNotAddedToAProject() throws DatabaseServiceException {
-        try {
-            Map<Integer, String> idsAndNames = new HashMap<Integer, String>();
-
-            for (Map.Entry<String, String> idAndName : target.path(PROJECTS_BASE_PATH).path("workflows").path("notAddedToAProject").request(MediaType.APPLICATION_XML_TYPE).get(StringMap.class).getMap().entrySet()) {
-                idsAndNames.put(Integer.valueOf(idAndName.getKey()), idAndName.getValue());
-            }
-
-            return idsAndNames;
-        } catch (WebApplicationException e) {
-            throw new DatabaseServiceException(e, e.getMessage(), false);
-        } catch (ProcessingException e) {
-            throw new DatabaseServiceException(e, e.getMessage(), false);
-        }
-    }
-
-    @Override
     public List<Plate> getPlates_(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException {
         if (plateIds.isEmpty()) {
             return Collections.emptyList();
@@ -703,16 +686,16 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     @Override
     public Map<Project, Collection<Workflow>> getProjectToWorkflows() throws DatabaseServiceException {
         try {
-            Multimap<Project, Workflow> projectToWorkflows = ArrayListMultimap.<Project, Workflow>create();
+            Map<Project, Collection<Workflow>> projectToWorkflows = new HashMap<Project, Collection<Workflow>>();
 
             for (Project project : target.path(PROJECTS_BASE_PATH).request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<List<Project>>(){})) {
-                projectToWorkflows.putAll(
+                projectToWorkflows.put(
                         project,
                         target.path(PROJECTS_BASE_PATH).path(Integer.toString(project.id)).path("workflows").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Workflow>>(){}).getList()
                 );
             }
 
-            return projectToWorkflows.asMap();
+            return projectToWorkflows;
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -721,9 +704,9 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     @Override
-    public void addWorkflowToProject(int workflowID, int projectID) throws DatabaseServiceException {
+    public void addWorkflowsToProject(Collection<Integer> workflowIds, int projectId) throws DatabaseServiceException {
         try {
-            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectID)).path("workflows").request().post(Entity.entity(Integer.toString(workflowID), MediaType.TEXT_PLAIN_TYPE));
+            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectId)).path("workflows").request().put(Entity.entity(StringUtilities.join(",", workflowIds), MediaType.TEXT_PLAIN_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -732,9 +715,9 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     @Override
-    public void removeWorkflowFromProject(int workflowID, int projectID) throws DatabaseServiceException {
+    public void removeWorkflowsFromProject(Collection<Integer> workflowIds, int projectId) throws DatabaseServiceException {
         try {
-            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectID)).path("workflows").path(Integer.toString(workflowID)).request().delete();
+            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectId)).path("workflows").path(StringUtilities.join(",", workflowIds)).request().delete();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {

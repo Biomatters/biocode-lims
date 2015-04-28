@@ -2521,7 +2521,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
                             statement.setInt(4, reaction.getPlateId());
                             statement.setInt(5, reaction.getPosition());
                             int cocktailId;
-                            Options.OptionValue cocktailValue = (Options.OptionValue) options.getValue("cocktail");
+                            Options.OptionValue cocktailValue = (Options.OptionValue) options.getValue(ReactionOptions.COCKTAIL_OPTION_ID);
                             try {
                                 cocktailId = Integer.parseInt(cocktailValue.getName());
                             }

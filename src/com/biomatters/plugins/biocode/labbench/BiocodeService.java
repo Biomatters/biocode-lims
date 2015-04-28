@@ -25,9 +25,11 @@ import com.biomatters.plugins.biocode.labbench.fims.biocode.BiocodeFIMSConnectio
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.lims.LimsSearchCallback;
 import com.biomatters.plugins.biocode.labbench.lims.LimsSearchResult;
+import com.biomatters.plugins.biocode.labbench.lims.ProjectLimsConnection;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.labbench.reporting.ReportingService;
+import com.biomatters.plugins.biocode.server.Project;
 import com.google.common.base.Function;
 import jebl.util.ProgressListener;
 import org.jdom.Element;
@@ -79,6 +81,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     public final Map<String, Image[]> imageCache = new HashMap<String, Image[]>();
     private File dataDirectory;
     private static final long FIMS_CONNECTION_TIMEOUT_THRESHOLD_MILLISECONDS = 60000;
+    private Map<Project, Collection<Workflow>> projectToWorkflows = null;
 
     private static Preferences getPreferencesForService() {
         return Preferences.userNodeForPackage(BiocodeService.class);
@@ -716,7 +719,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     }
 
     public void retrieve(Query query, RetrieveCallback callback, URN[] urnsToNotRetrieve, boolean hasAlreadyTriedReconnect) throws DatabaseServiceException {
-        retrieve(query, callback, urnsToNotRetrieve, false, false);
+        retrieve(query, callback, urnsToNotRetrieve, hasAlreadyTriedReconnect, false);
     }
 
     private Set<BiocodeCallback> activeCallbacks = new HashSet<BiocodeCallback>();
@@ -860,6 +863,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                                     } catch (ConnectionException e) {
                                         plateRetrievalException.set(e);
                                     }
+
                                     return new PlateDocument(plate);
                                 }
                             })
@@ -869,6 +873,10 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                 Exception e = plateRetrievalException.get();
                 if (e != null) {
                     throw new DatabaseServiceException(e, e.getMessage(), false);
+                }
+
+                if (limsConnection instanceof ProjectLimsConnection)  {
+                    projectToWorkflows = ((ProjectLimsConnection)limsConnection).getProjectToWorkflows();
                 }
 
                 if(callback.isCanceled()) {
@@ -1431,7 +1439,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     }
 
     public DisplayFieldsTemplate getDefaultDisplayedFieldsTemplate(Reaction.Type type) {
-        String name = getPreferencesForService().get(type+"_defaultFieldsTemplate", null);
+        String name = getPreferencesForService().get(type + "_defaultFieldsTemplate", null);
         List<DisplayFieldsTemplate> templates = getDisplayedFieldTemplates(type);
         if(name != null) {
             for(DisplayFieldsTemplate template : templates) {
@@ -1561,7 +1569,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
         Map<String, String> result = new HashMap<String, String>();
         for(FimsSample sample : list) {
-            result.put( ""+sample.getFimsAttributeValue("biocode.Specimen_Num_Collector"), sample.getId());
+            result.put("" + sample.getFimsAttributeValue("biocode.Specimen_Num_Collector"), sample.getId());
         }
         return result;
     }
@@ -1646,6 +1654,21 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
         }
 
         getActiveLIMSConnection().savePlates(Collections.singletonList(plate), progress);
+
+        LIMSConnection activelimsConnection = getActiveLIMSConnection();
+        if (activelimsConnection instanceof ProjectLimsConnection) {
+            ProjectLimsConnection projectLimsConnection = (ProjectLimsConnection)activelimsConnection;
+            for (Reaction reaction : plate.getReactions()) {
+                Workflow reactionWorkflow = reaction.getWorkflow();
+                if (reactionWorkflow != null) {
+                    if (reaction instanceof PCRReaction) {
+
+                    } else if (reaction instanceof CycleSequencingReaction) {
+
+                    }
+                }
+            }
+        }
     }
 
     public void deletePlate(ProgressListener progress, Plate plate) throws DatabaseServiceException {
@@ -1854,5 +1877,9 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             e.printStackTrace();
             throw new DatabaseServiceException(e, "Failed to download plate " + plateName + ": " + e.getMessage(), false);
         }
+    }
+
+    public Map<Project, Collection<Workflow>> getProjectToWorkflows() {
+        return projectToWorkflows;
     }
 }

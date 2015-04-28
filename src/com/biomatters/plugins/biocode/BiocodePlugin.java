@@ -13,8 +13,8 @@ import com.biomatters.plugins.biocode.assembler.verify.VerifyTaxonomyDocumentVie
 import com.biomatters.plugins.biocode.assembler.verify.VerifyTaxonomyExporter;
 import com.biomatters.plugins.biocode.assembler.verify.VerifyTaxonomyOperation;
 import com.biomatters.plugins.biocode.labbench.*;
+import com.biomatters.plugins.biocode.labbench.lims.ProjectViewerFactory;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
-import com.biomatters.plugins.biocode.server.ProjectManagementOperation;
 import com.biomatters.plugins.biocode.submission.bold.GenerateBOLDTraceSubmissionOperation;
 import org.jdom.Document;
 import org.jdom.JDOMException;
@@ -352,7 +352,8 @@ public class BiocodePlugin extends GeneiousPlugin {
                 new VerifyTaxonomyDocumentViewerFactory(),
                 new CherryPickingDocumentViewerFactory(),
                 new MultiLocusDocumentViewerFactory(),
-                new TabularPlateDocumentViewerFactory()
+                new TabularPlateDocumentViewerFactory(),
+                new ProjectViewerFactory()
         };
     }
 
@@ -371,8 +372,7 @@ public class BiocodePlugin extends GeneiousPlugin {
                 new AddAssemblyResultsToLimsOperation(false, false),
                 new MarkSequencesAsSubmittedInLimsOperation(),
                 new GenerateBOLDTraceSubmissionOperation(),
-                new ReverseAssemblySequencesOperation(),
-                new ProjectManagementOperation()
+                new ReverseAssemblySequencesOperation()
 //                new WorkflowBuilder(),  // Used as a one off to import raw Biocode data into Darwin
 //                new MetagenomicsDocumentOperation()
                 //new ImportLimsOperation()

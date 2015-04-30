@@ -14,7 +14,9 @@ import com.biomatters.plugins.biocode.assembler.verify.VerifyTaxonomyExporter;
 import com.biomatters.plugins.biocode.assembler.verify.VerifyTaxonomyOperation;
 import com.biomatters.plugins.biocode.labbench.*;
 import com.biomatters.plugins.biocode.labbench.lims.ProjectViewerFactory;
+import com.biomatters.plugins.biocode.labbench.reaction.Cocktail;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
+import com.biomatters.plugins.biocode.labbench.reaction.Thermocycle;
 import com.biomatters.plugins.biocode.submission.bold.GenerateBOLDTraceSubmissionOperation;
 import org.jdom.Document;
 import org.jdom.JDOMException;
@@ -27,8 +29,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.List;
 import java.util.prefs.Preferences;
 
 /**
@@ -167,6 +169,36 @@ public class BiocodePlugin extends GeneiousPlugin {
         if (compareVersions(Geneious.getVersion(), "8.1.0") < 0) {
             checkUpdate();
         }
+
+        Cocktail.setCocktailGetter(new Cocktail.CocktailGetter() {
+            @Override
+            public List<? extends Cocktail> getCocktails(Reaction.Type type)  {
+                if(type == Reaction.Type.PCR) {
+                    return BiocodeService.getInstance().getPCRCocktails();
+                }
+                else if(type == Reaction.Type.CycleSequencing) {
+                    return BiocodeService.getInstance().getCycleSequencingCocktails();
+                }
+                else {
+                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
+                }
+            }
+        });
+
+        Thermocycle.setThermocycleGetter(new Thermocycle.ThermocycleGetter() {
+            @Override
+            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) {
+                if(type == Reaction.Type.PCR) {
+                    return BiocodeService.getInstance().getPCRThermocycles();
+                }
+                else if(type == Reaction.Type.CycleSequencing) {
+                    return BiocodeService.getInstance().getCycleSequencingThermocycles();
+                }
+                else {
+                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
+                }
+            }
+        });
     }
 
     private void checkUpdate() {

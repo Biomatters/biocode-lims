@@ -81,7 +81,26 @@ public class Plate implements XMLSerializable {
         else {
             init(size, type, false);
         }
-        thermocycleId = resultSet.getInt("plate.thermocycle");
+        int thermocycleId = resultSet.getInt("plate.thermocycle");
+        setThermocycleFromId(thermocycleId);
+    }
+
+    private void setThermocycleFromId(int thermocycleId) {
+        this.thermocycleId = thermocycleId;
+        if(thermocycleId >= 0) {
+            for(Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.PCR)) {
+                if(tc.getId() == thermocycleId) {
+                    setThermocycle(tc);
+                    break;
+                }
+            }
+            for(Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.CycleSequencing)) {
+                if(tc.getId() == thermocycleId) {
+                    setThermocycle(tc);
+                    break;
+                }
+            }
+        }
     }
 
     public static Size getSizeEnum(int size) {
@@ -271,7 +290,7 @@ public class Plate implements XMLSerializable {
                         }
                         Dimension preferredSize = reaction.getPreferredSize();
                         reaction.setBounds(new Rectangle(1+(preferredSize.width+1)* j1, 1+(preferredSize.height+1)* i1, preferredSize.width, preferredSize.height));
-                        reaction.setThermocycle(thermocycle);
+                        reaction.setThermocycle(getThermocycle());
                     }
                 };
                 ThreadUtilities.invokeNowOrWait(runnable);
@@ -283,11 +302,11 @@ public class Plate implements XMLSerializable {
 
     public Reaction getReaction(int row, int col) {
         if (row < 0 || row >= rows) {
-            throw new IllegalArgumentException("Row index out of bounds: " + row + ". Valid range: 0 - " + rows + ".");
+            throw new IllegalArgumentException("Row index out of bounds: " + row + ". Valid range: 0 - " + (rows - 1) + ".");
         }
 
         if (col < 0 || col >= cols) {
-            throw new IllegalArgumentException("Column index out of bounds: " + col + ". Valid range: 0 - " + cols + ".");
+            throw new IllegalArgumentException("Column index out of bounds: " + col + ". Valid range: 0 - " + (cols - 1) + ".");
         }
 
         return getReaction(cols * row + col);
@@ -491,19 +510,15 @@ public class Plate implements XMLSerializable {
         else {
             init(size, type, false);
         }
-        String thermocycleIdAsString = element.getChildText("thermocycleId");
-        if(thermocycleIdAsString != null) {
-            thermocycleId = Integer.parseInt(thermocycleIdAsString);
-        }
-        Element thermocycleElement = element.getChild("thermocycle");
-        if(thermocycleElement != null) {
-            thermocycle = XMLSerializer.classFromXML(thermocycleElement, Thermocycle.class);
-        }
         for(Element e : element.getChildren("reaction")) {
             Reaction r = XMLSerializer.classFromXML(e, Reaction.class);
             reactions[r.getPosition()] = r;
         }
         initialiseReactions();
+        String thermocycleId = element.getChildText("thermocycle");
+        if(thermocycleId != null) {
+            setThermocycleFromId(Integer.parseInt(thermocycleId));
+        }
         List<Element> imagesList = element.getChildren("gelImage");
         if(imagesList != null && imagesList.size() > 0) {
             images = new ArrayList<GelImage>();
@@ -541,10 +556,7 @@ public class Plate implements XMLSerializable {
         }
         plateElement.addContent(new Element("isDeleted").setText(""+isDeleted));
         if(getThermocycle() != null) {
-            plateElement.addContent(new Element("thermocycleId").setText("" + getThermocycle().getId()));
-        }
-        if(thermocycle != null) {
-            plateElement.addContent(XMLSerializer.classToXML("thermocycle", thermocycle));
+            plateElement.addContent(new Element("thermocycle").setText("" + getThermocycle().getId()));
         }
         for(Reaction r : reactions) {
             if (r != null) {

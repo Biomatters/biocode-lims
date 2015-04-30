@@ -1,23 +1,11 @@
 package com.biomatters.plugins.biocode.labbench.reaction;
 
-import com.biomatters.geneious.publicapi.components.Dialogs;
 import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializer;
 import com.biomatters.geneious.publicapi.plugin.Options;
-import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import org.jdom.Element;
 
-import javax.swing.*;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -55,22 +43,14 @@ public abstract class Cocktail implements XMLSerializable {
     }
 
     public static List<? extends Cocktail> getAllCocktailsOfType(Reaction.Type type) {
-        if(type == Reaction.Type.PCR) {
-            return BiocodeService.getInstance().getPCRCocktails();
-        }
-        else if(type == Reaction.Type.CycleSequencing) {
-            return BiocodeService.getInstance().getCycleSequencingCocktails();
-        }
-        else {
-            throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
-        }
+        return cocktailGetter.getCocktails(type);
     }
 
     public abstract Cocktail createNewCocktail();
 
     public abstract String getSQLString();
 
-    
+
 
     public boolean equals(Object o) {
         if(o instanceof Cocktail) {
@@ -110,5 +90,19 @@ public abstract class Cocktail implements XMLSerializable {
             this.cacheFilename = cacheFilename;
             this.reactionType = reactionType;
         }
+    }
+
+    private static CocktailGetter cocktailGetter;
+
+    public static void setCocktailGetter(CocktailGetter getter) {
+        cocktailGetter = getter;
+    }
+
+    public static CocktailGetter getCocktailGetter() {
+        return cocktailGetter;
+    }
+
+    public abstract static class CocktailGetter {
+        public abstract List<? extends Cocktail> getCocktails(Reaction.Type type);
     }
 }

@@ -251,4 +251,18 @@ public class Thermocycle implements XMLSerializable {
             this.databaseTable = databaseTable;
         }
     }
+
+    private static ThermocycleGetter thermocycleGetter;
+
+    public static void setThermocycleGetter(ThermocycleGetter getter) {
+        thermocycleGetter = getter;
+    }
+
+    public static ThermocycleGetter getThermocycleGetter() {
+        return thermocycleGetter;
+    }
+
+    public abstract static class ThermocycleGetter {
+        public abstract List<? extends Thermocycle> getThermocycles(Reaction.Type type);
+    }
 }

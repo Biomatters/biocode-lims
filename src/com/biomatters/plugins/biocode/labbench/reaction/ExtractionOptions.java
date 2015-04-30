@@ -79,19 +79,6 @@ public class ExtractionOptions extends ReactionOptions<ExtractionReaction>{
     }
 
     public void setPossibleProjects(Collection<Project> projects, Project defaultProject) {
-        if (projects == null) {
-            throw new IllegalArgumentException("projects is null.");
-        }
-        if (defaultProject == null) {
-            throw new IllegalArgumentException("defaultProject is null.");
-        }
-        if (!projects.contains(defaultProject)) {
-            throw new IllegalArgumentException("projects does not contain defaultProject.");
-        }
-        if (projectOption == null) {
-            throw new IllegalStateException("projectOption is not initialized.");
-        }
-
         List<OptionValue> projectOptionValues = new ArrayList<OptionValue>();
 
         for (Project project : projects) {

@@ -836,24 +836,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                             LimsSearchCallback.forRetrievePluginDocumentCallback(callback, new Function<Plate, PlateDocument>() {
                                 @Override
                                 public PlateDocument apply(Plate plate) {
-                                    if (plate.getReactionType().equals(Reaction.Type.PCR)) {
-                                        int plateThermocycleId = plate.getThermocycleId();
-                                        for (Thermocycle thermocycle : getPCRThermocycles()) {
-                                            if (plateThermocycleId == thermocycle.getId()) {
-                                                plate.setThermocycle(thermocycle);
-                                                break;
-                                            }
-                                        }
-                                    } else if (plate.getReactionType().equals(Reaction.Type.CycleSequencing)) {
-                                        int plateThermocycleId = plate.getThermocycleId();
-                                        for (Thermocycle thermocycle : getPCRThermocycles()) {
-                                            if (plateThermocycleId == thermocycle.getId()) {
-                                                plate.setThermocycle(thermocycle);
-                                                break;
-                                            }
-                                        }
-                                    }
-
                                     plate.initialiseReactions();
 
                                     try {

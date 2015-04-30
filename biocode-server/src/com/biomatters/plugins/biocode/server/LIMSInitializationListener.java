@@ -7,10 +7,14 @@ import com.biomatters.geneious.publicapi.documents.DocumentUtilitiesImplementati
 import com.biomatters.geneious.publicapi.documents.XMLSerializerImplementation;
 import com.biomatters.geneious.publicapi.plugin.*;
 import com.biomatters.geneious.publicapi.utilities.*;
+import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.PasswordOptions;
 import com.biomatters.plugins.biocode.labbench.connection.Connection;
 import com.biomatters.plugins.biocode.labbench.lims.*;
+import com.biomatters.plugins.biocode.labbench.reaction.Cocktail;
+import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
+import com.biomatters.plugins.biocode.labbench.reaction.Thermocycle;
 import com.biomatters.plugins.biocode.server.security.BiocodeServerLIMSDatabaseConstants;
 import com.biomatters.plugins.biocode.server.security.ConnectionSettingsConstants;
 import com.biomatters.plugins.biocode.server.security.LDAPConfiguration;
@@ -107,6 +111,42 @@ public class LIMSInitializationListener implements ServletContextListener {
         } catch (Exception e) {
             initializationErrors.add(IntializationError.forException(e));
         }
+
+        Cocktail.setCocktailGetter(new Cocktail.CocktailGetter() {
+            @Override
+            public List<? extends Cocktail> getCocktails(Reaction.Type type) {
+                try {
+                    if (type == Reaction.Type.PCR) {
+                        return limsConnection.getPCRCocktailsFromDatabase();
+                    } else if (type == Reaction.Type.CycleSequencing) {
+                        return limsConnection.getCycleSequencingCocktailsFromDatabase();
+                    } else {
+                        throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
+                    }
+                } catch (DatabaseServiceException e) {
+                    e.printStackTrace();
+                    return Collections.emptyList();
+                }
+            }
+        });
+
+        Thermocycle.setThermocycleGetter(new Thermocycle.ThermocycleGetter() {
+            @Override
+            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) {
+                try {
+                    if (type == Reaction.Type.PCR) {
+                        return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.pcr);
+                    } else if (type == Reaction.Type.CycleSequencing) {
+                        return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.cyclesequencing);
+                    } else {
+                        throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
+                    }
+                } catch (DatabaseServiceException e) {
+                    e.printStackTrace();
+                    return Collections.emptyList();
+                }
+            }
+        });
     }
 
     private void setLdapAuthenticationSettings(Properties config) {

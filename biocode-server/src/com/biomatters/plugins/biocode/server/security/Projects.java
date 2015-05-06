@@ -191,8 +191,8 @@ public class Projects {
     }
 
     @DELETE
-    @Path("{id}/workflows/{workflowIds}")
-    public void removeWorkflowsFromProjects(@PathParam("id")int projectId, @PathParam("workflowIds")String workflowIds) {
+    @Path("workflows/{workflowIds}")
+    public void removeWorkflowsFromProjects(@PathParam("workflowIds")String workflowIds) {
         try {
             String[] workflowIdsSplitByComma = workflowIds.split(",");
             Set<Integer> workflowIdSet = new HashSet<Integer>();
@@ -201,7 +201,7 @@ public class Projects {
             }
             removeWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), workflowIdSet);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The unassignment of workflow with ids " + workflowIds + " from project with ID " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The freeing of workflows associated with ids " + workflowIds + " from projects + was unsuccessful: " + e.getMessage());
         }
     }
 

@@ -3,7 +3,6 @@ package com.biomatters.plugins.biocode.labbench.reaction;
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.plugins.biocode.labbench.TextAreaOption;
-import com.biomatters.plugins.biocode.server.Project;
 import org.jdom.Element;
 
 import java.util.*;
@@ -16,21 +15,18 @@ import java.util.*;
  */
 public class ExtractionOptions extends ReactionOptions<ExtractionReaction>{
     public static final String TISSUE_ID = "sampleId";
-    private static final OptionValue NONE_PROJECT_OPTION_VALUE = new OptionValue(Integer.toString(Project.NONE_PROJECT.id), Project.NONE_PROJECT.name);
-
-    private ComboBoxOption<OptionValue> projectOption;
 
     public boolean fieldIsFinal(String fieldCode) {
         return false;//"sampleId".equals(fieldCode) || "extractionId".equals(fieldCode);
     }
 
-    public ExtractionOptions() {
+    public void init() {
         addStringOption(TISSUE_ID, "Tissue Sample Id", "");
         addStringOption("extractionId", "Extraction Id", "");
         addDateOption("date", "Date", new Date());
         OptionValue[] concStoredValues = new OptionValue[] {
-            new OptionValue("yes", "Yes"),
-            new OptionValue("no", "No")
+                new OptionValue("yes", "Yes"),
+                new OptionValue("no", "No")
         };
         OptionValue[] controlValues = new OptionValue[]{
                 new OptionValue("none", "None"),
@@ -55,9 +51,6 @@ public class ExtractionOptions extends ReactionOptions<ExtractionReaction>{
         addStringOption("technician", "Technician", "", "May be blank");
         TextAreaOption notesOption = new TextAreaOption("notes", "Notes", "");
         addCustomOption(notesOption);
-
-        projectOption = addComboBoxOption("project", "Project", Collections.singletonList(NONE_PROJECT_OPTION_VALUE), NONE_PROJECT_OPTION_VALUE);
-        projectOption.setEnabled(false);
     }
 
     public void refreshValuesFromCaches() {}
@@ -76,25 +69,5 @@ public class ExtractionOptions extends ReactionOptions<ExtractionReaction>{
 
     public Cocktail getCocktail() {
         return null;
-    }
-
-    public void setPossibleProjects(Collection<Project> projects, Project defaultProject) {
-        List<OptionValue> projectOptionValues = new ArrayList<OptionValue>();
-
-        for (Project project : projects) {
-            projectOptionValues.add(new OptionValue(String.valueOf(project.id), project.name));
-        }
-
-        projectOption.setPossibleValues(projectOptionValues);
-        for (OptionValue projectOptionValue : projectOptionValues) {
-            if (Integer.valueOf(projectOptionValue.getName()).equals(defaultProject.id) && projectOptionValue.getLabel().equals(defaultProject.name)) {
-                projectOption.setValue(projectOptionValue);
-                break;
-            }
-        }
-    }
-
-    public void setProjectOptionEnabled(boolean enabled) {
-        projectOption.setEnabled(enabled);
     }
 }

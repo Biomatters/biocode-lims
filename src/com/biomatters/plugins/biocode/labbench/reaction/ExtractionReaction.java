@@ -123,7 +123,7 @@ public class ExtractionReaction extends Reaction<ExtractionReaction>{
 
     public ReactionOptions _getOptions() {
         if(options == null) {
-            options = new ExtractionOptions();
+            options = new ExtractionOptions(getClass());
         }
         return options;
     }

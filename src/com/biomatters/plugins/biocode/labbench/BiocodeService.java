@@ -1636,21 +1636,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
         }
 
         getActiveLIMSConnection().savePlates(Collections.singletonList(plate), progress);
-
-        LIMSConnection activelimsConnection = getActiveLIMSConnection();
-        if (activelimsConnection instanceof ProjectLimsConnection) {
-            ProjectLimsConnection projectLimsConnection = (ProjectLimsConnection)activelimsConnection;
-            for (Reaction reaction : plate.getReactions()) {
-                Workflow reactionWorkflow = reaction.getWorkflow();
-                if (reactionWorkflow != null) {
-                    if (reaction instanceof PCRReaction) {
-
-                    } else if (reaction instanceof CycleSequencingReaction) {
-
-                    }
-                }
-            }
-        }
     }
 
     public void deletePlate(ProgressListener progress, Plate plate) throws DatabaseServiceException {

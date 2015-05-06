@@ -130,9 +130,9 @@ public class ProjectViewer extends DocumentViewer {
                             try {
                                 int idOfSelectedProject = projectSelectionOption.getIdOfSelectedProject();
                                 if (idOfSelectedProject == Project.NONE_PROJECT.id) {
-                                    projectLimsConnection.removeWorkflowsFromProject(getWorkflowIds(workflows), idOfSelectedProject);
+                                    projectLimsConnection.removeWorkflowsFromProject(getWorkflowIds(workflows));
                                 } else {
-                                    projectLimsConnection.addWorkflowsToProject(getWorkflowIds(workflows), idOfSelectedProject);
+                                    projectLimsConnection.addWorkflowsToProject(idOfSelectedProject, getWorkflowIds(workflows));
                                 }
                             } catch (DatabaseServiceException e) {
                                 Dialogs.showMessageDialog(e.getMessage(), "An error occurred", null, Dialogs.DialogIcon.ERROR);

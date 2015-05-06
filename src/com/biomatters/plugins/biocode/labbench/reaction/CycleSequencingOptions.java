@@ -13,7 +13,6 @@ import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.TextAreaOption;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
-import com.biomatters.plugins.biocode.server.Project;
 import org.jdom.Element;
 import org.virion.jam.util.SimpleListener;
 
@@ -57,7 +56,6 @@ public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReact
     private ButtonOption cocktailButton;
     private Option<String, ? extends JComponent> labelOption;
     private com.biomatters.plugins.biocode.labbench.ButtonOption tracesButton;
-    private ComboBoxOption<OptionValue> projectOption;
 
     static final String SEQ_RESULTS_BUTTON_NAME = "viewSeqResults";
     public static final String PRIMER_OPTION_ID = "primer";
@@ -71,11 +69,9 @@ public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReact
     public static final String FORWARD_VALUE = "forward";
     public static final String REVERSE_VALUE = "reverse";
     public static final String DIRECTION = "direction";
-    private static final OptionValue NONE_PROJECT_OPTION_VALUE = new OptionValue(Integer.toString(Project.NONE_PROJECT.id), Project.NONE_PROJECT.name);
 
     public CycleSequencingOptions(Class c) {
         super(c);
-        init();
         initListeners();
     }
 
@@ -280,8 +276,6 @@ public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReact
 
         labelOption = new LabelOption(LABEL_OPTION_ID, "Total Volume of Reaction: 0uL");
         addCustomOption(labelOption);
-
-        projectOption = addComboBoxOption("project", "Project", Collections.singletonList(NONE_PROJECT_OPTION_VALUE), NONE_PROJECT_OPTION_VALUE);
     }
 
     private List<OptionValue> getCocktails() {
@@ -301,25 +295,5 @@ public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReact
         super.setReaction(r);
         setValue(SEQ_RESULTS_BUTTON_NAME, "View " + (reaction != null ? reaction.getSequencingResults().size() : 0) + " Sequencing Results");
         getOption(SEQ_RESULTS_BUTTON_NAME).setEnabled(reaction != null && !reaction.getSequencingResults().isEmpty());
-    }
-
-    public void setPossibleProjects(Collection<Project> projects, Project defaultProject) {
-        List<OptionValue> projectOptionValues = new ArrayList<OptionValue>();
-
-        for (Project project : projects) {
-            projectOptionValues.add(new OptionValue(String.valueOf(project.id), project.name));
-        }
-
-        projectOption.setPossibleValues(projectOptionValues);
-        for (OptionValue projectOptionValue : projectOptionValues) {
-            if (Integer.valueOf(projectOptionValue.getName()).equals(defaultProject.id) && projectOptionValue.getLabel().equals(defaultProject.name)) {
-                projectOption.setValue(projectOptionValue);
-                break;
-            }
-        }
-    }
-
-    public void setProjectOptionEnabled(boolean enabled) {
-        projectOption.setEnabled(enabled);
     }
 }

@@ -2,7 +2,10 @@ package com.biomatters.plugins.biocode.labbench.reaction;
 
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.plugin.Options;
+import com.biomatters.plugins.biocode.server.Project;
 import org.jdom.Element;
+
+import java.util.*;
 
 /**
  * @author Steven Stones-Havas
@@ -22,17 +25,25 @@ public abstract class ReactionOptions<T extends Reaction> extends Options {
     public static final OptionValue FAILED_VALUE = new OptionValue("failed", "failed");
     public static final OptionValue[] STATUS_VALUES = new OptionValue[] { NOT_RUN_VALUE, RUN_VALUE, PASSED_VALUE, SUSPECT_VALUE, FAILED_VALUE };
     public static final String[] SAMPLE_LOCI = new String[] {"None", "COI", "16s", "18s", "ITS", "ITS1", "ITS2", "28S", "12S", "rbcl", "matK", "trnH-psba", "cytB"};
+    public static final String PROJECT_OPTION_NAME = "project";
     protected T reaction;
+    protected static final OptionValue NONE_PROJECT_OPTION_VALUE = new OptionValue(Integer.toString(Project.NONE_PROJECT.id), Project.NONE_PROJECT.name);
 
     public ReactionOptions() {
+        init();
+        addProjectOption();
     }
 
     public ReactionOptions(Class cl) {
         super(cl);
+        init();
+        addProjectOption();
     }
 
     public ReactionOptions(Class cl, String preferenceNameSuffix) {
         super(cl, preferenceNameSuffix);
+        init();
+        addProjectOption();
     }
 
     public ReactionOptions(Element element) throws XMLSerializationException {
@@ -47,5 +58,41 @@ public abstract class ReactionOptions<T extends Reaction> extends Options {
 
     public void setReaction(T r) {
         this.reaction = r;
+    }
+
+    public ComboBoxOption<OptionValue> getProjectOption() {
+        return (ComboBoxOption<OptionValue>)getOption(PROJECT_OPTION_NAME);
+    }
+
+    public void setPossibleProjects(Collection<Project> projects) {
+        getProjectOption().setPossibleValues(projectsToOptionValues(projects));
+    }
+
+    public void setProject(Project project) {
+        getProjectOption().setValue(projectToOptionValue(project));
+    }
+
+    public void enableProjectOption(boolean enabled) {
+        getProjectOption().setEnabled(enabled);
+    }
+
+    protected abstract void init();
+
+    private void addProjectOption() {
+        addComboBoxOption(PROJECT_OPTION_NAME, "Project", Collections.singletonList(NONE_PROJECT_OPTION_VALUE), NONE_PROJECT_OPTION_VALUE);
+    }
+
+    private List<OptionValue> projectsToOptionValues(Collection<Project> projects) {
+        Set<OptionValue> projectOptionValues = new HashSet<OptionValue>();
+
+        for (Project project : projects) {
+            projectOptionValues.add(projectToOptionValue(project));
+        }
+
+        return new ArrayList<OptionValue>(projectOptionValues);
+    }
+
+    private OptionValue projectToOptionValue(Project project) {
+        return new OptionValue(Integer.toString(project.id), project.name);
     }
 }

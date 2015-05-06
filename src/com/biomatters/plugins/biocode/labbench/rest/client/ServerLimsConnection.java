@@ -117,7 +117,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     @Override
-    public List<Plate> getPlates_(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException {
+    public List<Plate> getPlates__(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException {
         if (plateIds.isEmpty()) {
             return Collections.emptyList();
         }
@@ -704,7 +704,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     @Override
-    public void addWorkflowsToProject(Collection<Integer> workflowIds, int projectId) throws DatabaseServiceException {
+    public void addWorkflowsToProject(int projectId, Collection<Integer> workflowIds) throws DatabaseServiceException {
         try {
             target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectId)).path("workflows").request().put(Entity.entity(StringUtilities.join(",", workflowIds), MediaType.TEXT_PLAIN_TYPE));
         } catch (WebApplicationException e) {
@@ -715,9 +715,9 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     @Override
-    public void removeWorkflowsFromProject(Collection<Integer> workflowIds, int projectId) throws DatabaseServiceException {
+    public void removeWorkflowsFromProject(Collection<Integer> workflowIds) throws DatabaseServiceException {
         try {
-            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectId)).path("workflows").path(StringUtilities.join(",", workflowIds)).request().delete();
+            target.path(PROJECTS_BASE_PATH).path("workflows").path(StringUtilities.join(",", workflowIds)).request().delete();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {

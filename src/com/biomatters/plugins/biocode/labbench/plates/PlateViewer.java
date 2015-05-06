@@ -292,38 +292,6 @@ public class PlateViewer extends JPanel {
         topPanel.add(toolbar, BorderLayout.CENTER);
 
         add(topPanel, BorderLayout.NORTH);
-
-        Map<Project, Collection<Workflow>> projectToWorkflows = BiocodeService.getInstance().getProjectToWorkflows();
-        if (projectToWorkflows != null) {
-            Set<Project> possibleProjects = new HashSet<Project>(projectToWorkflows.keySet());;
-            possibleProjects.add(Project.NONE_PROJECT);
-            for (Reaction reaction : plateView.getPlate().getReactions()) {
-                Workflow reactionWorkflow = reaction.getWorkflow();
-                if (reactionWorkflow != null) {
-                    Project projectContainingReaction = Project.NONE_PROJECT;
-                    int reactionWorkflowId = reactionWorkflow.getId();
-                    for (Map.Entry<Project, Collection<Workflow>> projectAndWorkflows : projectToWorkflows.entrySet()) {
-                        for (Workflow workflow : projectAndWorkflows.getValue()) {
-                            if (reactionWorkflowId == workflow.getId()) {
-                                projectContainingReaction = projectAndWorkflows.getKey();
-                                break;
-                            }
-                        }
-                    }
-
-                    if (reaction instanceof ExtractionReaction) {
-                        ExtractionOptions options = (ExtractionOptions)reaction.getOptions();
-                        options.setPossibleProjects(possibleProjects, projectContainingReaction);
-                    } else if (reaction instanceof PCRReaction) {
-                        PCROptions options = (PCROptions)reaction.getOptions();
-                        options.setPossibleProjects(possibleProjects, projectContainingReaction);
-                    } else if (reaction instanceof CycleSequencingReaction) {
-                        CycleSequencingOptions options = (CycleSequencingOptions)reaction.getOptions();
-                        options.setPossibleProjects(possibleProjects, projectContainingReaction);
-                    }
-                }
-            }
-        }
     }
 
     public Plate getPlate() {

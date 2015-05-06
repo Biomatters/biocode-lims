@@ -50,7 +50,6 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
     private int[] fieldWidthCache = null;
     private GelImage gelImage = null;
     private BackgroundColorer backgroundColorer;
-    DisplayFieldsTemplate displayFieldsTemplate;
     private static final ImageObserver imageObserver = new ImageObserver(){
         public boolean imageUpdate(Image img, int infoflags, int x, int y, int width, int height) {
             return false;
@@ -70,6 +69,9 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
     public static final DocumentField GEL_IMAGE_DOCUMENT_FIELD = new DocumentField("GELImage", "", "gelImage", String.class, false, false);
     public static final DocumentField PLATE_NAME_DOCUMENT_FIELD = new DocumentField("Plate", "", "_plateName_", String.class, false, false);
     public static final DocumentField WELL_DOCUMENT_FIELD = new DocumentField("Well", "", "_plateWell_", String.class, false, false);
+    private static final String POSSIBLE_PROJECTS_ELEMENT_NAME  = "possibleProjects";
+    private static final String PROJECT_ELEMENT_NAME            = "project";
+    private static final String ACTIVE_PROJECT_ELEMENT_NAME     = "activeProject";
 
     public abstract String getLocus();
 
@@ -456,7 +458,18 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
             Element backgroundColorerElement = XMLSerializer.classToXML("backgroundColorer", backgroundColorer);
             element.addContent(backgroundColorerElement);
         }
-        element.addContent(getOptions().valuesToXML("options"));
+        ReactionOptions options = getOptions();
+        element.addContent(options.valuesToXML("options"));
+
+        Options.ComboBoxOption<Options.OptionValue> projectOption = options.getProjectOption();
+        Element possibleProjectsElement = new Element(POSSIBLE_PROJECTS_ELEMENT_NAME);
+        for (Options.OptionValue possibleProject : projectOption.getPossibleOptionValues()) {
+            possibleProjectsElement.addContent(XMLSerializer.classToXML(PROJECT_ELEMENT_NAME, possibleProject));
+        }
+        element.addContent(possibleProjectsElement);
+
+        element.addContent(XMLSerializer.classToXML(ACTIVE_PROJECT_ELEMENT_NAME, projectOption.getValue()));
+
         return element;
     }
 
@@ -521,8 +534,18 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
                 displayableFields.add(XMLSerializer.classFromXML(e, DocumentField.class));
             }
         }
-        Options options = getOptions();
+        ReactionOptions options = getOptions();
         options.valuesFromXML(element.getChild("options"));
+
+        Options.ComboBoxOption<Options.OptionValue> projectOption = options.getProjectOption();
+        Element possibleProjectsElement = element.getChild(POSSIBLE_PROJECTS_ELEMENT_NAME);
+        List<Options.OptionValue> possibleProjectOptionValues = new ArrayList<Options.OptionValue>();
+        for (Element projectElement : possibleProjectsElement.getChildren(PROJECT_ELEMENT_NAME)) {
+            possibleProjectOptionValues.add(XMLSerializer.classFromXML(projectElement, Options.OptionValue.class));
+        }
+        projectOption.setPossibleValues(possibleProjectOptionValues);
+
+        projectOption.setValue(XMLSerializer.classFromXML(element.getChild(ACTIVE_PROJECT_ELEMENT_NAME), Options.OptionValue.class));
         //setOptions(XMLSerializer.classFromXML(element.getChild("options"), ReactionOptions.class));
     }
 

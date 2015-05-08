@@ -5,8 +5,6 @@ import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.plugins.biocode.server.Project;
 import org.jdom.Element;
 
-import java.util.*;
-
 /**
  * @author Steven Stones-Havas
  * @version $Id$
@@ -25,25 +23,27 @@ public abstract class ReactionOptions<T extends Reaction> extends Options {
     public static final OptionValue FAILED_VALUE = new OptionValue("failed", "failed");
     public static final OptionValue[] STATUS_VALUES = new OptionValue[] { NOT_RUN_VALUE, RUN_VALUE, PASSED_VALUE, SUSPECT_VALUE, FAILED_VALUE };
     public static final String[] SAMPLE_LOCI = new String[] {"None", "COI", "16s", "18s", "ITS", "ITS1", "ITS2", "28S", "12S", "rbcl", "matK", "trnH-psba", "cytB"};
-    public static final String PROJECT_OPTION_NAME = "project";
     protected T reaction;
-    protected static final OptionValue NONE_PROJECT_OPTION_VALUE = new OptionValue(Integer.toString(Project.NONE_PROJECT.id), Project.NONE_PROJECT.name);
+    private static final String PROJECT_NAME_OPTION_NAME = "projectName";
+    private static final String PROJECT_ID_OPTION_NAME = "projectId";
+    private static final String PROJECT_NAME_LABEL = "Project Name: ";
+    private static final String PROJECT_ID_LABEL = "Project Id: ";
 
     public ReactionOptions() {
         init();
-        addProjectOption();
+        addProjectOptions();
     }
 
     public ReactionOptions(Class cl) {
         super(cl);
         init();
-        addProjectOption();
+        addProjectOptions();
     }
 
     public ReactionOptions(Class cl, String preferenceNameSuffix) {
         super(cl, preferenceNameSuffix);
         init();
-        addProjectOption();
+        addProjectOptions();
     }
 
     public ReactionOptions(Element element) throws XMLSerializationException {
@@ -60,39 +60,42 @@ public abstract class ReactionOptions<T extends Reaction> extends Options {
         this.reaction = r;
     }
 
-    public ComboBoxOption<OptionValue> getProjectOption() {
-        return (ComboBoxOption<OptionValue>)getOption(PROJECT_OPTION_NAME);
+    public int getProjectId() {
+        return Integer.valueOf(getProjectIdOption().getValue().replaceFirst(PROJECT_ID_LABEL, ""));
     }
 
-    public void setPossibleProjects(Collection<Project> projects) {
-        getProjectOption().setPossibleValues(projectsToOptionValues(projects));
+    public String getProjectName() {
+        return getProjectNameOption().getValue().replaceFirst(PROJECT_NAME_LABEL, "");
     }
 
-    public void setProject(Project project) {
-        getProjectOption().setValue(projectToOptionValue(project));
+    public void setProjectName(String projectName) {
+        getProjectNameOption().setValue(convertToProjectNameOptionFormat(projectName));
     }
 
-    public void enableProjectOption(boolean enabled) {
-        getProjectOption().setEnabled(enabled);
+    public void setProjectId(int projectId) {
+        getProjectIdOption().setValue(convertToProjectIdOptionFormat(projectId));
     }
 
     protected abstract void init();
 
-    private void addProjectOption() {
-        addComboBoxOption(PROJECT_OPTION_NAME, "Project", Collections.singletonList(NONE_PROJECT_OPTION_VALUE), NONE_PROJECT_OPTION_VALUE);
+    private void addProjectOptions() {
+        addCustomOption(new LabelOption(PROJECT_NAME_OPTION_NAME, convertToProjectNameOptionFormat(Project.NONE_PROJECT.name)));
+        addCustomOption(new LabelOption(PROJECT_ID_OPTION_NAME, convertToProjectIdOptionFormat(Project.NONE_PROJECT.id)));
     }
 
-    private List<OptionValue> projectsToOptionValues(Collection<Project> projects) {
-        Set<OptionValue> projectOptionValues = new HashSet<OptionValue>();
-
-        for (Project project : projects) {
-            projectOptionValues.add(projectToOptionValue(project));
-        }
-
-        return new ArrayList<OptionValue>(projectOptionValues);
+    private static String convertToProjectNameOptionFormat(String projectName) {
+        return PROJECT_NAME_LABEL + projectName;
     }
 
-    private OptionValue projectToOptionValue(Project project) {
-        return new OptionValue(Integer.toString(project.id), project.name);
+    private static String convertToProjectIdOptionFormat(int projectId) {
+        return PROJECT_ID_LABEL + projectId;
+    }
+
+    private LabelOption getProjectIdOption() {
+        return (LabelOption)getOption(PROJECT_ID_OPTION_NAME);
+    }
+
+    private LabelOption getProjectNameOption() {
+        return (LabelOption)getOption(PROJECT_NAME_OPTION_NAME);
     }
 }

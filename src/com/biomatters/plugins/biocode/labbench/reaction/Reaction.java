@@ -69,9 +69,8 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
     public static final DocumentField GEL_IMAGE_DOCUMENT_FIELD = new DocumentField("GELImage", "", "gelImage", String.class, false, false);
     public static final DocumentField PLATE_NAME_DOCUMENT_FIELD = new DocumentField("Plate", "", "_plateName_", String.class, false, false);
     public static final DocumentField WELL_DOCUMENT_FIELD = new DocumentField("Well", "", "_plateWell_", String.class, false, false);
-    private static final String POSSIBLE_PROJECTS_ELEMENT_NAME  = "possibleProjects";
-    private static final String PROJECT_ELEMENT_NAME            = "project";
-    private static final String ACTIVE_PROJECT_ELEMENT_NAME     = "activeProject";
+    private static final String PROJECT_ID_ELEMENT_NAME = "projectId";
+    private static final String PROJECT_NAME_ELEMENT_NAME = "projectName";
 
     public abstract String getLocus();
 
@@ -320,9 +319,9 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
      *          The class of the returned value must be the {@link DocumentField#getValueType()} (or a subclass) of the corresponding DocumentField returned from {@link #getDisplayableFields()}.
      */
     public Object getFieldValue(String fieldCode) {
-        if(LIMSConnection.EXTRACTION_BARCODE_FIELD.getCode().equals(fieldCode)) {
+        if(fieldCode.equals(LIMSConnection.EXTRACTION_BARCODE_FIELD.getCode())) {
             return getExtractionBarcode();
-        } else if (LIMSConnection.EXTRACTION_BCID_FIELD.getCode().equals(fieldCode)) {
+        } else if (fieldCode.equals(LIMSConnection.EXTRACTION_BCID_FIELD.getCode())) {
             LIMSConnection limsConnection;
             try {
                 limsConnection = BiocodeService.getInstance().getActiveLIMSConnection();
@@ -461,14 +460,8 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         ReactionOptions options = getOptions();
         element.addContent(options.valuesToXML("options"));
 
-        Options.ComboBoxOption<Options.OptionValue> projectOption = options.getProjectOption();
-        Element possibleProjectsElement = new Element(POSSIBLE_PROJECTS_ELEMENT_NAME);
-        for (Options.OptionValue possibleProject : projectOption.getPossibleOptionValues()) {
-            possibleProjectsElement.addContent(XMLSerializer.classToXML(PROJECT_ELEMENT_NAME, possibleProject));
-        }
-        element.addContent(possibleProjectsElement);
-
-        element.addContent(XMLSerializer.classToXML(ACTIVE_PROJECT_ELEMENT_NAME, projectOption.getValue()));
+        element.addContent(new Element(PROJECT_ID_ELEMENT_NAME).setText(Integer.toString(options.getProjectId())));
+        element.addContent(new Element(PROJECT_NAME_ELEMENT_NAME).setText(options.getProjectName()));
 
         return element;
     }
@@ -536,16 +529,8 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         }
         ReactionOptions options = getOptions();
         options.valuesFromXML(element.getChild("options"));
-
-        Options.ComboBoxOption<Options.OptionValue> projectOption = options.getProjectOption();
-        Element possibleProjectsElement = element.getChild(POSSIBLE_PROJECTS_ELEMENT_NAME);
-        List<Options.OptionValue> possibleProjectOptionValues = new ArrayList<Options.OptionValue>();
-        for (Element projectElement : possibleProjectsElement.getChildren(PROJECT_ELEMENT_NAME)) {
-            possibleProjectOptionValues.add(XMLSerializer.classFromXML(projectElement, Options.OptionValue.class));
-        }
-        projectOption.setPossibleValues(possibleProjectOptionValues);
-
-        projectOption.setValue(XMLSerializer.classFromXML(element.getChild(ACTIVE_PROJECT_ELEMENT_NAME), Options.OptionValue.class));
+        options.setProjectId(Integer.parseInt(element.getChildText(PROJECT_ID_ELEMENT_NAME)));
+        options.setProjectName(element.getChildText(PROJECT_NAME_ELEMENT_NAME));
         //setOptions(XMLSerializer.classFromXML(element.getChild("options"), ReactionOptions.class));
     }
 

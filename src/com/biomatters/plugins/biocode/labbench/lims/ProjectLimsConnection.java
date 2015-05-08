@@ -4,6 +4,7 @@ import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceExceptio
 import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
+import com.biomatters.plugins.biocode.labbench.reaction.ReactionOptions;
 import com.biomatters.plugins.biocode.server.Project;
 import jebl.util.Cancelable;
 
@@ -21,21 +22,26 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
     protected abstract List<Plate> getPlates__(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException;
 
     @Override
-    protected List<Plate> getPlates_(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException {
-        return setProjectValue(getPlates__(plateIds, cancelable), getProjectToWorkflows());
-    }
+    protected final List<Plate> getPlates_(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException {
+        List<Plate> plates = getPlates__(plateIds, cancelable);
 
-    private static List<Plate> setProjectValue(List<Plate> plates, Map<Project, Collection<Workflow>> projectToWorkflows) throws DatabaseServiceException {
         for (Plate plate : plates) {
-            for (Reaction reaction : plate.getReactions()) {
-                Workflow reactionWorkflow = reaction.getWorkflow();
-                if (reactionWorkflow != null) {
-                    reaction.getOptions().setPossibleProjects(Collections.singletonList(getProject(projectToWorkflows, reactionWorkflow)));
-                }
-            }
+            setProjectValue(plate, getProjectToWorkflows());
         }
 
         return plates;
+    }
+
+    private static void setProjectValue(Plate plate, Map<Project, Collection<Workflow>> projectToWorkflows) throws DatabaseServiceException {
+        for (Reaction reaction : plate.getReactions()) {
+            Workflow reactionWorkflow = reaction.getWorkflow();
+            if (reactionWorkflow != null) {
+                ReactionOptions reactionOptions = reaction.getOptions();
+                Project project = getProject(projectToWorkflows, reactionWorkflow);
+                reactionOptions.setProjectId(project.id);
+                reactionOptions.setProjectName(project.name);
+            }
+        }
     }
 
     private static Project getProject(Map<Project, Collection<Workflow>> projectToWorkflows, Workflow workflowInProject) {

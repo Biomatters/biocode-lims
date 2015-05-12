@@ -169,36 +169,6 @@ public class BiocodePlugin extends GeneiousPlugin {
         if (compareVersions(Geneious.getVersion(), "8.1.0") < 0) {
             checkUpdate();
         }
-
-        Cocktail.setCocktailGetter(new Cocktail.CocktailGetter() {
-            @Override
-            public List<? extends Cocktail> getCocktails(Reaction.Type type)  {
-                if(type == Reaction.Type.PCR) {
-                    return BiocodeService.getInstance().getPCRCocktails();
-                }
-                else if(type == Reaction.Type.CycleSequencing) {
-                    return BiocodeService.getInstance().getCycleSequencingCocktails();
-                }
-                else {
-                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
-                }
-            }
-        });
-
-        Thermocycle.setThermocycleGetter(new Thermocycle.ThermocycleGetter() {
-            @Override
-            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) {
-                if(type == Reaction.Type.PCR) {
-                    return BiocodeService.getInstance().getPCRThermocycles();
-                }
-                else if(type == Reaction.Type.CycleSequencing) {
-                    return BiocodeService.getInstance().getCycleSequencingThermocycles();
-                }
-                else {
-                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
-                }
-            }
-        });
     }
 
     private void checkUpdate() {

@@ -463,6 +463,36 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     }
 
     public void connect(Connection connection, boolean block, boolean needDisconnectionThread) {
+        Cocktail.setCocktailGetter(new Cocktail.CocktailGetter() {
+            @Override
+            public List<? extends Cocktail> getCocktails(Reaction.Type type)  {
+                if(type == Reaction.Type.PCR) {
+                    return getInstance().getPCRCocktails();
+                }
+                else if(type == Reaction.Type.CycleSequencing) {
+                    return getInstance().getCycleSequencingCocktails();
+                }
+                else {
+                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
+                }
+            }
+        });
+
+        Thermocycle.setThermocycleGetter(new Thermocycle.ThermocycleGetter() {
+            @Override
+            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) {
+                if(type == Reaction.Type.PCR) {
+                    return getInstance().getPCRThermocycles();
+                }
+                else if(type == Reaction.Type.CycleSequencing) {
+                    return getInstance().getCycleSequencingThermocycles();
+                }
+                else {
+                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
+                }
+            }
+        });
+
         synchronized (this) {
             loggingIn = true;
         }

@@ -6,6 +6,7 @@ import com.biomatters.geneious.publicapi.plugin.DocumentSelectionOption;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.plugin.DocumentImportException;
 import com.biomatters.geneious.publicapi.components.Dialogs;
+import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.FimsSample;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
@@ -134,9 +135,9 @@ public class CycleSequencingReaction extends Reaction<CycleSequencingReaction>{
         DocumentSelectionOption primerOption = (DocumentSelectionOption)options.getOption(CycleSequencingOptions.PRIMER_OPTION_ID);
         String primerName = r.getString("cyclesequencing.primerName");
         String primerSequence = r.getString("cyclesequencing.primerSequence");
-//        if(primerSequence.length() > 0) {
-//            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
-//        }
+        if(primerSequence.length() > 0) {
+            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
+        }
         options.setValue("direction", r.getString("direction"));
         //options.setValue("prAmount", r.getInt("cyclesequencing.primerAmount"));
         options.setValue("notes", r.getString("cyclesequencing.notes"));

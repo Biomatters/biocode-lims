@@ -4,6 +4,7 @@ import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceExceptio
 import com.biomatters.geneious.publicapi.documents.DocumentField;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.plugin.DocumentSelectionOption;
+import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.FimsSample;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
@@ -62,7 +63,7 @@ public class PCRReaction extends Reaction<PCRReaction> {
         String primerName = r.getString("pcr.prName");
         String primerSequence = r.getString("pcr.prSequence");
         if(primerSequence != null && primerSequence.length() > 0) {
-//            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
+            primerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(primerName, primerSequence)));
         }
         //options.setValue("prAmount", r.getInt("pcr.prAmount"));
 
@@ -70,7 +71,7 @@ public class PCRReaction extends Reaction<PCRReaction> {
         String reversePrimerName = r.getString("pcr.revPrName");
         String reversePrimerSequence = r.getString("pcr.revPrSequence");
         if(reversePrimerSequence != null && reversePrimerSequence.length() > 0) {
-        //    reversePrimerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(reversePrimerName, reversePrimerSequence)));
+            reversePrimerOption.setValue(new DocumentSelectionOption.FolderOrDocuments(BiocodeUtilities.createPrimerDocument(reversePrimerName, reversePrimerSequence)));
         }
         //options.setValue("revPrAmount", r.getInt("pcr.revPrAmount"));
 

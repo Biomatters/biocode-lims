@@ -10,8 +10,6 @@ import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.server.*;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
 import jebl.util.Cancelable;
 import jebl.util.ProgressListener;
 

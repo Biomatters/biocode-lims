@@ -2,6 +2,8 @@ package com.biomatters.plugins.biocode.labbench.reaction;
 
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.documents.*;
+import com.biomatters.geneious.publicapi.implementations.sequence.OligoSequenceDocument;
+import com.biomatters.geneious.publicapi.plugin.DocumentOperationException;
 import com.biomatters.geneious.publicapi.plugin.DocumentSelectionOption;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
@@ -463,6 +465,42 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         element.addContent(new Element(PROJECT_ID_ELEMENT_NAME).setText(Integer.toString(options.getProjectId())));
         element.addContent(new Element(PROJECT_NAME_ELEMENT_NAME).setText(options.getProjectName()));
 
+        Options.Option primerOption = options.getOption("primer");
+        if (primerOption instanceof DocumentSelectionOption) {
+            List<AnnotatedPluginDocument> primerDocuments = ((DocumentSelectionOption)primerOption).getDocuments();
+            if (primerDocuments.size() == 1) {
+                try {
+                    PluginDocument primerPluginDocument = primerDocuments.get(0).getDocument();
+                    if (primerPluginDocument instanceof OligoSequenceDocument) {
+                        OligoSequenceDocument primer = (OligoSequenceDocument)primerPluginDocument;
+                        Element primerElement = new Element("primer");
+                        primerElement.addContent(new Element("name").setText(primer.getName()));
+                        primerElement.addContent(new Element("sequence").setText(primer.getSequenceString()));
+                        element.addContent(primerElement);
+                    }
+                } catch (DocumentOperationException e) {
+                }
+            }
+        }
+
+        Options.Option revPrimerOption = options.getOption("revPrimer");
+        if (revPrimerOption instanceof DocumentSelectionOption) {
+            List<AnnotatedPluginDocument> primerDocuments = ((DocumentSelectionOption)revPrimerOption).getDocuments();
+            if (primerDocuments.size() == 1) {
+                try {
+                    PluginDocument revPrimerPluginDocument = primerDocuments.get(0).getDocument();
+                    if (revPrimerPluginDocument instanceof OligoSequenceDocument) {
+                        OligoSequenceDocument revPrimer = (OligoSequenceDocument)revPrimerPluginDocument;
+                        Element revPrimerElement = new Element("revPrimer");
+                        revPrimerElement.addContent(new Element("name").setText(revPrimer.getName()));
+                        revPrimerElement.addContent(new Element("sequence").setText(revPrimer.getSequenceString()));
+                        element.addContent(revPrimerElement);
+                    }
+                } catch (DocumentOperationException e) {
+                }
+            }
+        }
+
         return element;
     }
 
@@ -532,6 +570,26 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         options.setProjectId(Integer.parseInt(element.getChildText(PROJECT_ID_ELEMENT_NAME)));
         options.setProjectName(element.getChildText(PROJECT_NAME_ELEMENT_NAME));
         //setOptions(XMLSerializer.classFromXML(element.getChild("options"), ReactionOptions.class));
+
+        Element primerElement = element.getChild("primer");
+        if (primerElement != null) {
+            Options.Option primerOption = options.getOption("primer");
+            if (primerOption instanceof DocumentSelectionOption) {
+                OligoSequenceDocument primer = new OligoSequenceDocument(primerElement.getChildText("name"), "", primerElement.getChildText("sequence"), new Date());
+                DocumentSelectionOption.FolderOrDocuments folderOrDocuments = new DocumentSelectionOption.FolderOrDocuments(Collections.singletonList(DocumentUtilities.createAnnotatedPluginDocument(primer)));
+                primerOption.setValue(folderOrDocuments);
+            }
+        }
+
+        Element revPrimerElement = element.getChild("revPrimer");
+        if (revPrimerElement != null) {
+            Options.Option revPrimerOption = options.getOption("revPrimer");
+            if (revPrimerOption instanceof DocumentSelectionOption) {
+                OligoSequenceDocument revPrimer = new OligoSequenceDocument(revPrimerElement.getChildText("name"), "", revPrimerElement.getChildText("sequence"), new Date());
+                DocumentSelectionOption.FolderOrDocuments folderOrDocuments = new DocumentSelectionOption.FolderOrDocuments(Collections.singletonList(DocumentUtilities.createAnnotatedPluginDocument(revPrimer)));
+                revPrimerOption.setValue(folderOrDocuments);
+            }
+        }
     }
 
     public abstract Color _getBackgroundColor();

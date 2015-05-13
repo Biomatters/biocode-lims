@@ -133,7 +133,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             connection = dataSource.getConnection();
             Set<String> tables = SqlUtilities.getDatabaseTableNamesLowerCase(connection);
 
-            if (!tables.contains(BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME.toLowerCase())) {
+            if (!tables.contains(BiocodeServerLIMSDatabaseConstants.PRIMER_TABLE_NAME.toLowerCase())) {
                 dropAccessControlTables(connection);
                 setupTables(connection);
             }

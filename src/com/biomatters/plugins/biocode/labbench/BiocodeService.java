@@ -25,11 +25,9 @@ import com.biomatters.plugins.biocode.labbench.fims.biocode.BiocodeFIMSConnectio
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.lims.LimsSearchCallback;
 import com.biomatters.plugins.biocode.labbench.lims.LimsSearchResult;
-import com.biomatters.plugins.biocode.labbench.lims.ProjectLimsConnection;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.labbench.reporting.ReportingService;
-import com.biomatters.plugins.biocode.server.Project;
 import com.google.common.base.Function;
 import jebl.util.ProgressListener;
 import org.jdom.Element;
@@ -81,7 +79,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     public final Map<String, Image[]> imageCache = new HashMap<String, Image[]>();
     private File dataDirectory;
     private static final long FIMS_CONNECTION_TIMEOUT_THRESHOLD_MILLISECONDS = 60000;
-    private Map<Project, Collection<Workflow>> projectToWorkflows = null;
 
     private static Preferences getPreferencesForService() {
         return Preferences.userNodeForPackage(BiocodeService.class);
@@ -345,8 +342,8 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             Condition[] conditions;
             if(field.isEnumeratedField()) {
                 conditions = new Condition[] {
-                    Condition.EQUAL,
-                    Condition.NOT_EQUAL
+                        Condition.EQUAL,
+                        Condition.NOT_EQUAL
                 };
             }
             else {
@@ -887,10 +884,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                     throw new DatabaseServiceException(e, e.getMessage(), false);
                 }
 
-                if (limsConnection instanceof ProjectLimsConnection)  {
-                    projectToWorkflows = ((ProjectLimsConnection)limsConnection).getProjectToWorkflows();
-                }
-
                 if(callback.isCanceled()) {
                     return;
                 }
@@ -919,7 +912,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                 e.printStackTrace();
                 String message = e.getMessage();
                 boolean isNetwork = true;
-                if(message != null && message.contains("Streaming result") && message.contains("is still active")) {
+                if (message != null && message.contains("Streaming result") && message.contains("is still active")) {
                     if(!hasAlreadyTriedReconnect) {
                         try {
                             System.out.println("attempting a reconnect...");
@@ -1023,7 +1016,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
         try {
             DocumentOperationException documentOperationException = exceptionDuringAnnotate.get();
-            if(documentOperationException != null) {
+            if (documentOperationException != null) {
                 throw documentOperationException;
             }
 
@@ -1857,7 +1850,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
 
     public Plate getPlateForName(String plateName) throws DatabaseServiceException {
         Query q = Query.Factory.createFieldQuery(LIMSConnection.PLATE_NAME_FIELD, Condition.EQUAL, new Object[]{plateName},
-                                BiocodeService.getSearchDownloadOptions(false, false, true, false));
+                BiocodeService.getSearchDownloadOptions(false, false, true, false));
         try {
             List<Integer> plateIds = getActiveLIMSConnection().getMatchingDocumentsFromLims(q, null, ProgressListener.EMPTY).getPlateIds();
             if(plateIds.isEmpty()) {
@@ -1874,9 +1867,5 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             e.printStackTrace();
             throw new DatabaseServiceException(e, "Failed to download plate " + plateName + ": " + e.getMessage(), false);
         }
-    }
-
-    public Map<Project, Collection<Workflow>> getProjectToWorkflows() {
-        return projectToWorkflows;
     }
 }

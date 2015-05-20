@@ -1,5 +1,6 @@
 package com.biomatters.plugins.biocode.labbench.reaction;
 
+import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.utilities.GeneralUtilities;
@@ -148,11 +149,11 @@ public class Thermocycle implements XMLSerializable {
         }
 
         public Cycle(int repeats) {
-            this.repeats = repeats;    
+            this.repeats = repeats;
         }
 
         public void addState(State s) {
-           states.add(s);
+            states.add(s);
         }
 
         public List<State> getStates() {
@@ -263,6 +264,6 @@ public class Thermocycle implements XMLSerializable {
     }
 
     public abstract static class ThermocycleGetter {
-        public abstract List<? extends Thermocycle> getThermocycles(Reaction.Type type);
+        public abstract List<? extends Thermocycle> getThermocycles(Reaction.Type type) throws DatabaseServiceException;
     }
 }

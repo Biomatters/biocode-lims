@@ -1,11 +1,13 @@
 package com.biomatters.plugins.biocode.labbench.reaction;
 
+import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializer;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import org.jdom.Element;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -43,7 +45,11 @@ public abstract class Cocktail implements XMLSerializable {
     }
 
     public static List<? extends Cocktail> getAllCocktailsOfType(Reaction.Type type) {
-        return cocktailGetter.getCocktails(type);
+        try {
+            return cocktailGetter.getCocktails(type);
+        } catch (DatabaseServiceException e) {
+            return Collections.emptyList();
+        }
     }
 
     public abstract Cocktail createNewCocktail();
@@ -103,6 +109,6 @@ public abstract class Cocktail implements XMLSerializable {
     }
 
     public abstract static class CocktailGetter {
-        public abstract List<? extends Cocktail> getCocktails(Reaction.Type type);
+        public abstract List<? extends Cocktail> getCocktails(Reaction.Type type) throws DatabaseServiceException;
     }
 }

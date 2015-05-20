@@ -134,7 +134,7 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
     public abstract Type getType();
 
     protected BackgroundColorer getDefaultBackgroundColorer() {
-         return BiocodeService.getInstance().getDefaultDisplayedFieldsTemplate(getType()).getColorer();
+        return BiocodeService.getInstance().getDefaultDisplayedFieldsTemplate(getType()).getColorer();
     }
 
     public BackgroundColorer getBackgroundColorer() {
@@ -396,7 +396,7 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
     protected Integer getDatabaseIdOfExtraction() {
         return databaseIdOfExtraction;
     }
-    
+
     public final Color getBackgroundColor() {
         if(isError) {
             return Color.orange.brighter();
@@ -410,10 +410,15 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
 
     private static final String EXTRACTION_DATABASE_ID = "databaseIdOfExtraction";
 
+    private static final String PRIMER_ELEMENT_NAME = "primer";
+    private static final String REV_PRIMER_ELEMENT_NAME = "revPrimer";
+    private static final String PRIMER_NAME_ELEMENT_NAME = "name";
+    private static final String PRIMER_SEQUENCE_ELEMENT_NAME = "sequence";
+
     public Element toXML() {
         Element element = new Element("Reaction");
         if(thermocycle != null) {
-            element.addContent(XMLSerializer.classToXML("thermocycle", thermocycle));
+            element.addContent(new Element("thermocycle").setText(Integer.toString(thermocycle.getId())));
         }
         if(fimsSample != null) {
             element.addContent(XMLSerializer.classToXML("fimsSample", fimsSample));
@@ -465,46 +470,41 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         element.addContent(new Element(PROJECT_ID_ELEMENT_NAME).setText(Integer.toString(options.getProjectId())));
         element.addContent(new Element(PROJECT_NAME_ELEMENT_NAME).setText(options.getProjectName()));
 
-        Options.Option primerOption = options.getOption("primer");
-        if (primerOption instanceof DocumentSelectionOption) {
-            List<AnnotatedPluginDocument> primerDocuments = ((DocumentSelectionOption)primerOption).getDocuments();
-            if (primerDocuments.size() == 1) {
-                try {
-                    PluginDocument primerPluginDocument = primerDocuments.get(0).getDocument();
-                    if (primerPluginDocument instanceof OligoSequenceDocument) {
-                        OligoSequenceDocument primer = (OligoSequenceDocument)primerPluginDocument;
-                        Element primerElement = new Element("primer");
-                        primerElement.addContent(new Element("name").setText(primer.getName()));
-                        primerElement.addContent(new Element("sequence").setText(primer.getSequenceString()));
-                        element.addContent(primerElement);
-                    }
-                } catch (DocumentOperationException e) {
-                }
-            }
+        Element primerElement = getPrimerElement(options, false);
+        if (primerElement != null) {
+            element.addContent(primerElement);
         }
 
-        Options.Option revPrimerOption = options.getOption("revPrimer");
-        if (revPrimerOption instanceof DocumentSelectionOption) {
-            List<AnnotatedPluginDocument> primerDocuments = ((DocumentSelectionOption)revPrimerOption).getDocuments();
-            if (primerDocuments.size() == 1) {
-                try {
-                    PluginDocument revPrimerPluginDocument = primerDocuments.get(0).getDocument();
-                    if (revPrimerPluginDocument instanceof OligoSequenceDocument) {
-                        OligoSequenceDocument revPrimer = (OligoSequenceDocument)revPrimerPluginDocument;
-                        Element revPrimerElement = new Element("revPrimer");
-                        revPrimerElement.addContent(new Element("name").setText(revPrimer.getName()));
-                        revPrimerElement.addContent(new Element("sequence").setText(revPrimer.getSequenceString()));
-                        element.addContent(revPrimerElement);
-                    }
-                } catch (DocumentOperationException e) {
-                }
-            }
+        Element reversePrimerElement = getPrimerElement(options, true);
+        if (reversePrimerElement != null) {
+            element.addContent(reversePrimerElement);
         }
 
         return element;
     }
 
+    private static Element getPrimerElement(ReactionOptions option, boolean reverse) {
+        Element primerElement = null;
+
+        Options.Option primerOption = option.getOption(reverse ? "revPrimer" : "primer");
+        if (primerOption instanceof DocumentSelectionOption) {
+            List<AnnotatedPluginDocument> primerDocuments = ((DocumentSelectionOption)primerOption).getDocuments();
+            if (primerDocuments.size() == 1) {
+                PluginDocument primerPluginDocument = primerDocuments.get(0).getDocumentOrNull();
+                if (primerPluginDocument instanceof OligoSequenceDocument) {
+                    OligoSequenceDocument primer = (OligoSequenceDocument) primerPluginDocument;
+                    primerElement = new Element(reverse ? REV_PRIMER_ELEMENT_NAME : PRIMER_ELEMENT_NAME);
+                    primerElement.addContent(new Element(PRIMER_NAME_ELEMENT_NAME).setText(primer.getName()));
+                    primerElement.addContent(new Element(PRIMER_SEQUENCE_ELEMENT_NAME).setText(primer.getSequenceString()));
+                }
+            }
+        }
+
+        return primerElement;
+    }
+
     public void fromXML(Element element) throws XMLSerializationException {
+        String thermoCycleId = element.getChildText("thermocycle");
         setPosition(Integer.parseInt(element.getChildText("position")));
         Element locationStringElement = element.getChild("wellLabel");
         Element plateNameElement = element.getChild("plateName");
@@ -534,10 +534,6 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         if(fimsElement != null) {
             fimsSample = XMLSerializer.classFromXML(fimsElement, FimsSample.class);
         }
-        Element thermocycleElement = element.getChild("thermocycle");
-        if (thermocycleElement != null) {
-            thermocycle = XMLSerializer.classFromXML(thermocycleElement, Thermocycle.class);
-        }
         Element gelImageElement = element.getChild("gelimage");
         if(gelImageElement != null) {
             gelImage = XMLSerializer.classFromXML(gelImageElement, GelImage.class);
@@ -549,6 +545,27 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         } catch (ParseException e) {
             assert false : "Could not read the date "+element.getChildText("created");
             setCreated(new Date());
+        }
+        if(thermoCycleId != null) {
+            int tcId = Integer.parseInt(thermoCycleId);
+            try {
+                for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Type.PCR)) {
+                    if (tc.getId() == tcId) {
+                        setThermocycle(tc);
+                        break;
+                    }
+                }
+                if (thermocycle == null) {
+                    for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Type.CycleSequencing)) {
+                        if (tc.getId() == tcId) {
+                            setThermocycle(tc);
+                            break;
+                        }
+                    }
+                }
+            } catch (DatabaseServiceException e) {
+                throw new XMLSerializationException(e);
+            }
         }
         Element workflowElement = element.getChild("workflow");
         if(workflowElement != null) {
@@ -571,25 +588,33 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         options.setProjectName(element.getChildText(PROJECT_NAME_ELEMENT_NAME));
         //setOptions(XMLSerializer.classFromXML(element.getChild("options"), ReactionOptions.class));
 
-        Element primerElement = element.getChild("primer");
-        if (primerElement != null) {
-            Options.Option primerOption = options.getOption("primer");
-            if (primerOption instanceof DocumentSelectionOption) {
-                OligoSequenceDocument primer = new OligoSequenceDocument(primerElement.getChildText("name"), "", primerElement.getChildText("sequence"), new Date());
-                DocumentSelectionOption.FolderOrDocuments folderOrDocuments = new DocumentSelectionOption.FolderOrDocuments(Collections.singletonList(DocumentUtilities.createAnnotatedPluginDocument(primer)));
-                primerOption.setValue(folderOrDocuments);
+        Options.Option primerOption = options.getOption("primer");
+        if (primerOption instanceof DocumentSelectionOption) {
+            DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = getFolderOrDocumentsElement(element, false);
+            if (folderOrDocumentsContainingPrimer != null) {
+                primerOption.setValue(folderOrDocumentsContainingPrimer);
             }
         }
 
-        Element revPrimerElement = element.getChild("revPrimer");
-        if (revPrimerElement != null) {
-            Options.Option revPrimerOption = options.getOption("revPrimer");
-            if (revPrimerOption instanceof DocumentSelectionOption) {
-                OligoSequenceDocument revPrimer = new OligoSequenceDocument(revPrimerElement.getChildText("name"), "", revPrimerElement.getChildText("sequence"), new Date());
-                DocumentSelectionOption.FolderOrDocuments folderOrDocuments = new DocumentSelectionOption.FolderOrDocuments(Collections.singletonList(DocumentUtilities.createAnnotatedPluginDocument(revPrimer)));
-                revPrimerOption.setValue(folderOrDocuments);
+        Options.Option reversePrimerOption = options.getOption("revPrimer");
+        if (reversePrimerOption instanceof DocumentSelectionOption) {
+            DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = getFolderOrDocumentsElement(element, true);
+            if (folderOrDocumentsContainingPrimer != null) {
+                reversePrimerOption.setValue(folderOrDocumentsContainingPrimer);
             }
         }
+    }
+
+    private static DocumentSelectionOption.FolderOrDocuments getFolderOrDocumentsElement(Element reactionRootElement, boolean reverse) {
+        DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = null;
+
+        Element primerElement = reactionRootElement.getChild(reverse ? REV_PRIMER_ELEMENT_NAME : PRIMER_ELEMENT_NAME);
+        if (primerElement != null) {
+            OligoSequenceDocument primer = new OligoSequenceDocument(primerElement.getChildText(PRIMER_NAME_ELEMENT_NAME), "", primerElement.getChildText(PRIMER_SEQUENCE_ELEMENT_NAME), new Date());
+            folderOrDocumentsContainingPrimer = new DocumentSelectionOption.FolderOrDocuments(Collections.singletonList(DocumentUtilities.createAnnotatedPluginDocument(primer)));
+        }
+
+        return folderOrDocumentsContainingPrimer;
     }
 
     public abstract Color _getBackgroundColor();

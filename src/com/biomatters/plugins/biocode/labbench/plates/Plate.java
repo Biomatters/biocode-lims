@@ -1,5 +1,6 @@
 package com.biomatters.plugins.biocode.labbench.plates;
 
+import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializer;
@@ -88,17 +89,21 @@ public class Plate implements XMLSerializable {
     private void setThermocycleFromId(int thermocycleId) {
         this.thermocycleId = thermocycleId;
         if(thermocycleId >= 0) {
-            for(Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.PCR)) {
-                if(tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
-                    break;
+            try {
+                for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.PCR)) {
+                    if (tc.getId() == thermocycleId) {
+                        setThermocycle(tc);
+                        break;
+                    }
                 }
-            }
-            for(Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.CycleSequencing)) {
-                if(tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
-                    break;
+                for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.CycleSequencing)) {
+                    if (tc.getId() == thermocycleId) {
+                        setThermocycle(tc);
+                        break;
+                    }
                 }
+            } catch (DatabaseServiceException e) {
+                e.printStackTrace();
             }
         }
     }

@@ -11,7 +11,6 @@ public class BiocodeServerLIMSDatabaseConstants {
     public static final String PROJECT_ROLE_TABLE_NAME      = "project_role";
     public static final String WORKFLOW_PROJECT_TABLE_NAME  = "workflow_project";
     public static final String BCID_ROOTS_TABLE_NAME        = "bcid_roots";
-    public static final String PRIMER_TABLE_NAME            = "primer";
 
     public static final String USERNAME_COLUMN_NAME_USERS_TABLE        = "username";
     public static final String PASSWORD_COLUMN_NAME_USERS_TABLE        = "password";

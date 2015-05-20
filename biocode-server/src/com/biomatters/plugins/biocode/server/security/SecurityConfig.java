@@ -72,7 +72,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
-            .authorizeRequests()
+                .authorizeRequests()
                 .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE)
                 .antMatchers(INFO_URL + "/**").permitAll()
                 .antMatchers(BASE_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
@@ -133,7 +133,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             connection = dataSource.getConnection();
             Set<String> tables = SqlUtilities.getDatabaseTableNamesLowerCase(connection);
 
-            if (!tables.contains(BiocodeServerLIMSDatabaseConstants.PRIMER_TABLE_NAME.toLowerCase())) {
+            if (!tables.contains(BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME.toLowerCase())) {
                 dropAccessControlTables(connection);
                 setupTables(connection);
             }
@@ -169,11 +169,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             throw new InternalServerErrorException("A connection to a LIMS database could not be found.");
         }
 
-        String scriptName = limsConnection.isLocal() ? "add_access_control_sqlite.sql" : "add_access_control_mysql.sql";
+        String scriptName = limsConnection.isLocal() ? "add_access_control_hsql.sql" : "add_access_control_mysql.sql";
 
         InputStream script = SecurityConfig.class.getResourceAsStream(scriptName);
 
-        if (scriptName == null) {
+        if (script == null) {
             throw new IllegalStateException("Missing " + scriptName + ".  Cannot set up security.");
         }
 

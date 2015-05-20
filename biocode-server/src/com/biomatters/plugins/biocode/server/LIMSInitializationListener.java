@@ -114,36 +114,26 @@ public class LIMSInitializationListener implements ServletContextListener {
 
         Cocktail.setCocktailGetter(new Cocktail.CocktailGetter() {
             @Override
-            public List<? extends Cocktail> getCocktails(Reaction.Type type) {
-                try {
-                    if (type == Reaction.Type.PCR) {
-                        return limsConnection.getPCRCocktailsFromDatabase();
-                    } else if (type == Reaction.Type.CycleSequencing) {
-                        return limsConnection.getCycleSequencingCocktailsFromDatabase();
-                    } else {
-                        throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
-                    }
-                } catch (DatabaseServiceException e) {
-                    e.printStackTrace();
-                    return Collections.emptyList();
+            public List<? extends Cocktail> getCocktails(Reaction.Type type) throws DatabaseServiceException {
+                if (type == Reaction.Type.PCR) {
+                    return limsConnection.getPCRCocktailsFromDatabase();
+                } else if (type == Reaction.Type.CycleSequencing) {
+                    return limsConnection.getCycleSequencingCocktailsFromDatabase();
+                } else {
+                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
                 }
             }
         });
 
         Thermocycle.setThermocycleGetter(new Thermocycle.ThermocycleGetter() {
             @Override
-            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) {
-                try {
-                    if (type == Reaction.Type.PCR) {
-                        return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.pcr);
-                    } else if (type == Reaction.Type.CycleSequencing) {
-                        return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.cyclesequencing);
-                    } else {
-                        throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
-                    }
-                } catch (DatabaseServiceException e) {
-                    e.printStackTrace();
-                    return Collections.emptyList();
+            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) throws DatabaseServiceException {
+                if (type == Reaction.Type.PCR) {
+                    return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.pcr);
+                } else if (type == Reaction.Type.CycleSequencing) {
+                    return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.cyclesequencing);
+                } else {
+                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
                 }
             }
         });
@@ -371,17 +361,17 @@ public class LIMSInitializationListener implements ServletContextListener {
             connection = dataSource.getConnection();
 
             String selectBCIDRootsTableQuery = "SELECT * " +
-                                               "FROM information_schema.tables " +
-                                               "WHERE table_name=? " +
-                                               "AND table_schema IN (SELECT DATABASE())";
+                    "FROM information_schema.tables " +
+                    "WHERE table_name=? " +
+                    "AND table_schema IN (SELECT DATABASE())";
             String createBCIDRootsTableQuery = "CREATE TABLE " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME +
-                                               "(" +
-                                               "type VARCHAR(255) NOT NULL," +
-                                               "bcid_root VARCHAR(255) NOT NULL," +
-                                               "PRIMARY KEY (type)" +
-                                               ");";
+                    "(" +
+                    "type VARCHAR(255) NOT NULL," +
+                    "bcid_root VARCHAR(255) NOT NULL," +
+                    "PRIMARY KEY (type)" +
+                    ");";
             String populateBCIDRootsTableQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
-                                                 "VALUES (?, ?)";
+                    "VALUES (?, ?)";
 
             selectBCIDRootsTableStatement = connection.prepareStatement(selectBCIDRootsTableQuery);
             createBCIDRootsTableStatement = connection.prepareStatement(createBCIDRootsTableQuery);

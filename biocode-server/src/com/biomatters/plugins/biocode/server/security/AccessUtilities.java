@@ -126,8 +126,8 @@ public class AccessUtilities {
             connection = dataSource.getConnection();
             retrieveIDsOfProjectsThatGovernWorkflowsStatement = connection.prepareStatement(
                     "SELECT * " +
-                    "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
-                    " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
+                            "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                            " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
             );
 
             int statementObjectIndex = 1;
@@ -181,9 +181,9 @@ public class AccessUtilities {
             connection = dataSource.getConnection();
             retrieveExtractionIDsUserHasRoleForStatement = connection.prepareStatement(
                     "SELECT extraction.extractionId as extractionId, " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".project_id as projectId " +
-                    "FROM (extraction " +
-                    "LEFT OUTER JOIN workflow ON extraction.extractionId=workflow.extractionId) " +
-                    "LEFT OUTER JOIN " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + " ON workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id"
+                            "FROM extraction " +
+                            "LEFT OUTER JOIN workflow ON extraction.id=workflow.extractionId " +
+                            "LEFT OUTER JOIN " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + " ON workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id"
             );
             retrieveExtractionIDsUserHasRoleForResultSet = retrieveExtractionIDsUserHasRoleForStatement.executeQuery();
             while (retrieveExtractionIDsUserHasRoleForResultSet.next()) {
@@ -265,8 +265,8 @@ public class AccessUtilities {
             connection = ((SqlLimsConnection)limsConnection).getDataSource().getConnection();
             retrieveWorkflowIDsStatement = connection.prepareStatement(
                     "SELECT id " +
-                    "FROM workflow " +
-                    "WHERE extractionId IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(extractionDatabaseIDs.size()) + ")"
+                            "FROM workflow " +
+                            "WHERE extractionId IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(extractionDatabaseIDs.size()) + ")"
             );
 
             int statementObjectIndex = 1;

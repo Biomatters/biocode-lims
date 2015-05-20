@@ -4,7 +4,6 @@ import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceExceptio
 import com.biomatters.geneious.publicapi.utilities.FileUtilities;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
-import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
 import com.biomatters.plugins.biocode.labbench.lims.DatabaseScriptRunner;
 import com.biomatters.plugins.biocode.labbench.lims.SqlLimsConnection;
 import com.biomatters.plugins.biocode.server.Project;
@@ -27,7 +26,6 @@ import java.util.*;
  *         Created on 30/06/14 12:05 AM
  */
 public class ProjectsTest extends Assert {
-
     private File tempDir;
     private DataSource dataSource;
 
@@ -44,8 +42,6 @@ public class ProjectsTest extends Assert {
         DatabaseScriptRunner.runScript(dataSource.getConnection(), script, false, false);
     }
 
-
-
     @After
     public void closeDatabase() {
         dataSource = null;
@@ -54,7 +50,6 @@ public class ProjectsTest extends Assert {
 
     @Test
     public void canAddProject() throws SQLException {
-        System.out.println("Test");
         Project p = new Project();
         p.name = "Test";
 
@@ -173,159 +168,152 @@ public class ProjectsTest extends Assert {
     }
 
     @Test
-    public void canAddHierarchy() throws DatabaseServiceException {
-        FimsProject root = new FimsProject("1", "root", null);
+    public void canAddHierarchy() throws DatabaseServiceException, SQLException {
+        Project root = new Project(1, "root", "", -1, false);
+        Project root2 = new Project(2, "root2", "", -1, false);
+        Project root3 = new Project(3, "root3", "", -1, false);
 
-        FimsProject root2 = new FimsProject("2", "root2", null);
-        FimsProject root3 = new FimsProject("3", "root3", null);
+        Project rootChild = new Project(4, "rootChild", "", 1, false);
+        Project rootChild2 = new Project(5, "rootChild2", "", 1, false);
 
-        FimsProject rootChild = new FimsProject("4", "rootChild", root);
-        FimsProject rootChild2 = new FimsProject("5", "rootChild2", root);
+        Project rootChildChild = new Project(6, "rootChildChild", "", 4, false);
 
-        FimsProject rootChildChild = new FimsProject("6", "rootChildChild", rootChild);
+        List<Project> noChildren = Arrays.asList(root, root2, root3);
+        setProjectsInDatabase(dataSource, noChildren);
+        setProjectsInDatabase(dataSource, noChildren);  // Check it does not create duplicates
 
-        List<FimsProject> noChildren = Arrays.asList(root, root2, root3);
-        checkDatabaseMatchesList(dataSource, noChildren);
-        checkDatabaseMatchesList(dataSource, noChildren);  // Check it does not create duplicates
-
-        List<FimsProject> withChildren = Arrays.asList(root, root2, root3, rootChild, rootChild2, rootChildChild);
-        checkDatabaseMatchesList(dataSource, withChildren);
+        List<Project> withChildren = Arrays.asList(root, root2, root3, rootChild, rootChild2, rootChildChild);
+        setProjectsInDatabase(dataSource, withChildren);
     }
 
     @Test
-    public void canUpdateProjectHierarchy() throws DatabaseServiceException {
-        FimsProject root = new FimsProject("1", "root", null);
-        FimsProject rootChild = new FimsProject("2", "rootChild", root);
-        FimsProject rootChildChild = new FimsProject("3", "rootChildChild", rootChild);
-        FimsProject rootChildChildMoved = new FimsProject("3", "rootChildChild", root);
-        FimsProject rootChildChildRenamed = new FimsProject("3", "sub", root);
-        FimsProject rootChildChildNotAChild = new FimsProject("3", "sub", null);
+    public void canUpdateProjectHierarchy() throws DatabaseServiceException, SQLException {
+        Project root = new Project(1, "root", "", -1, false);
+        Project rootChild = new Project(2, "rootChild", "", 1, false);
+        Project rootChildChild = new Project(3, "rootChildChild", "", 2, false);
+        Project rootChildChildMoved = new Project(3, "rootChildChild", "", 1, false);
+        Project rootChildChildRenamed = new Project(3, "sub", "", 1, false);
+        Project rootChildChildNotAChild = new Project(3, "sub", "", -1, false);
 
-        checkDatabaseMatchesList(dataSource, Arrays.asList(root, rootChild, rootChildChild));
-        checkDatabaseMatchesList(dataSource, Arrays.asList(root, rootChild, rootChildChildMoved));
-        checkDatabaseMatchesList(dataSource, Arrays.asList(root, rootChild, rootChildChildRenamed));
-        checkDatabaseMatchesList(dataSource, Arrays.asList(root, rootChild, rootChildChildNotAChild));
+        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChild));
+        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChildMoved));
+        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChildRenamed));
+        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChildNotAChild));
     }
 
     @Test
-    public void deletesOldProjects() throws DatabaseServiceException {
-        FimsProject root = new FimsProject("1", "root", null);
-        FimsProject rootChild = new FimsProject("2", "rootChild", root);
-        FimsProject rootChildChild = new FimsProject("3", "rootChildChild", rootChild);
+    public void deletesOldProjects() throws DatabaseServiceException, SQLException {
+        Project root = new Project(1, "root", "", -1, false);
+        Project rootChild = new Project(2, "rootChild", "", 1, false);
+        Project rootChildChild = new Project(3, "rootChildChild", "", 2, false);
 
-        checkDatabaseMatchesList(dataSource, Arrays.asList(root, rootChild, rootChildChild));
-        checkDatabaseMatchesList(dataSource, Arrays.asList(root, rootChild));
-        checkDatabaseMatchesList(dataSource, Arrays.asList(root));
+        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChild));
+        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild));
+        setProjectsInDatabase(dataSource, Collections.singletonList(root));
     }
 
-    private void checkDatabaseMatchesList(DataSource dataSource, List<FimsProject> expected) throws DatabaseServiceException {
-//        Projects.updateProject(dataSource, new FimsWithProjects(expected));
-//        List<Project> inDatabase = Projects.getProjectsForId(dataSource);
-//        assertEquals(expected.size(), inDatabase.size());
-//
-//        Map<String, Project> inDatabaseByKey = new HashMap<String, Project>();
-//        for (Project project : inDatabase) {
-//            inDatabaseByKey.put(project.globalId, project);
-//        }
-//
-//        Set<Integer> idsSeen = new HashSet<Integer>();
-//        for (FimsProject fimsProject : expected) {
-//            Project toCompare = inDatabaseByKey.get(fimsProject.getId());
-//            assertNotNull(toCompare);
-//            assertFalse(idsSeen.contains(toCompare.id));
-//            idsSeen.add(toCompare.id);
-//            assertEquals(fimsProject.getId(), toCompare.globalId);
-//            assertEquals(fimsProject.getName(), toCompare.name);
-//            FimsProject parent = fimsProject.getParent();
-//            if(parent != null) {
-//                Project parentInDatabase = inDatabaseByKey.get(parent.getId());
-//                assertTrue(parentInDatabase.id == toCompare.parentProjectId);
-//                assertNotNull(parentInDatabase);
-//                assertEquals(parent.getName(), parentInDatabase.name);
-//            } else {
-//                assertTrue(-1 == toCompare.parentProjectId);
-//            }
-//        }
-    }
+    private void setProjectsInDatabase(DataSource dataSource, List<Project> expected) throws DatabaseServiceException, SQLException {
+        List<Project> existingProjects = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
+        for (Project project : existingProjects) {
+            if (!expected.contains(project)) {
+                Projects.removeProject(dataSource, project.id);
+            }
+        }
 
-    @Test
-    public void testCanGetProjectsForUser() throws DatabaseServiceException {
-//        User user = new User();
-//        user.username = "me";
-//        user.password = "password";
-//        user.firstname = "";
-//        user.lastname = "";
-//        user.email = "me@me.com";
-//        Users.addUser(dataSource, user);
-//
-//        FimsProject adminOf = new FimsProject("1", "adminOf", null);
-//        FimsProject writerOf = new FimsProject("2", "writerOf", null);
-//        FimsProject readerOf = new FimsProject("3", "readerOf", null);
-//        FimsProject noAccess = new FimsProject("4", "noAccess", null);
-//
-//        FimsWithProjects fimsConnection = new FimsWithProjects(Arrays.asList(
-//                adminOf, writerOf, readerOf, noAccess
-//        ));
-//        Projects.updateProjectsFromFims(dataSource, fimsConnection);
-//
-//        List<Project> projects = Projects.getProjectsForId(dataSource);
-//        setRoleForProjet(user, adminOf, projects, Role.ADMIN);
-//        setRoleForProjet(user, writerOf, projects, Role.WRITER);
-//        setRoleForProjet(user, readerOf, projects, Role.READER);
-//
-//        List<FimsProject> result = Projects.getFimsProjectsUserHasAtLeastRole(dataSource, fimsConnection, user, Role.ADMIN);
-//        assertEquals(1, result.size());
-//        assertTrue(result.contains(adminOf));
-//
-//        result = Projects.getFimsProjectsUserHasAtLeastRole(dataSource, fimsConnection, user, Role.WRITER);
-//        assertEquals(2, result.size());
-//        assertTrue(result.contains(adminOf));
-//        assertTrue(result.contains(writerOf));
-//
-//        result = Projects.getFimsProjectsUserHasAtLeastRole(dataSource, fimsConnection, user, Role.READER);
-//        assertEquals(3, result.size());
-//        assertTrue(result.contains(adminOf));
-//        assertTrue(result.contains(writerOf));
-//        assertTrue(result.contains(readerOf));
+        for (Project project : expected) {
+            if (existingProjects.contains(project)) {
+                Projects.updateProject(dataSource, project);
+            } else {
+                Projects.addProject(dataSource, project);
+            }
+        }
+
+        List<Project> inDatabase = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
+        assertEquals(expected.size(), inDatabase.size());
+
+        Map<Integer, Project> inDatabaseByKey = new HashMap<Integer, Project>();
+        for (Project project : inDatabase) {
+            inDatabaseByKey.put(project.id, project);
+        }
+
+        Set<Integer> idsSeen = new HashSet<Integer>();
+        for (Project project : expected) {
+            Project toCompare = inDatabaseByKey.get(project.id);
+            assertNotNull(toCompare);
+            assertFalse(idsSeen.contains(toCompare.id));
+            idsSeen.add(toCompare.id);
+            assertEquals(project.id, toCompare.id);
+            assertEquals(project.name, toCompare.name);
+            int parentProjectId = project.parentProjectID;
+            Project parent = inDatabaseByKey.get(parentProjectId);
+            if (parentProjectId == -1) {
+                assertNull(parent);
+            } else {
+                assertNotNull(parent);
+            }
+        }
     }
 
     @Test
-    public void roleInheritedFromParent() throws DatabaseServiceException {
-//        User user = new User();
-//        user.username = "me";
-//        user.password = "password";
-//        user.firstname = "";
-//        user.lastname = "";
-//        user.email = "me@me.com";
-//        Users.addUser(dataSource, user);
-//
-//        FimsProject parent = new FimsProject("1", "parent", null);
-//        FimsProject child = new FimsProject("2", "child", parent);
-//
-//        FimsWithProjects fimsConnection = new FimsWithProjects(Arrays.asList(
-//                parent, child
-//        ));
-//        Projects.updateProjectsFromFims(dataSource, fimsConnection);
-//
-//        List<Project> projects = Projects.getProjectsForId(dataSource);
-//        for (Role role : new Role[]{Role.ADMIN, Role.WRITER, Role.READER, null}) {
-//            setRoleForProjet(user, parent, projects, role);
-//            List<FimsProject> withRole = Projects.getFimsProjectsUserHasAtLeastRole(dataSource, fimsConnection, user, role);
-//            assertEquals(2, withRole.size());
-//            assertTrue(withRole.contains(parent));
-//            assertTrue(withRole.contains(child));
-//        }
+    public void testCanGetProjectsForUser() throws DatabaseServiceException, SQLException {
+        User user = new User();
+        user.username = "me";
+        user.password = "password";
+        user.firstname = "";
+        user.lastname = "";
+        user.email = "me@me.com";
+        Users.addUser(dataSource, user);
+
+        Project adminOf = new Project(1, "adminOf", "", -1, false);
+        Project writerOf = new Project(2, "writerOf", "", -1, false);
+        Project readerOf = new Project(3, "readerOf", "", -1, false);
+
+        Projects.addProject(dataSource, adminOf);
+        Projects.addProject(dataSource, writerOf);
+        Projects.addProject(dataSource, readerOf);
+
+        Projects.addProjectRoles(dataSource, adminOf.id, Collections.singletonMap(user, Role.ADMIN));
+        Projects.addProjectRoles(dataSource, writerOf.id, Collections.singletonMap(user, Role.WRITER));
+        Projects.addProjectRoles(dataSource, readerOf.id, Collections.singletonMap(user, Role.READER));
+
+        List<Project> result = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, Role.ADMIN);
+        assertEquals(1, result.size());
+        assertTrue(result.contains(adminOf));
+
+        result = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, Role.WRITER);
+        assertEquals(2, result.size());
+        assertTrue(result.contains(adminOf));
+        assertTrue(result.contains(writerOf));
+
+        result = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, Role.READER);
+        assertEquals(3, result.size());
+        assertTrue(result.contains(adminOf));
+        assertTrue(result.contains(writerOf));
+        assertTrue(result.contains(readerOf));
     }
 
-    void setRoleForProjet(User user, FimsProject toSetFor, List<Project> projectsInDatabase, Role role) {
-//        for (Project project : projectsInDatabase) {
-//            if(project.globalId.equals(toSetFor.getId())) {
-//                if(role != null) {
-//                    Projects.setProjectRoleForUsername(dataSource, project.id, user.username, role);
-//                } else {
-//                    Projects.removeUserFromProject(dataSource, project.id, user.username);
-//                }
-//            }
-//        }
+    @Test
+    public void roleInheritedFromParent() throws DatabaseServiceException, SQLException {
+        User user = new User();
+        user.username = "me";
+        user.password = "password";
+        user.firstname = "";
+        user.lastname = "";
+        user.email = "me@me.com";
+        Users.addUser(dataSource, user);
+
+        Project parent = new Project(1, "parent", "", -1, false);
+        Project child = new Project(2, "child", "", 1, false);
+
+        Projects.addProject(dataSource, parent);
+        Projects.addProject(dataSource, child);
+
+        for (Role role : new Role[]{Role.ADMIN, Role.WRITER, Role.READER}) {
+            Projects.addProjectRoles(dataSource, parent.id, Collections.singletonMap(user, role));
+            List<Project> withRole = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, role);
+            assertEquals(2, withRole.size());
+            assertTrue(withRole.contains(parent));
+            assertTrue(withRole.contains(child));
+        }
     }
 }

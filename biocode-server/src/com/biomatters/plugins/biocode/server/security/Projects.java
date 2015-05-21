@@ -271,14 +271,30 @@ public class Projects {
 
         List<Project> projectsUserHasRoleAccessFor = new ArrayList<Project>();
 
-        List<Project> allProjects = getProjects(dataSource, Collections.<Integer>emptySet());
+        Map<Integer, Project> projectIdToProject = createProjectIdToProjectMap(getProjects(dataSource, Collections.<Integer>emptySet()));
+
         if (user.isAdministrator) {
-            projectsUserHasRoleAccessFor.addAll(allProjects);
+            projectsUserHasRoleAccessFor.addAll(projectIdToProject.values());
         } else {
-            for (Project project : allProjects) {
-                Role userRoleForProject = getRoleForUser(project, user);
-                if (userRoleForProject != null && userRoleForProject.isAtLeast(role)) {
-                    projectsUserHasRoleAccessFor.add(project);
+            for (Project project : projectIdToProject.values()) {
+                Project potentialProject = project;
+                boolean checkingProject = true;
+                while (checkingProject) {
+                    Map<User, Role> userProjectRole = getProjectRoles(dataSource, potentialProject.id, Collections.singletonList(user.username));
+
+                    if (userProjectRole.size() > 1) {
+                        throw new InternalServerErrorException("More than one role was found for user " + user.username + " in project " + potentialProject.name + ".");
+                    }
+
+                    if (!userProjectRole.isEmpty() && userProjectRole.get(user).isAtLeast(role)) {
+                        projectsUserHasRoleAccessFor.add(project);
+                        checkingProject = false;
+                    }
+
+                    potentialProject = projectIdToProject.get(potentialProject.parentProjectID);
+                    if (potentialProject == null) {
+                        checkingProject = false;
+                    }
                 }
             }
         }
@@ -322,7 +338,7 @@ public class Projects {
             addProjectStatement.setBoolean(5, project.isPublic);
 
             if (addProjectStatement.executeUpdate() == 0) {
-                throw new InternalServerErrorException("The addition of project " + project.name + " was unsuccessful.");
+                return -1;
             }
 
             return projectID;
@@ -362,9 +378,7 @@ public class Projects {
             updateProjectStatement.setBoolean(4, project.isPublic);
             updateProjectStatement.setInt(5, project.id);
 
-            if (updateProjectStatement.executeUpdate() == 0) {
-                throw new InternalServerErrorException("Project with ID " + project.id + " could not be updated.");
-            }
+            updateProjectStatement.executeUpdate();
         } finally {
             SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(updateProjectStatement);
@@ -850,5 +864,15 @@ public class Projects {
         parentProjectID = parentProjectID > 0 ? parentProjectID : -1;
 
         return new Project(resultSet.getInt("id"), resultSet.getString("name"), resultSet.getString("description"), parentProjectID, resultSet.getBoolean("is_public"));
+    }
+
+    private static Map<Integer, Project> createProjectIdToProjectMap(Collection<Project> projects) {
+        Map<Integer, Project> projectIdToProject = new HashMap<Integer, Project>();
+
+        for (Project project : projects) {
+            projectIdToProject.put(project.id, project);
+        }
+
+        return projectIdToProject;
     }
 }

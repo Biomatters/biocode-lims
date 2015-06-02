@@ -2,9 +2,9 @@ package com.biomatters.plugins.biocode.server.security;
 
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.utilities.FileUtilities;
-import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.lims.DatabaseScriptRunner;
+import com.biomatters.plugins.biocode.labbench.lims.LocalLIMSConnection;
 import com.biomatters.plugins.biocode.labbench.lims.SqlLimsConnection;
 import com.biomatters.plugins.biocode.server.Project;
 import com.biomatters.plugins.biocode.server.Role;
@@ -35,7 +35,7 @@ public class ProjectsTest extends Assert {
         String path = tempDir.getAbsolutePath() + File.separator + "database.db";
         System.out.println("Database Path: " + path);
         String connectionString = "jdbc:hsqldb:file:" + path + ";shutdown=true";
-        dataSource = SqlLimsConnection.createBasicDataSource(connectionString, BiocodeService.getInstance().getLocalDriver(), null, null);
+        dataSource = SqlLimsConnection.createBasicDataSource(connectionString, LocalLIMSConnection.getLocalDriver(), null, null);
         InputStream preScript = getClass().getResourceAsStream("for_tests.sql");
         InputStream script = getClass().getResourceAsStream("add_access_control_hsql.sql");
         DatabaseScriptRunner.runScript(dataSource.getConnection(), preScript, false, false);

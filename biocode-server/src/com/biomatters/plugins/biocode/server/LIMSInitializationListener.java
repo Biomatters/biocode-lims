@@ -68,6 +68,7 @@ public class LIMSInitializationListener implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent servletContextEvent) {
         initializeGeneiousUtilities();
+        LocalLIMSConnection.setDataDirectory(getSettingsFolder());
 
         File connectionPropertiesFile = getPropertiesFile();
         File dataDir = connectionPropertiesFile.getParentFile();

@@ -3,7 +3,6 @@ package com.biomatters.plugins.biocode.labbench.lims;
 import com.biomatters.geneious.publicapi.plugin.Geneious;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.plugins.biocode.BiocodeUtilities;
-import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.PasswordOptions;
 
@@ -29,6 +28,16 @@ public class LocalLIMSConnection extends SqlLimsConnection {
 
     }
 
+    private static File dataDirectory;
+
+    public static synchronized void setDataDirectory(File file) {
+        dataDirectory = file;
+    }
+
+    static synchronized File getDataDirectory() {
+        return dataDirectory;
+    }
+
     @Override
     public PasswordOptions getConnectionOptions() {
         return new LocalLIMSConnectionOptions(LIMSConnection.class);
@@ -52,18 +61,15 @@ public class LocalLIMSConnection extends SqlLimsConnection {
                     LocalLIMSConnectionOptions.createDatabase(dbName); //creates Biocode Lims Database if it does not exist (server only)
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new ConnectionException("Could not create path to database "+BiocodeService.getInstance().getDataDirectory().getAbsolutePath()+ File.separator + dbName + ".db", e);
         } catch (SQLException e) {
             throw new ConnectionException(e.getMessage(), e);
         }
         String connectionString = "jdbc:hsqldb:file:" + path + ";shutdown=true";
-        return createBasicDataSource(connectionString, BiocodeService.getInstance().getLocalDriver(), null, null);
+        return createBasicDataSource(connectionString, getLocalDriver(), null, null);
     }
 
-    static String getDbPath(String newDbName) throws IOException {
-        return BiocodeService.getInstance().getDataDirectory().getCanonicalPath() + File.separator + newDbName + ".db";
+    static String getDbPath(String newDbName) {
+        return getDataDirectory().getAbsolutePath() + File.separator + newDbName + ".db";
     }
 
     @Override
@@ -107,5 +113,25 @@ public class LocalLIMSConnection extends SqlLimsConnection {
     @Override
     public String getSchema() {
         throw new IllegalStateException("Schema does not apply to local connections");
+    }
+
+
+    private static Driver localDriver;
+    public static synchronized Driver getLocalDriver() throws ConnectionException {
+        if(localDriver == null) {
+            try {
+                Class driverClass = LocalLIMSConnection.class.getClassLoader().loadClass("org.hsqldb.jdbc.JDBCDriver");
+                localDriver = (Driver) driverClass.newInstance();
+            } catch (ClassNotFoundException e) {
+                throw new ConnectionException("Could not find HSQL driver class", e);
+            } catch (IllegalAccessException e1) {
+                throw new ConnectionException("Could not access HSQL driver class");
+            } catch (InstantiationException e) {
+                throw new ConnectionException("Could not instantiate HSQL driver class");
+            } catch (ClassCastException e) {
+                throw new ConnectionException("HSQL Driver class exists, but is not an SQL driver");
+            }
+        }
+        return localDriver;
     }
 }

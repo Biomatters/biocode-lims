@@ -22,9 +22,7 @@ import com.biomatters.plugins.biocode.labbench.connection.Connection;
 import com.biomatters.plugins.biocode.labbench.connection.ConnectionManager;
 import com.biomatters.plugins.biocode.labbench.fims.*;
 import com.biomatters.plugins.biocode.labbench.fims.biocode.BiocodeFIMSConnection;
-import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
-import com.biomatters.plugins.biocode.labbench.lims.LimsSearchCallback;
-import com.biomatters.plugins.biocode.labbench.lims.LimsSearchResult;
+import com.biomatters.plugins.biocode.labbench.lims.*;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.labbench.reporting.ReportingService;
@@ -74,7 +72,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     private final Object limsConnectionLock = new Object();
     private final String loggedOutMessage = "Right click on the " + getName() + " service in the service tree to log in.";
     private Driver driver;
-    private Driver localDriver;
     private static BiocodeService instance = new BiocodeService();
     public final Map<String, Image[]> imageCache = new HashMap<String, Image[]>();
     private File dataDirectory;
@@ -105,6 +102,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                 throw new UnsupportedOperationException("Unable to create directory: " + dataDirectory.getAbsolutePath());
             }
         }
+        LocalLIMSConnection.setDataDirectory(dataDirectory);
 
         try {
             buildCachesFromDisk();
@@ -315,24 +313,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
         return driver;
     }
 
-    public synchronized Driver getLocalDriver() throws ConnectionException {
-        if(localDriver == null) {
-            try {
-                Class driverClass = getClass().getClassLoader().loadClass("org.hsqldb.jdbc.JDBCDriver");
-                localDriver = (Driver) driverClass.newInstance();
-            } catch (ClassNotFoundException e) {
-                throw new ConnectionException("Could not find HSQL driver class", e);
-            } catch (IllegalAccessException e1) {
-                throw new ConnectionException("Could not access HSQL driver class");
-            } catch (InstantiationException e) {
-                throw new ConnectionException("Could not instantiate HSQL driver class");
-            } catch (ClassCastException e) {
-                throw new ConnectionException("HSQL Driver class exists, but is not an SQL driver");
-            }
-        }
-        return localDriver;
-    }
-
 
     public QueryField[] getSearchFields() {
         List<QueryField> fieldList = new ArrayList<QueryField>();
@@ -518,14 +498,6 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
             }
         } catch (ConnectionException e) {
             error = "There was an error connecting to your LIMS: cannot find your LIMS connection class: " + e.getMessage();
-        }
-
-        if(error == null) {
-            try {
-                localDriver = getLocalDriver();
-            } catch (ConnectionException e) {
-                error = e.getMessage();
-            }
         }
 
         if (error != null) {

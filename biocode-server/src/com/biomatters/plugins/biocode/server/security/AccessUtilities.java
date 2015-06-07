@@ -74,17 +74,17 @@ public class AccessUtilities {
             }
         }
 
-        checkUserHasRoleForExtractionIDs(extractionIds, user, role);
+        checkUserHasRoleForExtractionIds(extractionIds, user, role);
     }
 
-    public static void checkUserHasRoleForExtractionIDs(Collection<String> extractionIDs, User user, Role role) throws DatabaseServiceException {
-        if (extractionIDs == null) {
-            throw new IllegalArgumentException("extractionIDs is null.");
+    public static void checkUserHasRoleForExtractionIds(Collection<String> extractionIds, User user, Role role) throws DatabaseServiceException {
+        if (extractionIds == null) {
+            throw new IllegalArgumentException("extractionIds is null.");
         }
         if (role == null) {
             throw new IllegalArgumentException("userRole is null.");
         }
-        if (extractionIDs.isEmpty()) {
+        if (extractionIds.isEmpty()) {
             return;
         }
 
@@ -97,25 +97,25 @@ public class AccessUtilities {
 
         SqlLimsConnection limsConnection = (SqlLimsConnection)LIMSInitializationListener.getLimsConnection();
 
-        checkUserHasRoleForWorkflows(getWorkflowIDsAssociatedWithExtractionsIDs(limsConnection, extractionIDs), user, role);
+        checkUserHasRoleForWorkflows(getWorkflowIdsAssociatedWithExtractionsIds(limsConnection, extractionIds), user, role);
     }
 
-    public static void checkUserHasRoleForWorkflows(Collection<Integer> workflowIDs, User user, Role role) throws DatabaseServiceException {
-        if (workflowIDs == null) {
-            throw new IllegalArgumentException("workflowIDs is null.");
+    public static void checkUserHasRoleForWorkflows(Collection<Integer> workflowIds, User user, Role role) throws DatabaseServiceException {
+        if (workflowIds == null) {
+            throw new IllegalArgumentException("workflowIds is null.");
         }
         if (role == null) {
             throw new IllegalArgumentException("userRole is null.");
         }
-        if (workflowIDs.isEmpty()) {
+        if (workflowIds.isEmpty()) {
             return;
         }
 
-        workflowIDs = new HashSet<Integer>(workflowIDs);
+        workflowIds = new HashSet<Integer>(workflowIds);
 
         Connection connection = null;
-        PreparedStatement retrieveIDsOfProjectsThatGovernWorkflowsStatement = null;
-        ResultSet retrieveIDsOfProjectsThatGovernWorkflowsResultSet = null;
+        PreparedStatement retrieveIdsOfProjectsThatGovernWorkflowsStatement = null;
+        ResultSet retrieveIdsOfProjectsThatGovernWorkflowsResultSet = null;
         try {
             DataSource dataSource = LIMSInitializationListener.getDataSource();
 
@@ -124,31 +124,31 @@ public class AccessUtilities {
             }
 
             connection = dataSource.getConnection();
-            retrieveIDsOfProjectsThatGovernWorkflowsStatement = connection.prepareStatement(
+            retrieveIdsOfProjectsThatGovernWorkflowsStatement = connection.prepareStatement(
                     "SELECT * " +
-                            "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
-                            " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIDs.size()) + ")"
+                    "FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
+                    " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIds.size()) + ")"
             );
 
             int statementObjectIndex = 1;
-            for (Integer workflowID : workflowIDs) {
-                retrieveIDsOfProjectsThatGovernWorkflowsStatement.setInt(statementObjectIndex++, workflowID);
+            for (Integer workflowId : workflowIds) {
+                retrieveIdsOfProjectsThatGovernWorkflowsStatement.setInt(statementObjectIndex++, workflowId);
             }
 
-            retrieveIDsOfProjectsThatGovernWorkflowsResultSet = retrieveIDsOfProjectsThatGovernWorkflowsStatement.executeQuery();
-            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIDs(Projects.getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getDataSource(), user, role));
+            retrieveIdsOfProjectsThatGovernWorkflowsResultSet = retrieveIdsOfProjectsThatGovernWorkflowsStatement.executeQuery();
+            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIds(Projects.getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getDataSource(), user, role));
 
-            while (retrieveIDsOfProjectsThatGovernWorkflowsResultSet.next()) {
-                if (!idsOfProjectsUserHasRoleFor.contains(retrieveIDsOfProjectsThatGovernWorkflowsResultSet.getInt("project_id"))) {
-                    throw new ForbiddenException("User " + user.username + " does not have access to workflow with ID " + retrieveIDsOfProjectsThatGovernWorkflowsResultSet.getInt("workflow_id") + ".");
+            while (retrieveIdsOfProjectsThatGovernWorkflowsResultSet.next()) {
+                if (!idsOfProjectsUserHasRoleFor.contains(retrieveIdsOfProjectsThatGovernWorkflowsResultSet.getInt("project_id"))) {
+                    throw new ForbiddenException("User " + user.username + " does not have access to workflow with ID " + retrieveIdsOfProjectsThatGovernWorkflowsResultSet.getInt("workflow_id") + ".");
                 }
             }
         } catch (SQLException e) {
-            throw new DatabaseServiceException(e, "An error occurred while checking user " + user.username + "'s access rights: " + e.getMessage(), false);
+            throw new DatabaseServiceException(e, "An error occurred while checking user " + user.username + "'s access rights.", false);
         } finally {
+            SqlUtilities.cleanUpStatements(retrieveIdsOfProjectsThatGovernWorkflowsStatement);
+            SqlUtilities.cleanUpResultSets(retrieveIdsOfProjectsThatGovernWorkflowsResultSet);
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(retrieveIDsOfProjectsThatGovernWorkflowsStatement);
-            SqlUtilities.cleanUpResultSets(retrieveIDsOfProjectsThatGovernWorkflowsResultSet);
         }
     }
 
@@ -156,7 +156,7 @@ public class AccessUtilities {
      * @param user The user to check for
      * @param role The role to check for
      */
-    public static Set<String> getExtractionIDsUserHasRoleFor(User user, Role role) throws DatabaseServiceException {
+    public static Set<String> getExtractionIdsUserHasRoleFor(User user, Role role) throws DatabaseServiceException {
         if (user == null) {
             throw new IllegalArgumentException("user is null.");
         }
@@ -164,10 +164,10 @@ public class AccessUtilities {
             throw new IllegalArgumentException("role is null.");
         }
 
-        Set<String> extractionIDsUserHasRoleFor = new HashSet<String>();
+        Set<String> extractionIdsUserHasRoleFor = new HashSet<String>();
         Connection connection = null;
-        PreparedStatement retrieveExtractionIDsUserHasRoleForStatement = null;
-        ResultSet retrieveExtractionIDsUserHasRoleForResultSet = null;
+        PreparedStatement retrieveExtractionIdsUserHasRoleForStatement = null;
+        ResultSet retrieveExtractionIdsUserHasRoleForResultSet = null;
 
         try {
             DataSource dataSource = LIMSInitializationListener.getDataSource();
@@ -176,52 +176,34 @@ public class AccessUtilities {
                 throw new DatabaseServiceException("The data source is null.", false);
             }
 
-            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIDs(Projects.getProjectsUserHasRoleAccessFor(dataSource, user, role));
+            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIds(Projects.getProjectsUserHasRoleAccessFor(dataSource, user, role));
 
             connection = dataSource.getConnection();
-            retrieveExtractionIDsUserHasRoleForStatement = connection.prepareStatement(
+            retrieveExtractionIdsUserHasRoleForStatement = connection.prepareStatement(
                     "SELECT extraction.extractionId as extractionId, " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".project_id as projectId " +
-                            "FROM extraction " +
-                            "LEFT OUTER JOIN workflow ON extraction.id=workflow.extractionId " +
-                            "LEFT OUTER JOIN " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + " ON workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id"
+                    "FROM extraction " +
+                    "LEFT OUTER JOIN workflow ON extraction.id=workflow.extractionId " +
+                    "LEFT OUTER JOIN " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + " ON workflow.id=" + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + ".workflow_id"
             );
-            retrieveExtractionIDsUserHasRoleForResultSet = retrieveExtractionIDsUserHasRoleForStatement.executeQuery();
-            while (retrieveExtractionIDsUserHasRoleForResultSet.next()) {
-                int projectID = retrieveExtractionIDsUserHasRoleForResultSet.getInt("projectId");
-                if (projectID == 0 || idsOfProjectsUserHasRoleFor.contains(projectID)) {
-                    extractionIDsUserHasRoleFor.add(retrieveExtractionIDsUserHasRoleForResultSet.getString("extractionId"));
+            retrieveExtractionIdsUserHasRoleForResultSet = retrieveExtractionIdsUserHasRoleForStatement.executeQuery();
+            while (retrieveExtractionIdsUserHasRoleForResultSet.next()) {
+                int projectId = retrieveExtractionIdsUserHasRoleForResultSet.getInt("projectId");
+                if (projectId == 0 || idsOfProjectsUserHasRoleFor.contains(projectId)) {
+                    extractionIdsUserHasRoleFor.add(retrieveExtractionIdsUserHasRoleForResultSet.getString("extractionId"));
                 }
             }
         } catch (SQLException e) {
-            throw new DatabaseServiceException("An error occurred while retrieving the IDs of workflows that user " + user.username + " has access to.", false);
+            throw new DatabaseServiceException(e, "An error occurred while retrieving the IDs of workflows that user " + user.username + " has access to.", false);
         } finally {
+            SqlUtilities.cleanUpStatements(retrieveExtractionIdsUserHasRoleForStatement);
+            SqlUtilities.cleanUpResultSets(retrieveExtractionIdsUserHasRoleForResultSet);
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(retrieveExtractionIDsUserHasRoleForStatement);
-            SqlUtilities.cleanUpResultSets(retrieveExtractionIDsUserHasRoleForResultSet);
         }
 
-        return extractionIDsUserHasRoleFor;
+        return extractionIdsUserHasRoleFor;
     }
 
-    private static Set<Integer> getWorkflowIDsAssociatedWithExtractionsIDs(LIMSConnection limsConnection, Collection<String> extractionIDs) throws DatabaseServiceException {
-        if (limsConnection == null) {
-            throw new IllegalArgumentException("limsConnection is null.");
-        }
-        if (extractionIDs == null) {
-            throw new IllegalArgumentException("extractionIDs is null.");
-        }
-        if (extractionIDs.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        try {
-            return getWorkflowIDsAssociatedWithExtractionDatabaseIDs(limsConnection, getExtractionDatabaseIDs(limsConnection, extractionIDs));
-        } catch (SQLException e) {
-            throw new DatabaseServiceException(e, "The retrieval of the workflow IDs was unsuccessful.", false);
-        }
-    }
-
-    private static Set<Integer> getExtractionDatabaseIDs(LIMSConnection limsConnection, Collection<String> extractionIds) throws DatabaseServiceException {
+    private static Set<Integer> getWorkflowIdsAssociatedWithExtractionsIds(LIMSConnection limsConnection, Collection<String> extractionIds) throws DatabaseServiceException {
         if (limsConnection == null) {
             throw new IllegalArgumentException("limsConnection is null.");
         }
@@ -232,62 +214,80 @@ public class AccessUtilities {
             return Collections.emptySet();
         }
 
-        Set<Integer> extractionDatabaseIDs = new HashSet<Integer>();
-
-        for (ExtractionReaction extractionReaction : limsConnection.getExtractionsForIds(new ArrayList<String>(new HashSet<String>(extractionIds)))) {
-            extractionDatabaseIDs.add(extractionReaction.getId());
+        try {
+            return getWorkflowIdsAssociatedWithExtractionDatabaseIds(limsConnection, getExtractionDatabaseIds(limsConnection, extractionIds));
+        } catch (SQLException e) {
+            throw new DatabaseServiceException(e, "The retrieval of the workflow IDs was unsuccessful.", false);
         }
-
-        return extractionDatabaseIDs;
     }
 
-    private static Set<Integer> getWorkflowIDsAssociatedWithExtractionDatabaseIDs(LIMSConnection limsConnection, Collection<Integer> extractionDatabaseIDs) throws SQLException {
+    private static Set<Integer> getExtractionDatabaseIds(LIMSConnection limsConnection, Collection<String> extractionIds) throws DatabaseServiceException {
         if (limsConnection == null) {
             throw new IllegalArgumentException("limsConnection is null.");
         }
-        if (extractionDatabaseIDs == null) {
-            throw new IllegalArgumentException("extractionDatabaseIDs is null.");
+        if (extractionIds == null) {
+            throw new IllegalArgumentException("extractionIds is null.");
+        }
+        if (extractionIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        Set<Integer> extractionDatabaseIds = new HashSet<Integer>();
+
+        for (ExtractionReaction extractionReaction : limsConnection.getExtractionsForIds(new ArrayList<String>(new HashSet<String>(extractionIds)))) {
+            extractionDatabaseIds.add(extractionReaction.getId());
+        }
+
+        return extractionDatabaseIds;
+    }
+
+    private static Set<Integer> getWorkflowIdsAssociatedWithExtractionDatabaseIds(LIMSConnection limsConnection, Collection<Integer> extractionDatabaseIds) throws SQLException {
+        if (limsConnection == null) {
+            throw new IllegalArgumentException("limsConnection is null.");
+        }
+        if (extractionDatabaseIds == null) {
+            throw new IllegalArgumentException("extractionDatabaseIds is null.");
         }
         if (!(limsConnection instanceof SqlLimsConnection)) {
             throw new IllegalArgumentException("limsConnection is not an instance of SqlLimsConnection.");
         }
-        if (extractionDatabaseIDs.isEmpty()) {
+        if (extractionDatabaseIds.isEmpty()) {
             return Collections.emptySet();
         }
 
-        extractionDatabaseIDs = new HashSet<Integer>(extractionDatabaseIDs);
+        extractionDatabaseIds = new HashSet<Integer>(extractionDatabaseIds);
 
-        Set<Integer> workflowIDs = new HashSet<Integer>();
+        Set<Integer> workflowIds = new HashSet<Integer>();
         Connection connection = null;
-        PreparedStatement retrieveWorkflowIDsStatement = null;
-        ResultSet retrieveWorkflowIDsResultSet = null;
+        PreparedStatement retrieveWorkflowIdsStatement = null;
+        ResultSet retrieveWorkflowIdsResultSet = null;
         try {
             connection = ((SqlLimsConnection)limsConnection).getDataSource().getConnection();
-            retrieveWorkflowIDsStatement = connection.prepareStatement(
+            retrieveWorkflowIdsStatement = connection.prepareStatement(
                     "SELECT id " +
-                            "FROM workflow " +
-                            "WHERE extractionId IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(extractionDatabaseIDs.size()) + ")"
+                    "FROM workflow " +
+                    "WHERE extractionId IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(extractionDatabaseIds.size()) + ")"
             );
 
             int statementObjectIndex = 1;
-            for (Integer extractionDatabaseID : extractionDatabaseIDs) {
-                retrieveWorkflowIDsStatement.setInt(statementObjectIndex++, extractionDatabaseID);
+            for (Integer extractionDatabaseId : extractionDatabaseIds) {
+                retrieveWorkflowIdsStatement.setInt(statementObjectIndex++, extractionDatabaseId);
             }
 
-            retrieveWorkflowIDsResultSet = retrieveWorkflowIDsStatement.executeQuery();
-            while (retrieveWorkflowIDsResultSet.next()) {
-                workflowIDs.add(retrieveWorkflowIDsResultSet.getInt(1));
+            retrieveWorkflowIdsResultSet = retrieveWorkflowIdsStatement.executeQuery();
+            while (retrieveWorkflowIdsResultSet.next()) {
+                workflowIds.add(retrieveWorkflowIdsResultSet.getInt(1));
             }
         } finally {
+            SqlUtilities.cleanUpStatements(retrieveWorkflowIdsStatement);
+            SqlUtilities.cleanUpResultSets(retrieveWorkflowIdsResultSet);
             SqlUtilities.closeConnection(connection);
-            SqlUtilities.cleanUpStatements(retrieveWorkflowIDsStatement);
-            SqlUtilities.cleanUpResultSets(retrieveWorkflowIDsResultSet);
         }
 
-        return workflowIDs;
+        return workflowIds;
     }
 
-    private static Set<Integer> getProjectIDs(Collection<Project> projects) {
+    private static Set<Integer> getProjectIds(Collection<Project> projects) {
         if (projects == null) {
             throw new IllegalArgumentException("projects is null.");
         }
@@ -295,14 +295,14 @@ public class AccessUtilities {
             return Collections.emptySet();
         }
 
-        Set<Integer> projectIDs = new HashSet<Integer>();
+        Set<Integer> projectIds = new HashSet<Integer>();
 
         for (Project project : projects) {
             if (project.id != null) {
-                projectIDs.add(project.id);
+                projectIds.add(project.id);
             }
         }
 
-        return projectIDs;
+        return projectIds;
     }
 }

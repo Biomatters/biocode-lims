@@ -442,31 +442,25 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
     public void connect(Connection connection, boolean block, boolean needDisconnectionThread) {
         Cocktail.setCocktailGetter(new Cocktail.CocktailGetter() {
             @Override
-            public List<? extends Cocktail> getCocktails(Reaction.Type type)  {
-                if(type == Reaction.Type.PCR) {
-                    return getInstance().getPCRCocktails();
-                }
-                else if(type == Reaction.Type.CycleSequencing) {
-                    return getInstance().getCycleSequencingCocktails();
-                }
-                else {
-                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
-                }
+            public List<CycleSequencingCocktail> getCycleSequencingCocktails() {
+                return getInstance().getCycleSequencingCocktails();
+            }
+
+            @Override
+            public List<PCRCocktail> getPCRCocktails() {
+                return getInstance().getPCRCocktails();
             }
         });
 
         Thermocycle.setThermocycleGetter(new Thermocycle.ThermocycleGetter() {
             @Override
-            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) {
-                if(type == Reaction.Type.PCR) {
-                    return getInstance().getPCRThermocycles();
-                }
-                else if(type == Reaction.Type.CycleSequencing) {
-                    return getInstance().getCycleSequencingThermocycles();
-                }
-                else {
-                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
-                }
+            public List<Thermocycle> getCycleSequencingThermocycles() {
+                return getInstance().getCycleSequencingThermocycles();
+            }
+
+            @Override
+            public List<Thermocycle> getPCRThermocycles() {
+                return getInstance().getPCRThermocycles();
             }
         });
 
@@ -938,7 +932,7 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                     @Override
                     public AnnotatedPluginDocument apply(final @Nullable AssembledSequence seq) {
                         //noinspection ThrowableResultOfMethodCallIgnored
-                        if(exceptionDuringAnnotate.get() != null) {
+                        if (exceptionDuringAnnotate.get() != null) {
                             return null;  // exception has to be thrown later.  Function doesn't throw exceptions
                         }
 

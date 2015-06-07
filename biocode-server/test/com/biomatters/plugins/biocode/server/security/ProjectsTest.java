@@ -168,90 +168,30 @@ public class ProjectsTest extends Assert {
     }
 
     @Test
-    public void canAddHierarchy() throws DatabaseServiceException, SQLException {
-        Project root = new Project(1, "root", "", -1, false);
-        Project root2 = new Project(2, "root2", "", -1, false);
-        Project root3 = new Project(3, "root3", "", -1, false);
-
-        Project rootChild = new Project(4, "rootChild", "", 1, false);
-        Project rootChild2 = new Project(5, "rootChild2", "", 1, false);
-
-        Project rootChildChild = new Project(6, "rootChildChild", "", 4, false);
-
-        List<Project> noChildren = Arrays.asList(root, root2, root3);
-        setProjectsInDatabase(dataSource, noChildren);
-        setProjectsInDatabase(dataSource, noChildren);  // Check it does not create duplicates
-
-        List<Project> withChildren = Arrays.asList(root, root2, root3, rootChild, rootChild2, rootChildChild);
-        setProjectsInDatabase(dataSource, withChildren);
-    }
-
-    @Test
-    public void canUpdateProjectHierarchy() throws DatabaseServiceException, SQLException {
-        Project root = new Project(1, "root", "", -1, false);
-        Project rootChild = new Project(2, "rootChild", "", 1, false);
-        Project rootChildChild = new Project(3, "rootChildChild", "", 2, false);
-        Project rootChildChildMoved = new Project(3, "rootChildChild", "", 1, false);
-        Project rootChildChildRenamed = new Project(3, "sub", "", 1, false);
-        Project rootChildChildNotAChild = new Project(3, "sub", "", -1, false);
-
-        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChild));
-        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChildMoved));
-        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChildRenamed));
-        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChildNotAChild));
-    }
-
-    @Test
     public void deletesOldProjects() throws DatabaseServiceException, SQLException {
         Project root = new Project(1, "root", "", -1, false);
         Project rootChild = new Project(2, "rootChild", "", 1, false);
         Project rootChildChild = new Project(3, "rootChildChild", "", 2, false);
 
-        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild, rootChildChild));
-        setProjectsInDatabase(dataSource, Arrays.asList(root, rootChild));
-        setProjectsInDatabase(dataSource, Collections.singletonList(root));
-    }
+        Projects.addProject(dataSource, root);
+        Projects.addProject(dataSource, rootChild);
+        Projects.addProject(dataSource, rootChildChild);
 
-    private void setProjectsInDatabase(DataSource dataSource, List<Project> expected) throws DatabaseServiceException, SQLException {
-        List<Project> existingProjects = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
-        for (Project project : existingProjects) {
-            if (!expected.contains(project)) {
-                Projects.removeProject(dataSource, project.id);
-            }
-        }
+        List<Project> projectsInDatabase = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
 
-        for (Project project : expected) {
-            if (existingProjects.contains(project)) {
-                Projects.updateProject(dataSource, project);
-            } else {
-                Projects.addProject(dataSource, project);
-            }
-        }
+        assertEquals(3, projectsInDatabase.size());
 
-        List<Project> inDatabase = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
-        assertEquals(expected.size(), inDatabase.size());
+        assertTrue(projectsInDatabase.contains(root));
+        assertTrue(projectsInDatabase.contains(rootChild));
+        assertTrue(projectsInDatabase.contains(rootChildChild));
 
-        Map<Integer, Project> inDatabaseByKey = new HashMap<Integer, Project>();
-        for (Project project : inDatabase) {
-            inDatabaseByKey.put(project.id, project);
-        }
+        Projects.removeProject(dataSource, root.id);
+        Projects.removeProject(dataSource, rootChild.id);
+        Projects.removeProject(dataSource, rootChildChild.id);
 
-        Set<Integer> idsSeen = new HashSet<Integer>();
-        for (Project project : expected) {
-            Project toCompare = inDatabaseByKey.get(project.id);
-            assertNotNull(toCompare);
-            assertFalse(idsSeen.contains(toCompare.id));
-            idsSeen.add(toCompare.id);
-            assertEquals(project.id, toCompare.id);
-            assertEquals(project.name, toCompare.name);
-            int parentProjectId = project.parentProjectID;
-            Project parent = inDatabaseByKey.get(parentProjectId);
-            if (parentProjectId == -1) {
-                assertNull(parent);
-            } else {
-                assertNotNull(parent);
-            }
-        }
+        projectsInDatabase = Projects.getProjects(dataSource, Collections.<Integer>emptyList());
+
+        assertTrue(projectsInDatabase.isEmpty());
     }
 
     @Test
@@ -308,12 +248,40 @@ public class ProjectsTest extends Assert {
         Projects.addProject(dataSource, parent);
         Projects.addProject(dataSource, child);
 
+        List<Project> withRole;
         for (Role role : new Role[]{Role.ADMIN, Role.WRITER, Role.READER}) {
             Projects.addProjectRoles(dataSource, parent.id, Collections.singletonMap(user, role));
-            List<Project> withRole = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, role);
+            withRole = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, role);
             assertEquals(2, withRole.size());
             assertTrue(withRole.contains(parent));
             assertTrue(withRole.contains(child));
         }
+
+        Projects.removeProjectRoles(dataSource, parent.id, Collections.singletonList(user.username));
+        withRole = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, Role.READER);
+        assertTrue(withRole.isEmpty());
+    }
+
+    @Test
+    public void testPublicProjects() throws DatabaseServiceException, SQLException {
+        User user = new User();
+        user.username = "me";
+        user.password = "password";
+        user.firstname = "";
+        user.lastname = "";
+        user.email = "me@me.com";
+        Users.addUser(dataSource, user);
+
+        Project publicProject = new Project(1, "public project", "", -1, true);
+        Project nonPublicProject = new Project(2, "non-public project", "", -1, false);
+
+        Projects.addProject(dataSource, publicProject);
+        Projects.addProject(dataSource, nonPublicProject);
+
+        List<Project> projectsUserHasAccessFor = Projects.getProjectsUserHasRoleAccessFor(dataSource, user, Role.READER);
+
+        assertEquals(1, projectsUserHasAccessFor.size());
+
+        assertEquals(publicProject, projectsUserHasAccessFor.get(0));
     }
 }

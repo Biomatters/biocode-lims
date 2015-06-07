@@ -45,10 +45,13 @@ public abstract class Cocktail implements XMLSerializable {
     }
 
     public static List<? extends Cocktail> getAllCocktailsOfType(Reaction.Type type) {
-        try {
-            return cocktailGetter.getCocktails(type);
-        } catch (DatabaseServiceException e) {
-            return Collections.emptyList();
+        switch (type) {
+            case PCR:
+                return cocktailGetter.getPCRCocktails();
+            case CycleSequencing:
+                return cocktailGetter.getCycleSequencingCocktails();
+            default:
+                throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
         }
     }
 
@@ -109,6 +112,7 @@ public abstract class Cocktail implements XMLSerializable {
     }
 
     public abstract static class CocktailGetter {
-        public abstract List<? extends Cocktail> getCocktails(Reaction.Type type) throws DatabaseServiceException;
+        public abstract List<CycleSequencingCocktail> getCycleSequencingCocktails();
+        public abstract List<PCRCocktail> getPCRCocktails();
     }
 }

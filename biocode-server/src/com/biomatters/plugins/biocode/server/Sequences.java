@@ -40,7 +40,7 @@ public class Sequences {
         for (AssembledSequence sequence : data) {
             extractionIds.add(sequence.extractionId);
         }
-        AccessUtilities.checkUserHasRoleForExtractionIDs(extractionIds, Users.getLoggedInUser(), roleToCheckFor);
+        AccessUtilities.checkUserHasRoleForExtractionIds(extractionIds, Users.getLoggedInUser(), roleToCheckFor);
         return data;
     }
 
@@ -124,7 +124,7 @@ public class Sequences {
                            @QueryParam("addChromatograms")boolean addChromatograms,
                            @QueryParam("reactionIds")String reactionIds) {
         try {
-            AccessUtilities.checkUserHasRoleForExtractionIDs(Collections.singletonList(seq.extractionId), Users.getLoggedInUser(), Role.WRITER);
+            AccessUtilities.checkUserHasRoleForExtractionIds(Collections.singletonList(seq.extractionId), Users.getLoggedInUser(), Role.WRITER);
             return LIMSInitializationListener.getLimsConnection().addAssembly(isPass, notes, technician,
                     FailureReason.getReasonFromIdString(failureReason),
                     failureNotes, addChromatograms, seq, getIntegerListFromString(reactionIds), ProgressListener.EMPTY);

@@ -3,7 +3,6 @@ package com.biomatters.plugins.biocode.labbench.reaction;
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.documents.*;
 import com.biomatters.geneious.publicapi.implementations.sequence.OligoSequenceDocument;
-import com.biomatters.geneious.publicapi.plugin.DocumentOperationException;
 import com.biomatters.geneious.publicapi.plugin.DocumentSelectionOption;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
@@ -547,24 +546,29 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
             setCreated(new Date());
         }
         if(thermoCycleId != null) {
-            int tcId = Integer.parseInt(thermoCycleId);
+            int tcId = 0;
             try {
-                for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Type.PCR)) {
-                    if (tc.getId() == tcId) {
-                        setThermocycle(tc);
-                        break;
-                    }
-                }
-                if (thermocycle == null) {
-                    for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Type.CycleSequencing)) {
-                        if (tc.getId() == tcId) {
-                            setThermocycle(tc);
-                            break;
-                        }
-                    }
-                }
-            } catch (DatabaseServiceException e) {
+                tcId = Integer.parseInt(thermoCycleId);
+            } catch (NumberFormatException e) {
                 throw new XMLSerializationException(e);
+            }
+            List<Thermocycle> thermocycles = new ArrayList<Thermocycle>();
+            switch (getType()) {
+                case PCR:
+                    thermocycles.addAll(Thermocycle.getThermocycleGetter().getPCRThermocycles());
+                    break;
+                case CycleSequencing:
+                    thermocycles.addAll(Thermocycle.getThermocycleGetter().getCycleSequencingThermocycles());
+                    break;
+                case Extraction:
+                    break;
+            }
+
+            for (Thermocycle tc : thermocycles) {
+                if (tc.getId() == tcId) {
+                    setThermocycle(tc);
+                    break;
+                }
             }
         }
         Element workflowElement = element.getChild("workflow");
@@ -590,7 +594,7 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
 
         Options.Option primerOption = options.getOption("primer");
         if (primerOption instanceof DocumentSelectionOption) {
-            DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = getFolderOrDocumentsElement(element, false);
+            DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = getFolderOrDocumentsFromElement(element, false);
             if (folderOrDocumentsContainingPrimer != null) {
                 primerOption.setValue(folderOrDocumentsContainingPrimer);
             }
@@ -598,14 +602,14 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
 
         Options.Option reversePrimerOption = options.getOption("revPrimer");
         if (reversePrimerOption instanceof DocumentSelectionOption) {
-            DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = getFolderOrDocumentsElement(element, true);
+            DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = getFolderOrDocumentsFromElement(element, true);
             if (folderOrDocumentsContainingPrimer != null) {
                 reversePrimerOption.setValue(folderOrDocumentsContainingPrimer);
             }
         }
     }
 
-    private static DocumentSelectionOption.FolderOrDocuments getFolderOrDocumentsElement(Element reactionRootElement, boolean reverse) {
+    private static DocumentSelectionOption.FolderOrDocuments getFolderOrDocumentsFromElement(Element reactionRootElement, boolean reverse) {
         DocumentSelectionOption.FolderOrDocuments folderOrDocumentsContainingPrimer = null;
 
         Element primerElement = reactionRootElement.getChild(reverse ? REV_PRIMER_ELEMENT_NAME : PRIMER_ELEMENT_NAME);

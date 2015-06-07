@@ -264,6 +264,7 @@ public class Thermocycle implements XMLSerializable {
     }
 
     public abstract static class ThermocycleGetter {
-        public abstract List<? extends Thermocycle> getThermocycles(Reaction.Type type) throws DatabaseServiceException;
+        public abstract List<Thermocycle> getPCRThermocycles();
+        public abstract List<Thermocycle> getCycleSequencingThermocycles();
     }
 }

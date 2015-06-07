@@ -77,7 +77,7 @@ public class QueryService {
     LimsSearchResult getPermissionsFilteredResult(LimsSearchResult result) throws DatabaseServiceException {
         LimsSearchResult filteredSearchResult = new LimsSearchResult();
 
-        Set<String> extractionIDsLoggedInUserHasReadAccessTo = AccessUtilities.getExtractionIDsUserHasRoleFor(Users.getLoggedInUser(), Role.READER);
+        Set<String> extractionIDsLoggedInUserHasReadAccessTo = AccessUtilities.getExtractionIdsUserHasRoleFor(Users.getLoggedInUser(), Role.READER);
 
         filteredSearchResult.addAllPlates(filterPlateIDs(result.getPlateIds(), extractionIDsLoggedInUserHasReadAccessTo));
         filteredSearchResult.addAllSequenceIDs(filterSequenceIDs(result.getPlateIds(), extractionIDsLoggedInUserHasReadAccessTo));
@@ -88,7 +88,7 @@ public class QueryService {
     }
 
     private static Set<String> getExtractionIDsLoggedInUserHasReadAccessTo() throws DatabaseServiceException {
-        return AccessUtilities.getExtractionIDsUserHasRoleFor(Users.getLoggedInUser(), Role.READER);
+        return AccessUtilities.getExtractionIdsUserHasRoleFor(Users.getLoggedInUser(), Role.READER);
     }
 
     private static Set<Integer> filterPlateIDs(Collection<Integer> plateIDsToFilter, Collection<String> extractionIDsLoggedInUserHasReadAccessTo) throws DatabaseServiceException {

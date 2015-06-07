@@ -1,7 +1,6 @@
 package com.biomatters.plugins.biocode.server.security;
 
 import com.biomatters.plugins.biocode.labbench.Workflow;
-import com.biomatters.plugins.biocode.labbench.fims.FimsProject;
 import com.biomatters.plugins.biocode.server.*;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
@@ -25,7 +24,7 @@ public class Projects {
         try {
             return Response.ok(new GenericEntity<List<Project>>(getProjects(LIMSInitializationListener.getDataSource(), Collections.<Integer>emptySet())){}).build();
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of the projects was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The retrieval of the projects was unsuccessful.", e);
         }
     }
 
@@ -38,7 +37,7 @@ public class Projects {
         try {
             retrievedProjects = getProjects(LIMSInitializationListener.getDataSource(), Collections.singleton(projectId));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of project with id " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The retrieval of project with id " + projectId + " was unsuccessful.", e);
         }
 
         if (retrievedProjects.isEmpty()) {
@@ -57,7 +56,7 @@ public class Projects {
         try {
             return Integer.toString(addProject(LIMSInitializationListener.getDataSource(), project));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful.", e);
         }
     }
 
@@ -66,7 +65,7 @@ public class Projects {
     @Path("{id}")
     public void updateProject(@PathParam("id")int id, Project project) {
         if (project == null) {
-            throw new IllegalArgumentException("project is null.");
+            throw new BadRequestException("project is null.");
         }
 
         project.id = id;
@@ -74,7 +73,7 @@ public class Projects {
         try {
             updateProject(LIMSInitializationListener.getDataSource(), project);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The update of project " + project.name + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The update of project " + project.name + " was unsuccessful.", e);
         }
     }
 
@@ -84,7 +83,7 @@ public class Projects {
         try {
             removeProject(LIMSInitializationListener.getDataSource(), id);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The deletion of project with id " + id + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The deletion of project with id " + id + " was unsuccessful.", e);
         }
     }
 
@@ -95,7 +94,7 @@ public class Projects {
         try {
             return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.<String>emptySet()))){}).build();
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of user roles for project with id " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The retrieval of user roles for project with id " + projectId + " was unsuccessful.", e);
         }
     }
 
@@ -104,17 +103,17 @@ public class Projects {
     @Path("{id}/roles/{username}")
     public Role getProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
         if (username == null) {
-            throw new IllegalArgumentException("username is null.");
+            throw new BadRequestException("username is null.");
         }
         if (username.isEmpty()) {
-            throw new IllegalArgumentException("username is an empty string.");
+            throw new BadRequestException("username is an empty string.");
         }
 
         Map<User, Role> userToRole;
         try {
             userToRole = getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of user " + username + "'s role for project with id " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The retrieval of user " + username + "'s role for project with id " + projectId + " was unsuccessful.", e);
         }
 
         if (userToRole.isEmpty()) {
@@ -129,13 +128,13 @@ public class Projects {
     @Path("{id}/roles/{username}")
     public void assignProjectRole(@PathParam("id")int projectId, @PathParam("username")String username, Role role) {
         if (role == null) {
-            throw new IllegalArgumentException("role is null.");
+            throw new BadRequestException("role is null.");
         }
         if (username == null) {
-            throw new IllegalArgumentException("username is null.");
+            throw new BadRequestException("username is null.");
         }
         if (username.isEmpty()) {
-            throw new IllegalArgumentException("username is an empty string.");
+            throw new BadRequestException("username is an empty string.");
         }
 
         User user = new User();
@@ -143,7 +142,7 @@ public class Projects {
         try {
             addProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singletonMap(user, role));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " for project with id " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " for project with id " + projectId + " was unsuccessful.", e);
         }
     }
 
@@ -151,13 +150,13 @@ public class Projects {
     @Path("{id}/roles/{username}")
     public void deleteProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
         if (username == null) {
-            throw new IllegalArgumentException("username is null.");
+            throw new BadRequestException("username is null.");
         }
 
         try {
             removeProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The deletion of user " + username + "'s role in project with id " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The deletion of user " + username + "'s role in project with id " + projectId + " was unsuccessful.", e);
         }
     }
 
@@ -168,7 +167,7 @@ public class Projects {
         try {
             return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsFromProject(LIMSInitializationListener.getDataSource(), projectId)));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of workflows assigned to project with id " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The retrieval of workflows assigned to project with id " + projectId + " was unsuccessful.", e);
         }
     }
 
@@ -184,9 +183,9 @@ public class Projects {
             }
             addWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectId, workflowIdSet);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The assignment of workflows with ids " + workflowIds + " to project with id " + projectId + " was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The assignment of workflows with ids " + workflowIds + " to project with id " + projectId + " was unsuccessful.", e);
         } catch (NumberFormatException e) {
-            throw new InternalServerErrorException("Invalid workflow id: " + e.getMessage());
+            throw new InternalServerErrorException("Invalid workflow id.", e);
         }
     }
 
@@ -201,7 +200,7 @@ public class Projects {
             }
             removeWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), workflowIdSet);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The freeing of workflows associated with ids " + workflowIds + " from projects + was unsuccessful: " + e.getMessage());
+            throw new InternalServerErrorException("The freeing of workflows associated with ids " + workflowIds + " from projects + was unsuccessful.", e);
         }
     }
 
@@ -213,10 +212,10 @@ public class Projects {
      */
     static List<Project> getProjects(DataSource dataSource, Collection<Integer> projectIds) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (projectIds == null) {
-            throw new IllegalArgumentException("projectIds is null.");
+            throw new BadRequestException("projectIds is null.");
         }
 
         projectIds = new HashSet<Integer>(projectIds);
@@ -244,9 +243,9 @@ public class Projects {
                 projects.add(createProjectFromResultSet(getProjectsResultSet));
             }
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(getProjectsStatement);
             SqlUtilities.cleanUpResultSets(getProjectsResultSet);
+            SqlUtilities.closeConnection(connection);
         }
 
         return projects;
@@ -256,17 +255,17 @@ public class Projects {
      *
      * @param user The user account that is attempting to retreive data.
      * @param role The role to check for.
-     * @return A list of {@link FimsProject}s that the specified user is allowed to view.  Or null if there are no projects in the system.
+     * @return A list of {@link Project}s that the specified user is allowed to view.  Or null if there are no projects in the system.
      */
     public static List<Project> getProjectsUserHasRoleAccessFor(DataSource dataSource, User user, Role role) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (user == null) {
-            throw new IllegalArgumentException("user is null.");
+            throw new BadRequestException("user is null.");
         }
         if (role == null) {
-            throw new IllegalArgumentException("role is null.");
+            throw new BadRequestException("role is null.");
         }
 
         List<Project> projectsUserHasRoleAccessFor = new ArrayList<Project>();
@@ -277,6 +276,10 @@ public class Projects {
             projectsUserHasRoleAccessFor.addAll(projectIdToProject.values());
         } else {
             for (Project project : projectIdToProject.values()) {
+                if (project.isPublic) {
+                    projectsUserHasRoleAccessFor.add(project);
+                }
+
                 Project potentialProject = project;
                 boolean checkingProject = true;
                 while (checkingProject) {
@@ -304,10 +307,10 @@ public class Projects {
 
     static synchronized int addProject(DataSource dataSource, Project project) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (project == null) {
-            throw new IllegalArgumentException("project is null.");
+            throw new BadRequestException("project is null.");
         }
 
         Connection connection = null;
@@ -343,18 +346,18 @@ public class Projects {
 
             return projectID;
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(retrieveMaxExistingProjectIDStatement, addProjectStatement);
             SqlUtilities.cleanUpResultSets(retrieveMaxExistingProjectIDResultSet);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void updateProject(DataSource dataSource, Project project) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (project == null) {
-            throw new IllegalArgumentException("project is null.");
+            throw new BadRequestException("project is null.");
         }
 
         Connection connection = null;
@@ -380,14 +383,14 @@ public class Projects {
 
             updateProjectStatement.executeUpdate();
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(updateProjectStatement);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void removeProject(DataSource dataSource, int projectId) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
 
         Connection connection = null;
@@ -400,17 +403,17 @@ public class Projects {
 
             removeProjectStatement.executeUpdate();
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(removeProjectStatement);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static Map<User, Role> getProjectRoles(DataSource dataSource, int projectId, Collection<String> usernames) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (usernames == null) {
-            throw new IllegalArgumentException("usernames is null.");
+            throw new BadRequestException("usernames is null.");
         }
 
         usernames = new HashSet<String>(usernames);
@@ -440,9 +443,9 @@ public class Projects {
                 projectRoles.put(Users.createUserFromResultSetRow(getProjectRolesResultSet), Role.getRole(getProjectRolesResultSet.getInt(BiocodeServerLIMSDatabaseConstants.PROJECT_ROLE_TABLE_NAME + ".role")));
             }
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(getProjectRolesStatement);
             SqlUtilities.cleanUpResultSets(getProjectRolesResultSet);
+            SqlUtilities.closeConnection(connection);
         }
 
         return projectRoles;
@@ -450,10 +453,10 @@ public class Projects {
 
     static void addProjectRoles(DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (userToRole == null) {
-            throw new IllegalArgumentException("userToRole is null.");
+            throw new BadRequestException("userToRole is null.");
         }
         if (userToRole.isEmpty()) {
             return;
@@ -496,18 +499,18 @@ public class Projects {
 
             SqlUtilities.commitTransaction(connection);
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(retrieveProjectRolesStatement);
             SqlUtilities.cleanUpResultSets(retrieveProjectRolesResultSet);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void addNewProjectRoles(DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (userToRole == null) {
-            throw new IllegalArgumentException("userToRole is null.");
+            throw new BadRequestException("userToRole is null.");
         }
         if (userToRole.isEmpty()) {
             return;
@@ -541,17 +544,17 @@ public class Projects {
 
             SqlUtilities.commitTransaction(connection);
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(addProjectRolesStatement);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void updateProjectRoles(DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (userToRole == null) {
-            throw new IllegalArgumentException("username is null.");
+            throw new BadRequestException("username is null.");
         }
         if (userToRole.isEmpty()) {
             return;
@@ -586,17 +589,17 @@ public class Projects {
 
             SqlUtilities.commitTransaction(connection);
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(updateProjectRolesStatement);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void removeProjectRoles(DataSource dataSource, int projectId, Collection<String> usernames) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (usernames == null) {
-            throw new IllegalArgumentException("usernames is null.");
+            throw new BadRequestException("usernames is null.");
         }
         if (usernames.isEmpty()) {
             return;
@@ -621,14 +624,14 @@ public class Projects {
 
             removeProjectRolesStatement.executeUpdate();
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(removeProjectRolesStatement);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static Set<Workflow> getWorkflowsFromProject(DataSource dataSource, int projectId) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
 
         Set<Workflow> workflows = new HashSet<Workflow>();
@@ -652,9 +655,9 @@ public class Projects {
                 workflows.add(new Workflow(getWorkflowsResultSet));
             }
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(getWorkflowsFromProjectStatement);
             SqlUtilities.cleanUpResultSets(getWorkflowsResultSet);
+            SqlUtilities.closeConnection(connection);
         }
 
         return workflows;
@@ -662,10 +665,10 @@ public class Projects {
 
     static void addWorkflowsToProject(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (workflowIds == null) {
-            throw new IllegalArgumentException("workflowIds is null.");
+            throw new BadRequestException("workflowIds is null.");
         }
         if (workflowIds.isEmpty()) {
             return;
@@ -708,18 +711,18 @@ public class Projects {
 
             SqlUtilities.commitTransaction(connection);
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(retrieveIDsOfWorkflowsFromProjectStatement);
             SqlUtilities.cleanUpResultSets(retrieveIDsOfWorkflowsFromProjectResultSet);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void insertWorkflowProjectMapping(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (workflowIds == null) {
-            throw new IllegalArgumentException("workflowIds is null.");
+            throw new BadRequestException("workflowIds is null.");
         }
         if (workflowIds.isEmpty()) {
             return;
@@ -729,7 +732,6 @@ public class Projects {
 
         Connection connection = null;
         PreparedStatement addWorkflowsToProjectsStatement = null;
-        ResultSet addWorkflowsToProjectsResultSet = null;
         try {
             connection = dataSource.getConnection();
             addWorkflowsToProjectsStatement = connection.prepareStatement(
@@ -754,18 +756,17 @@ public class Projects {
 
             SqlUtilities.commitTransaction(connection);
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(addWorkflowsToProjectsStatement);
-            SqlUtilities.cleanUpResultSets(addWorkflowsToProjectsResultSet);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void updateWorkflowProjectMapping(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (workflowIds == null) {
-            throw new IllegalArgumentException("workflowIds is null.");
+            throw new BadRequestException("workflowIds is null.");
         }
         if (workflowIds.isEmpty()) {
             return;
@@ -800,17 +801,17 @@ public class Projects {
 
             SqlUtilities.commitTransaction(connection);
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(updateProjectToWorkflowsStatement);
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     static void removeWorkflowsFromProjects(DataSource dataSource, Collection<Integer> workflowIds) throws SQLException {
         if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
+            throw new BadRequestException("dataSource is null.");
         }
         if (workflowIds == null) {
-            throw new IllegalArgumentException("workflowIds is null.");
+            throw new BadRequestException("workflowIds is null.");
         }
         if (workflowIds.isEmpty()) {
             return;
@@ -834,30 +835,14 @@ public class Projects {
 
             removeWorkflowsFromProjectStatement.executeUpdate();
         } finally {
-            SqlUtilities.closeConnection(connection);
             SqlUtilities.cleanUpStatements(removeWorkflowsFromProjectStatement);
-        }
-    }
-
-    /**
-     *
-     * @return The role the current user has in the project.  Will fetch from parent groups if the user is not
-     * part of the current project.
-     */
-    public static Role getRoleForUser(Project project, User user) throws SQLException {
-        Role role = project.userRoles.get(user);
-        if (role != null) {
-            return role;
-        } else if (project.parentProjectID != -1) {
-            return getRoleForUser(new Projects().getProject(project.parentProjectID), user);
-        } else {
-            return null;
+            SqlUtilities.closeConnection(connection);
         }
     }
 
     private static Project createProjectFromResultSet(ResultSet resultSet) throws SQLException {
         if (resultSet == null) {
-            throw new IllegalArgumentException("resultSet is null.");
+            throw new BadRequestException("resultSet is null.");
         }
 
         int parentProjectID = resultSet.getInt("parent_project_id");

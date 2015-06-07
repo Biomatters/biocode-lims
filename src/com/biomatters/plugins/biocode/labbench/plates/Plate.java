@@ -68,7 +68,7 @@ public class Plate implements XMLSerializable {
         fromXML(e);
     }
 
-    public Plate(ResultSet resultSet) throws SQLException{
+    public Plate(ResultSet resultSet) throws SQLException, DatabaseServiceException {
         String typeString = resultSet.getString("plate.type");
         Reaction.Type type = Reaction.Type.valueOf(typeString);
         int size = resultSet.getInt("plate.size");
@@ -86,24 +86,20 @@ public class Plate implements XMLSerializable {
         setThermocycleFromId(thermocycleId);
     }
 
-    private void setThermocycleFromId(int thermocycleId) {
+    private void setThermocycleFromId(int thermocycleId) throws DatabaseServiceException {
         this.thermocycleId = thermocycleId;
         if(thermocycleId >= 0) {
-            try {
-                for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.PCR)) {
-                    if (tc.getId() == thermocycleId) {
-                        setThermocycle(tc);
-                        break;
-                    }
+            for (Thermocycle tc : Thermocycle.getThermocycleGetter().getPCRThermocycles()) {
+                if (tc.getId() == thermocycleId) {
+                    setThermocycle(tc);
+                    break;
                 }
-                for (Thermocycle tc : Thermocycle.getThermocycleGetter().getThermocycles(Reaction.Type.CycleSequencing)) {
-                    if (tc.getId() == thermocycleId) {
-                        setThermocycle(tc);
-                        break;
-                    }
+            }
+            for (Thermocycle tc : Thermocycle.getThermocycleGetter().getCycleSequencingThermocycles()) {
+                if (tc.getId() == thermocycleId) {
+                    setThermocycle(tc);
+                    break;
                 }
-            } catch (DatabaseServiceException e) {
-                e.printStackTrace();
             }
         }
     }
@@ -521,8 +517,12 @@ public class Plate implements XMLSerializable {
         }
         initialiseReactions();
         String thermocycleId = element.getChildText("thermocycle");
-        if(thermocycleId != null) {
-            setThermocycleFromId(Integer.parseInt(thermocycleId));
+        try {
+            if (thermocycleId != null) {
+                setThermocycleFromId(Integer.parseInt(thermocycleId));
+            }
+        } catch (DatabaseServiceException e) {
+            throw new XMLSerializationException(e);
         }
         List<Element> imagesList = element.getChildren("gelImage");
         if(imagesList != null && imagesList.size() > 0) {

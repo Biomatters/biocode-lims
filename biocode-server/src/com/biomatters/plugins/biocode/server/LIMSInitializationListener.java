@@ -12,9 +12,7 @@ import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.PasswordOptions;
 import com.biomatters.plugins.biocode.labbench.connection.Connection;
 import com.biomatters.plugins.biocode.labbench.lims.*;
-import com.biomatters.plugins.biocode.labbench.reaction.Cocktail;
-import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
-import com.biomatters.plugins.biocode.labbench.reaction.Thermocycle;
+import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.server.security.BiocodeServerLIMSDatabaseConstants;
 import com.biomatters.plugins.biocode.server.security.ConnectionSettingsConstants;
 import com.biomatters.plugins.biocode.server.security.LDAPConfiguration;
@@ -64,6 +62,10 @@ public class LIMSInitializationListener implements ServletContextListener {
 
     public static LDAPConfiguration getLDAPConfiguration() { return LDAPConfiguration; }
 
+    private List<Thermocycle> pcrThermocycles = new ArrayList<Thermocycle>();
+    private List<Thermocycle> cycleSequencingThermocycles = new ArrayList<Thermocycle>();
+    private List<PCRCocktail> pcrCocktails = new ArrayList<PCRCocktail>();
+    private List<CycleSequencingCocktail> cycleSequencingCocktails = new ArrayList<CycleSequencingCocktail>();
 
     @Override
     public void contextInitialized(ServletContextEvent servletContextEvent) {
@@ -113,29 +115,36 @@ public class LIMSInitializationListener implements ServletContextListener {
             initializationErrors.add(IntializationError.forException(e));
         }
 
+        try {
+            pcrCocktails.addAll(limsConnection.getPCRCocktailsFromDatabase());
+            cycleSequencingCocktails.addAll(limsConnection.getCycleSequencingCocktailsFromDatabase());
+            pcrThermocycles.addAll(limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.pcr));
+            cycleSequencingThermocycles.addAll(limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.cyclesequencing));
+        } catch (DatabaseServiceException e) {
+            initializationErrors.add(IntializationError.forException(e));
+        }
+
         Cocktail.setCocktailGetter(new Cocktail.CocktailGetter() {
             @Override
-            public List<? extends Cocktail> getCocktails(Reaction.Type type) throws DatabaseServiceException {
-                if (type == Reaction.Type.PCR) {
-                    return limsConnection.getPCRCocktailsFromDatabase();
-                } else if (type == Reaction.Type.CycleSequencing) {
-                    return limsConnection.getCycleSequencingCocktailsFromDatabase();
-                } else {
-                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
-                }
+            public List<CycleSequencingCocktail> getCycleSequencingCocktails() {
+                return cycleSequencingCocktails;
+            }
+
+            @Override
+            public List<PCRCocktail> getPCRCocktails() {
+                return pcrCocktails;
             }
         });
 
         Thermocycle.setThermocycleGetter(new Thermocycle.ThermocycleGetter() {
             @Override
-            public List<? extends Thermocycle> getThermocycles(Reaction.Type type) throws DatabaseServiceException {
-                if (type == Reaction.Type.PCR) {
-                    return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.pcr);
-                } else if (type == Reaction.Type.CycleSequencing) {
-                    return limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.cyclesequencing);
-                } else {
-                    throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have thermocycles");
-                }
+            public List<Thermocycle> getPCRThermocycles() {
+                return pcrThermocycles;
+            }
+
+            @Override
+            public List<Thermocycle> getCycleSequencingThermocycles() {
+                return cycleSequencingThermocycles;
             }
         });
     }

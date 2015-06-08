@@ -87,7 +87,11 @@ public class QueryParser {
     /* Primary parse method. */
     public Query parseQuery(String query) {
         if (query.matches(advancedQueryStructure)) {
-            return constructQueryFromPostfix(infixToPostfix(query));
+            try {
+                return constructQueryFromPostfix(infixToPostfix(query));
+            } catch (BadRequestException e) {
+                return new GeneralQuery("");
+            }
         } else {
             return new GeneralQuery(query);
         }
@@ -106,13 +110,13 @@ public class QueryParser {
         }
 
         if (numAnd != 0 && numXor == 0 && numOr == 0) {
-            List<QueryValues> queryValueses = new ArrayList<QueryValues>();
+            List<QueryValues> queryValues = new ArrayList<QueryValues>();
             for (String element : queryPostfix) {
                 if (!element.equals("AND") && !element.equals("XOR") && !element.equals("OR")) {
-                    queryValueses.add(stringToQueryValues(element));
+                    queryValues.add(stringToQueryValues(element));
                 }
             }
-            return new MultipleAndQuery(queryValueses.toArray(new QueryValues[queryValueses.size()]));
+            return new MultipleAndQuery(queryValues.toArray(new QueryValues[queryValues.size()]));
         } else if (numAnd == 0 && numXor == 0 && numOr != 0) {
             List<QueryValues> queryValueses = new ArrayList<QueryValues>();
             for (String element : queryPostfix) {

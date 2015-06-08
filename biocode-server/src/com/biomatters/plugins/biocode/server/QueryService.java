@@ -21,7 +21,7 @@ import java.sql.SQLException;
 import java.util.*;
 
 /**
- * Main endpoint for querying the FIMS/LIMS as a whole.  Returns tissues, workflows, plates and sequences
+ * Main endpoint for querying the LIMS as a whole.  Returns tissues, workflows, plates and sequences
  *
  * @author Matthew Cheung
  * @version $Id$
@@ -85,10 +85,6 @@ public class QueryService {
         filteredSearchResult.addAllWorkflows(filterWorkflowIDs(result.getWorkflowIds(), extractionIDsLoggedInUserHasReadAccessTo));
 
         return filteredSearchResult;
-    }
-
-    private static Set<String> getExtractionIDsLoggedInUserHasReadAccessTo() throws DatabaseServiceException {
-        return AccessUtilities.getExtractionIdsUserHasRoleFor(Users.getLoggedInUser(), Role.READER);
     }
 
     private static Set<Integer> filterPlateIDs(Collection<Integer> plateIDsToFilter, Collection<String> extractionIDsLoggedInUserHasReadAccessTo) throws DatabaseServiceException {

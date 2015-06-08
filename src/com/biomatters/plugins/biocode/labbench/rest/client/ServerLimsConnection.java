@@ -639,7 +639,8 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     public Map<String, String> getBCIDRoots() {
-        return Collections.unmodifiableMap(BCIDRootsCache); }
+        return Collections.unmodifiableMap(BCIDRootsCache);
+    }
 
     @Override
     public void addThermoCycles(Thermocycle.Type type, List<Thermocycle> cycles) throws DatabaseServiceException {

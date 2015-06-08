@@ -560,7 +560,7 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
                 case CycleSequencing:
                     thermocycles.addAll(Thermocycle.getThermocycleGetter().getCycleSequencingThermocycles());
                     break;
-                case Extraction:
+                default:
                     break;
             }
 

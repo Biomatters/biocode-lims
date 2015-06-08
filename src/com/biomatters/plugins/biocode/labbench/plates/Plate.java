@@ -88,16 +88,23 @@ public class Plate implements XMLSerializable {
 
     private void setThermocycleFromId(int thermocycleId) throws DatabaseServiceException {
         this.thermocycleId = thermocycleId;
-        if(thermocycleId >= 0) {
-            for (Thermocycle tc : Thermocycle.getThermocycleGetter().getPCRThermocycles()) {
-                if (tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
+        if (thermocycleId >= 0) {
+            List<Thermocycle> thermocycles = new ArrayList<Thermocycle>();
+
+            switch (getReactionType()) {
+                case PCR:
+                    thermocycles.addAll(Thermocycle.getThermocycleGetter().getPCRThermocycles());
                     break;
-                }
+                case CycleSequencing:
+                    thermocycles.addAll(Thermocycle.getThermocycleGetter().getCycleSequencingThermocycles());
+                    break;
+                default:
+                   break;
             }
-            for (Thermocycle tc : Thermocycle.getThermocycleGetter().getCycleSequencingThermocycles()) {
-                if (tc.getId() == thermocycleId) {
-                    setThermocycle(tc);
+
+            for (Thermocycle thermocycle : thermocycles) {
+                if (thermocycle.getId() == thermocycleId) {
+                    setThermocycle(thermocycle);
                     break;
                 }
             }

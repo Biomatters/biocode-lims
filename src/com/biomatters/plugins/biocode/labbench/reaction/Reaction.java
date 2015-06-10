@@ -13,6 +13,7 @@ import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.rest.client.ServerLimsConnection;
+import com.biomatters.plugins.biocode.server.Project;
 import org.jdom.Element;
 
 import javax.swing.*;
@@ -70,6 +71,9 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
     public static final DocumentField GEL_IMAGE_DOCUMENT_FIELD = new DocumentField("GELImage", "", "gelImage", String.class, false, false);
     public static final DocumentField PLATE_NAME_DOCUMENT_FIELD = new DocumentField("Plate", "", "_plateName_", String.class, false, false);
     public static final DocumentField WELL_DOCUMENT_FIELD = new DocumentField("Well", "", "_plateWell_", String.class, false, false);
+    private static final String DEFAULT_PROJECT_ELEMENT_NAME = "defaultProject";
+    private static final String PROJECTS_ELEMENT_NAME = "projects";
+    private static final String PROJECT_ELEMENT_NAME = "project";
     private static final String PROJECT_ID_ELEMENT_NAME = "projectId";
     private static final String PROJECT_NAME_ELEMENT_NAME = "projectName";
 
@@ -466,9 +470,6 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         ReactionOptions options = getOptions();
         element.addContent(options.valuesToXML("options"));
 
-        element.addContent(new Element(PROJECT_ID_ELEMENT_NAME).setText(Integer.toString(options.getProjectId())));
-        element.addContent(new Element(PROJECT_NAME_ELEMENT_NAME).setText(options.getProjectName()));
-
         Element primerElement = getPrimerElement(options, false);
         if (primerElement != null) {
             element.addContent(primerElement);
@@ -479,19 +480,46 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
             element.addContent(reversePrimerElement);
         }
 
+        element.addContent(createProjectElement(options.getDefaultProjectId(), options.getDefaultProjectName(), DEFAULT_PROJECT_ELEMENT_NAME));
+        element.addContent(createProjectsElement(options));
+
         return element;
     }
 
-    private static Element getPrimerElement(ReactionOptions option, boolean reverse) {
+    private static Element createProjectsElement(ReactionOptions options) {
+        Element projectsElement = new Element(PROJECTS_ELEMENT_NAME);
+
+        List<Options.OptionValue> possibleProjectOptionValues = options.getPossibleProjects();
+        for (Options.OptionValue projectOption : possibleProjectOptionValues) {
+            projectsElement.addContent(projectOptionValueToElement(projectOption));
+        }
+
+        return projectsElement;
+    }
+
+    private static Element projectOptionValueToElement(Options.OptionValue projectOptionValue) {
+        return createProjectElement(Integer.parseInt(projectOptionValue.getName()), projectOptionValue.getLabel(), PROJECT_ELEMENT_NAME);
+    }
+
+    private static Element createProjectElement(int projectId, String projectName, String elementName) {
+        Element projectElement = new Element(elementName);
+
+        projectElement.addContent(new Element(PROJECT_ID_ELEMENT_NAME).setText(Integer.toString(projectId)));
+        projectElement.addContent(new Element(PROJECT_NAME_ELEMENT_NAME).setText(projectName));
+
+        return projectElement;
+    }
+
+    private static Element getPrimerElement(ReactionOptions options, boolean reverse) {
         Element primerElement = null;
 
-        Options.Option primerOption = option.getOption(reverse ? "revPrimer" : "primer");
+        Options.Option primerOption = options.getOption(reverse ? "revPrimer" : "primer");
         if (primerOption instanceof DocumentSelectionOption) {
             List<AnnotatedPluginDocument> primerDocuments = ((DocumentSelectionOption)primerOption).getDocuments();
             if (primerDocuments.size() == 1) {
                 PluginDocument primerPluginDocument = primerDocuments.get(0).getDocumentOrNull();
                 if (primerPluginDocument instanceof OligoSequenceDocument) {
-                    OligoSequenceDocument primer = (OligoSequenceDocument) primerPluginDocument;
+                    OligoSequenceDocument primer = (OligoSequenceDocument)primerPluginDocument;
                     primerElement = new Element(reverse ? REV_PRIMER_ELEMENT_NAME : PRIMER_ELEMENT_NAME);
                     primerElement.addContent(new Element(PRIMER_NAME_ELEMENT_NAME).setText(primer.getName()));
                     primerElement.addContent(new Element(PRIMER_SEQUENCE_ELEMENT_NAME).setText(primer.getSequenceString()));
@@ -588,8 +616,6 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
         }
         ReactionOptions options = getOptions();
         options.valuesFromXML(element.getChild("options"));
-        options.setProjectId(Integer.parseInt(element.getChildText(PROJECT_ID_ELEMENT_NAME)));
-        options.setProjectName(element.getChildText(PROJECT_NAME_ELEMENT_NAME));
         //setOptions(XMLSerializer.classFromXML(element.getChild("options"), ReactionOptions.class));
 
         Options.Option primerOption = options.getOption("primer");
@@ -607,6 +633,39 @@ public abstract class Reaction<T extends Reaction> implements XMLSerializable{
                 reversePrimerOption.setValue(folderOrDocumentsContainingPrimer);
             }
         }
+
+        setProjectsOptionFromElement(options, element);
+    }
+
+    private static void setProjectsOptionFromElement(ReactionOptions options, Element rootElement) {
+        Element projectsElement = rootElement.getChild(PROJECTS_ELEMENT_NAME);
+        if (projectsElement != null) {
+            List<Project> possibleProjectOptionValues = new ArrayList<Project>();
+
+            for (Element projectElement : projectsElement.getChildren(PROJECT_ELEMENT_NAME)) {
+                possibleProjectOptionValues.add(elementToProject(projectElement));
+            }
+
+            if (!possibleProjectOptionValues.isEmpty()) {
+                int defaultProjectIndex = 0;
+                Element defaultProjectElement = rootElement.getChild(DEFAULT_PROJECT_ELEMENT_NAME);
+                if (defaultProjectElement != null) {
+                    defaultProjectIndex = possibleProjectOptionValues.indexOf(elementToProject(defaultProjectElement));
+                }
+
+                options.setPossibleProjects(possibleProjectOptionValues, defaultProjectIndex);
+            }
+        }
+    }
+
+    private static Project elementToProject(Element element) {
+        return new Project(
+                Integer.valueOf(element.getChildText(PROJECT_ID_ELEMENT_NAME)),
+                element.getChildText(PROJECT_NAME_ELEMENT_NAME),
+                "",
+                -1,
+                false
+        );
     }
 
     private static DocumentSelectionOption.FolderOrDocuments getFolderOrDocumentsFromElement(Element reactionRootElement, boolean reverse) {

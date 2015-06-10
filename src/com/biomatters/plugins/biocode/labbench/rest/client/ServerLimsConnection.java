@@ -134,7 +134,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     @Override
-    public void savePlates(List<Plate> plates, ProgressListener progress) throws BadDataException, DatabaseServiceException {
+    public void savePlates_(List<Plate> plates, ProgressListener progress) throws BadDataException, DatabaseServiceException {
         try {
             Invocation.Builder request = target.path(PLATES_BASE_PATH).request();
             Response response = request.put(Entity.entity(new XMLSerializableList<Plate>(Plate.class, plates), MediaType.APPLICATION_XML_TYPE));

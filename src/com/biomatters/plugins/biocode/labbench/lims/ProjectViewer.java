@@ -85,16 +85,46 @@ public class ProjectViewer extends DocumentViewer {
     }
 
     private static String generateTableHtml(Collection<Workflow> workflows, Map<Project, Collection<Workflow>> projectToWorkflows) {
-        StringBuilder tableHtmlBuilder = new StringBuilder().append("<html><table><tr><td><strong>Workflow</strong></td><td><strong>Project</strong></td></tr>");
+        StringBuilder tableHtmlBuilder = new StringBuilder("<html>");
 
-        for (Workflow workflow : workflows) {
-            Project projectContainingWorkflow = getProjectContainingWorkflow(projectToWorkflows, workflow);
-            tableHtmlBuilder.append("<tr><td>").append(workflow.getName()).append("</td>").append("<td>").append(projectContainingWorkflow.name).append("</td></tr>");
+        Map<Project, Collection<Workflow>> filteredProjectToWorkflows = filterProjectToWorkflowsByWorkflows(projectToWorkflows, workflows);
+        for (Map.Entry<Project, Collection<Workflow>> projectAndWorkflows : filteredProjectToWorkflows.entrySet()) {
+            Collection<Workflow> workflowsUnderProject = projectAndWorkflows.getValue();
+            int numberOfWorkflows = workflowsUnderProject.size();
+            tableHtmlBuilder.append("<strong>").append(projectAndWorkflows.getKey().name).append(" (").append(numberOfWorkflows).append(" ").append(getPlural(numberOfWorkflows, "workflow", "s")).append(")</strong><br>");
+
+            for (Workflow workflow : workflowsUnderProject) {
+                tableHtmlBuilder.append(workflow.getName()).append("<br>");
+            }
+            tableHtmlBuilder.append("<br>");
         }
 
-        tableHtmlBuilder.append("</table>").append("</html>");
+        tableHtmlBuilder.append("</html>");
 
         return tableHtmlBuilder.toString();
+    }
+
+    private static String getPlural(int n, String noun, String suffix) {
+        return n == 1 ? noun : noun + suffix;
+    }
+
+    private static Map<Project, Collection<Workflow>> filterProjectToWorkflowsByWorkflows(Map<Project, Collection<Workflow>> projectToWorkflows, Collection<Workflow> workflowsToKeep) {
+        Map<Project, Collection<Workflow>> filteredProjectToWorkflows = new HashMap<Project, Collection<Workflow>>();
+
+        for (Workflow workflowToKeep : workflowsToKeep) {
+            Project projectContainingWorkflow = getProjectContainingWorkflow(projectToWorkflows, workflowToKeep);
+
+            Collection<Workflow> workflowsUnderProject = filteredProjectToWorkflows.get(projectContainingWorkflow);
+
+            if (workflowsUnderProject == null) {
+                workflowsUnderProject = new ArrayList<Workflow>();
+                filteredProjectToWorkflows.put(projectContainingWorkflow, workflowsUnderProject);
+            }
+
+            workflowsUnderProject.add(workflowToKeep);
+        }
+
+        return filteredProjectToWorkflows;
     }
 
     private static Project getProjectContainingWorkflow(Map<Project, Collection<Workflow>> projectToWorkflows, Workflow workflow) {

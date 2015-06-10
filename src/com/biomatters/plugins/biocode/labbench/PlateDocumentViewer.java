@@ -12,7 +12,6 @@ import com.biomatters.plugins.biocode.BiocodePlugin;
 import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.plates.*;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
-import com.biomatters.plugins.biocode.server.Project;
 import jebl.math.MachineAccuracy;
 import org.virion.jam.util.SimpleListener;
 

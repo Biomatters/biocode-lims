@@ -19,7 +19,7 @@ import com.biomatters.plugins.biocode.labbench.WorkflowDocument;
 public class ProjectViewerFactory extends DocumentViewerFactory {
     @Override
     public String getName() {
-        return "Workflow Project Viewer";
+        return "Projects Assignment";
     }
 
     @Override

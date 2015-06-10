@@ -8,9 +8,12 @@ import com.biomatters.geneious.publicapi.utilities.ThreadUtilities;
 import com.biomatters.geneious.publicapi.components.ProgressFrame;
 import com.biomatters.plugins.biocode.BiocodePlugin;
 import com.biomatters.plugins.biocode.BiocodeUtilities;
+import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
+import com.biomatters.plugins.biocode.labbench.lims.ProjectLimsConnection;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.plates.PlateViewer;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
+import com.biomatters.plugins.biocode.server.Project;
 import jebl.util.ProgressListener;
 
 import java.util.*;
@@ -40,7 +43,7 @@ public class NewPlateDocumentOperation extends DocumentOperation {
     }
 
     @Override
-     public boolean isDocumentGenerator() {
+    public boolean isDocumentGenerator() {
         return false;
     }
 
@@ -161,9 +164,46 @@ public class NewPlateDocumentOperation extends DocumentOperation {
             initializePlate(plateViewer.get().getPlate(), getTissueDocuments(documents));
         }
 
+        try {
+            tryAddProjectValues(plateViewer.get().getPlate());
+        } catch (DatabaseServiceException e) {
+            throw new DocumentOperationException(e);
+        }
+
         plateViewer.get().displayInFrame(true, GuiUtilities.getMainFrame());
 
         return null;
+    }
+
+    private static void tryAddProjectValues(Plate plate) throws DatabaseServiceException {
+        LIMSConnection limsConnection = BiocodeService.getInstance().getActiveLIMSConnection();
+        if (limsConnection instanceof ProjectLimsConnection && !plate.getReactionType().equals(Reaction.Type.Extraction)) {
+            Map<Project, Collection<Workflow>> projectToWorkflows = ((ProjectLimsConnection)limsConnection).getProjectToWorkflows();
+            List<Project> projects = new ArrayList<Project>();
+            projects.add(Project.NONE_PROJECT);
+            projects.addAll(projectToWorkflows.keySet());
+            for (Reaction reaction : plate.getReactions()) {
+                Workflow reactionWorkflow = reaction.getWorkflow();
+                if (reactionWorkflow != null) {
+                    reaction.getOptions().setPossibleProjects(Collections.singletonList(getProjectContainingWorkflow(projectToWorkflows, reactionWorkflow)), 0);
+                } else {
+                    reaction.getOptions().setPossibleProjects(projects, projects.indexOf(Project.NONE_PROJECT));
+                }
+            }
+        }
+    }
+
+    private static Project getProjectContainingWorkflow(Map<Project, Collection<Workflow>> projectToWorkflows, Workflow workflow) {
+        Project project = Project.NONE_PROJECT;
+
+        for (Map.Entry<Project, Collection<Workflow>> projectAndWorkflows : projectToWorkflows.entrySet()) {
+            if (projectAndWorkflows.getValue().contains(workflow)) {
+                project = projectAndWorkflows.getKey();
+                break;
+            }
+        }
+
+        return project;
     }
 
     private static Collection<TissueDocument> getTissueDocuments(AnnotatedPluginDocument[] annotatedPluginDocumentsContainingTissueDocuments) throws DocumentOperationException {

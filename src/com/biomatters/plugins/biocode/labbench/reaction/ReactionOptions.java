@@ -67,7 +67,7 @@ public abstract class ReactionOptions<T extends Reaction> extends Options {
     public void setPossibleProjects(Collection<Project> projects, int defaultProjectIndex) {
         if (defaultProjectIndex < 0 || defaultProjectIndex >= projects.size()) {
             throw new IllegalArgumentException(
-                    "defaultProjectIndex is " + defaultProjectIndex + " out of bounds. " +
+                    "defaultProjectIndex (" + defaultProjectIndex + ") is out of bounds. " +
                             " valid range: " + 0 + " - " + (projects.size() - 1) + "."
             );
         }

@@ -9,6 +9,8 @@ import com.biomatters.geneious.publicapi.plugin.ActionProvider;
 import com.biomatters.geneious.publicapi.plugin.DocumentOperationException;
 import com.biomatters.geneious.publicapi.plugin.DocumentViewer;
 import com.biomatters.geneious.publicapi.plugin.GeneiousAction;
+import com.biomatters.geneious.publicapi.utilities.IconUtilities;
+import com.biomatters.plugins.biocode.BiocodePlugin;
 import com.biomatters.plugins.biocode.labbench.PlateDocument;
 import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.WorkflowDocument;
@@ -31,7 +33,7 @@ public class ProjectViewer extends DocumentViewer {
     private Set<Workflow> workflows;
     private Map<Project, Collection<Workflow>> projectToWorkflows;
 
-    public ProjectViewer(AnnotatedPluginDocument[] annotatedDocuments, ProjectLimsConnection projectLimsConnection) throws DocumentOperationException {
+    public ProjectViewer(AnnotatedPluginDocument[] annotatedDocuments, ProjectLimsConnection projectLimsConnection) throws DocumentOperationException, DatabaseServiceException {
         this.projectLimsConnection = projectLimsConnection;
         projectToWorkflows = getProjectToWorkflows(projectLimsConnection);
         workflows = getWorkflows(annotatedDocuments);
@@ -46,7 +48,7 @@ public class ProjectViewer extends DocumentViewer {
         }
     }
 
-    private static Set<Workflow> getWorkflows(AnnotatedPluginDocument[] annotatedPluginDocuments) throws DocumentOperationException {
+    private Set<Workflow> getWorkflows(AnnotatedPluginDocument[] annotatedPluginDocuments) throws DocumentOperationException, DatabaseServiceException {
         Set<Workflow> workflows = new HashSet<Workflow>();
 
         for (AnnotatedPluginDocument annotatedPluginDocument : annotatedPluginDocuments) {
@@ -61,13 +63,15 @@ public class ProjectViewer extends DocumentViewer {
         return workflows;
     }
 
-    private static Set<Workflow> getWorkflows(Plate plate) {
+    private Set<Workflow> getWorkflows(Plate plate) throws DatabaseServiceException {
         Set<Workflow> workflows = new HashSet<Workflow>();
 
-        for (Reaction reaction : plate.getReactions()) {
-            Workflow workflow = reaction.getWorkflow();
-            if (workflow != null) {
-                workflows.add(workflow);
+        if (!plate.getReactionType().equals(Reaction.Type.Extraction)) {
+            for (Reaction reaction : plate.getReactions()) {
+                Workflow workflow = reaction.getWorkflow();
+                if (workflow != null) {
+                    workflows.add(workflow);
+                }
             }
         }
 
@@ -88,20 +92,59 @@ public class ProjectViewer extends DocumentViewer {
         StringBuilder tableHtmlBuilder = new StringBuilder("<html>");
 
         Map<Project, Collection<Workflow>> filteredProjectToWorkflows = filterProjectToWorkflowsByWorkflows(projectToWorkflows, workflows);
-        for (Map.Entry<Project, Collection<Workflow>> projectAndWorkflows : filteredProjectToWorkflows.entrySet()) {
-            Collection<Workflow> workflowsUnderProject = projectAndWorkflows.getValue();
-            int numberOfWorkflows = workflowsUnderProject.size();
-            tableHtmlBuilder.append("<strong>").append(projectAndWorkflows.getKey().name).append(" (").append(numberOfWorkflows).append(" ").append(getPlural(numberOfWorkflows, "workflow", "s")).append(")</strong><br>");
 
-            for (Workflow workflow : workflowsUnderProject) {
-                tableHtmlBuilder.append(workflow.getName()).append("<br>");
+        if (filteredProjectToWorkflows.size() == 1) {
+            Map.Entry<Project, Collection<Workflow>> projectAndWorkflows = filteredProjectToWorkflows.entrySet().iterator().next();
+
+            List<Workflow> workflowsUnderProject = new ArrayList<Workflow>(projectAndWorkflows.getValue());
+
+            Collections.sort(workflowsUnderProject, new WorkflowIdComparator());
+
+            int numberOfWorkflows = workflowsUnderProject.size();
+            tableHtmlBuilder.append("<strong>").append(projectAndWorkflows.getKey().name).append(" (All ").append(numberOfWorkflows).append(" ").append(getPlural(numberOfWorkflows, "workflow", "s")).append(")</strong><br>");
+
+            tableHtmlBuilder.append(generateHtmlNewLineSeparatedListOfWorkflowNames(workflowsUnderProject)).append("<br>");
+        } else {
+            for (Map.Entry<Project, Collection<Workflow>> projectAndWorkflows : filteredProjectToWorkflows.entrySet()) {
+                List<Workflow> workflowsUnderProject = new ArrayList<Workflow>(projectAndWorkflows.getValue());
+
+                Collections.sort(workflowsUnderProject, new WorkflowIdComparator());
+
+                int numberOfWorkflows = workflowsUnderProject.size();
+                tableHtmlBuilder.append("<strong>").append(projectAndWorkflows.getKey().name).append(" (").append(numberOfWorkflows).append(" ").append(getPlural(numberOfWorkflows, "workflow", "s")).append(")</strong><br>");
+
+                tableHtmlBuilder.append(generateHtmlNewLineSeparatedListOfWorkflowNames(workflowsUnderProject)).append("<br>");
             }
-            tableHtmlBuilder.append("<br>");
         }
 
         tableHtmlBuilder.append("</html>");
 
         return tableHtmlBuilder.toString();
+    }
+
+    private static class WorkflowIdComparator implements Comparator<Workflow> {
+        @Override
+        public int compare(Workflow lhs, Workflow rhs) {
+            int result = 1, lhsId = lhs.getId(), rhsId = rhs.getId();
+
+            if (lhsId == rhsId) {
+                result = 0;
+            } else if (lhsId < rhsId) {
+                result = -1;
+            }
+
+            return result;
+        }
+    }
+
+    private static String generateHtmlNewLineSeparatedListOfWorkflowNames(Collection<Workflow> workflows) {
+        StringBuilder listBuilder = new StringBuilder();
+
+        for (Workflow workflow : workflows) {
+            listBuilder.append(workflow.getName()).append("<br>");
+        }
+
+        return listBuilder.toString();
     }
 
     private static String getPlural(int n, String noun, String suffix) {
@@ -152,11 +195,11 @@ public class ProjectViewer extends DocumentViewer {
         ActionProvider actionProvider = new ActionProvider() {
             @Override
             public List<GeneiousAction> getOtherActions() {
-                GeneiousAction action = new GeneiousAction("Add the workflows to a project", "") {
+                GeneiousAction action = new GeneiousAction("Assign all workflows to a project", "", BiocodePlugin.getIcons("bulkEdit_16.png")) {
                     @Override
                     public void actionPerformed(ActionEvent actionEvent) {
                         ProjectSelectionOption projectSelectionOption = new ProjectSelectionOption(getProjects(projectToWorkflows));
-                        if (Dialogs.showOptionsDialog(projectSelectionOption, "Project selection", false)) {
+                        if (Dialogs.showOptionsDialog(projectSelectionOption, "Project Selection", false)) {
                             try {
                                 int idOfSelectedProject = projectSelectionOption.getIdOfSelectedProject();
                                 if (idOfSelectedProject == Project.NONE_PROJECT.id) {

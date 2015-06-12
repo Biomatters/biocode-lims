@@ -29,7 +29,7 @@ public abstract class ReactionOptions<T extends Reaction> extends Options {
     public static final OptionValue[] STATUS_VALUES = new OptionValue[] { NOT_RUN_VALUE, RUN_VALUE, PASSED_VALUE, SUSPECT_VALUE, FAILED_VALUE };
     public static final String[] SAMPLE_LOCI = new String[] {"None", "COI", "16s", "18s", "ITS", "ITS1", "ITS2", "28S", "12S", "rbcl", "matK", "trnH-psba", "cytB"};
     protected T reaction;
-    private static final String PROJECT_OPTION_NAME = "project";
+    protected static final String PROJECT_OPTION_NAME = "project";
 
     public ReactionOptions() {
         init();

@@ -3,9 +3,7 @@ package com.biomatters.plugins.biocode.labbench.lims;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.plugins.biocode.server.Project;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Gen Li
@@ -16,7 +14,7 @@ public class ProjectSelectionOption extends Options {
 
     public ProjectSelectionOption(Collection<Project> projects) {
         List<OptionValue> projectOptionValues = createProjectOptionValues(projects);
-        projectComboBox = addComboBoxOption("project", "Project", projectOptionValues, projectOptionValues.get(0));
+        projectComboBox = addComboBoxOption("project", "Project:", projectOptionValues, projectOptionValues.get(0));
     }
 
     public int getIdOfSelectedProject() {
@@ -30,10 +28,27 @@ public class ProjectSelectionOption extends Options {
             projectOptionValues.add(createProjectOptionValue(project));
         }
 
+        Collections.sort(projectOptionValues, new ProjectOptionValueComparator());
+
         return projectOptionValues;
     }
 
     private static OptionValue createProjectOptionValue(Project project) {
         return new OptionValue(String.valueOf(project.id), project.name);
+    }
+
+    private static class ProjectOptionValueComparator implements Comparator<OptionValue> {
+        @Override
+        public int compare(OptionValue lhs, OptionValue rhs) {
+            int result = 1, lhsId = Integer.valueOf(lhs.getName()), rhsId = Integer.valueOf(rhs.getName());
+
+            if (lhsId == rhsId) {
+                result = 0;
+            } else if (lhsId < rhsId) {
+                result = -1;
+            }
+
+            return result;
+        }
     }
 }

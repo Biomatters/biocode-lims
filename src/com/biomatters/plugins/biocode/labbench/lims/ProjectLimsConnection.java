@@ -91,7 +91,7 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
 
         for (Reaction reaction : plate.getReactions()) {
             String extractionId = reaction.getExtractionId();
-            if (extractionId != null) {
+            if (extractionId != null && !extractionId.isEmpty()) {
                 extractionIds.add(extractionId);
             }
         }
@@ -104,7 +104,7 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
 
         for (Reaction reaction : plate.getReactions()) {
             String locus = reaction.getLocus();
-            if (locus != null) {
+            if (locus != null && !loci.isEmpty()) {
                 loci.add(locus);
             }
         }

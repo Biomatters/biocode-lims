@@ -62,10 +62,10 @@ public class LIMSInitializationListener implements ServletContextListener {
 
     public static LDAPConfiguration getLDAPConfiguration() { return LDAPConfiguration; }
 
-    private List<Thermocycle> pcrThermocycles = new ArrayList<Thermocycle>();
-    private List<Thermocycle> cycleSequencingThermocycles = new ArrayList<Thermocycle>();
-    private List<PCRCocktail> pcrCocktails = new ArrayList<PCRCocktail>();
-    private List<CycleSequencingCocktail> cycleSequencingCocktails = new ArrayList<CycleSequencingCocktail>();
+    private static List<Thermocycle> pcrThermocycles = new ArrayList<Thermocycle>();
+    private static List<Thermocycle> cycleSequencingThermocycles = new ArrayList<Thermocycle>();
+    private static List<PCRCocktail> pcrCocktails = new ArrayList<PCRCocktail>();
+    private static List<CycleSequencingCocktail> cycleSequencingCocktails = new ArrayList<CycleSequencingCocktail>();
 
     @Override
     public void contextInitialized(ServletContextEvent servletContextEvent) {
@@ -116,10 +116,7 @@ public class LIMSInitializationListener implements ServletContextListener {
         }
 
         try {
-            pcrCocktails.addAll(limsConnection.getPCRCocktailsFromDatabase());
-            cycleSequencingCocktails.addAll(limsConnection.getCycleSequencingCocktailsFromDatabase());
-            pcrThermocycles.addAll(limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.pcr));
-            cycleSequencingThermocycles.addAll(limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.cyclesequencing));
+            refreshCache();
         } catch (DatabaseServiceException e) {
             initializationErrors.add(IntializationError.forException(e));
         }
@@ -147,6 +144,30 @@ public class LIMSInitializationListener implements ServletContextListener {
                 return cycleSequencingThermocycles;
             }
         });
+    }
+
+    public static void refreshCache() throws DatabaseServiceException {
+        clearCache();
+        try {
+            buildCache();
+        } catch (DatabaseServiceException e) {
+            clearCache();
+            throw e;
+        }
+    }
+
+    private static void buildCache() throws DatabaseServiceException {
+        pcrCocktails = limsConnection.getPCRCocktailsFromDatabase();
+        cycleSequencingCocktails = limsConnection.getCycleSequencingCocktailsFromDatabase();
+        pcrThermocycles = limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.pcr);
+        cycleSequencingThermocycles = limsConnection.getThermocyclesFromDatabase(Thermocycle.Type.cyclesequencing);
+    }
+
+    private static void clearCache() {
+        pcrCocktails.clear();
+        cycleSequencingCocktails.clear();
+        pcrThermocycles.clear();
+        cycleSequencingThermocycles.clear();
     }
 
     private void setLdapAuthenticationSettings(Properties config) {

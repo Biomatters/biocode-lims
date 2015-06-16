@@ -104,7 +104,7 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
 
         for (Reaction reaction : plate.getReactions()) {
             String locus = reaction.getLocus();
-            if (locus != null && !loci.isEmpty()) {
+            if (locus != null && !locus.isEmpty()) {
                 loci.add(locus);
             }
         }

@@ -44,6 +44,12 @@ public class Cocktails {
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
+
+        try {
+            LIMSInitializationListener.refreshCache();
+        } catch (DatabaseServiceException e) {
+            throw new InternalServerErrorException("Cache update failure: " + e.getMessage(), e);
+        }
     }
 
     private static Cocktail.Type getType(String type) {
@@ -64,6 +70,12 @@ public class Cocktails {
             LIMSInitializationListener.getLimsConnection().deleteCocktails(cocktails.getList());
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
+        }
+
+        try {
+            LIMSInitializationListener.refreshCache();
+        } catch (DatabaseServiceException e) {
+            throw new InternalServerErrorException("Cache update failure: " + e.getMessage(), e);
         }
     }
 

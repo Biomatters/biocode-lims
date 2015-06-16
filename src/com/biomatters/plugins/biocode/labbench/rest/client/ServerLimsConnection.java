@@ -1,8 +1,9 @@
 package com.biomatters.plugins.biocode.labbench.rest.client;
 
 import com.biomatters.geneious.publicapi.components.Dialogs;
-import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
-import com.biomatters.geneious.publicapi.databaseservice.Query;
+import com.biomatters.geneious.publicapi.databaseservice.*;
+import com.biomatters.geneious.publicapi.documents.DocumentField;
+import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.labbench.*;
 import com.biomatters.plugins.biocode.labbench.lims.*;
@@ -13,6 +14,7 @@ import com.biomatters.plugins.biocode.server.*;
 import jebl.util.Cancelable;
 import jebl.util.ProgressListener;
 
+import javax.jdo.annotations.Queries;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
@@ -81,6 +83,8 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     public LimsSearchResult getMatchingDocumentsFromLims(Query query, Collection<String> tissueIdsToMatch, Cancelable cancelable) throws DatabaseServiceException {
         updateBCIDRootsCache();
 
+        query = removeFimsFields(query);
+
         String tissueIdsToMatchString = tissueIdsToMatch == null ? null : StringUtilities.join(",", tissueIdsToMatch);
         try {
             WebTarget target = this.target.path(SEARCH_BASE_PATH)
@@ -97,6 +101,70 @@ public class ServerLimsConnection extends ProjectLimsConnection {
         } catch (ProcessingException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         }
+    }
+
+    private static Query removeFimsFields(Query query) {
+        Query resultQuery = Query.Factory.createQuery("");
+
+        if (query instanceof BasicSearchQuery) {
+            resultQuery = query;
+        } else if (query instanceof AdvancedSearchQueryTerm) {
+            if (LIMSConnection.getSearchAttributes().contains(((AdvancedSearchQueryTerm)query).getField())) {
+                resultQuery = query;
+            }
+        } else if (query instanceof CompoundSearchQuery) {
+            List<Query> limsSearchAttributeQueries = new ArrayList<Query>();
+
+            CompoundSearchQuery queryAsCompoundSearchQuery = (CompoundSearchQuery)query;
+            List<DocumentField> limsSearchAttributes = LIMSConnection.getSearchAttributes();
+            for (Query childQuery : queryAsCompoundSearchQuery.getChildren()) {
+                if (limsSearchAttributes.contains(((AdvancedSearchQueryTerm)childQuery).getField())) {
+                    limsSearchAttributeQueries.add(childQuery);
+                }
+            }
+
+            if (limsSearchAttributeQueries.size() == 1) {
+                resultQuery = limsSearchAttributeQueries.get(0);
+            } else if (limsSearchAttributeQueries.size() > 1) {
+                Query compoundQuery = createCompoundQuery(
+                        limsSearchAttributeQueries.toArray(new Query[limsSearchAttributeQueries.size()]),
+                        queryAsCompoundSearchQuery.getOperator(),
+                        getSearchDownloadOptions(query)
+                );
+
+                if (compoundQuery != null) {
+                    resultQuery = compoundQuery;
+                }
+            }
+        }
+
+        return resultQuery;
+    }
+
+    private static Map<String, Object> getSearchDownloadOptions(Query query) {
+        return BiocodeService.getSearchDownloadOptions(
+                BiocodeService.isDownloadTissues(query),
+                BiocodeService.isDownloadWorkflows(query),
+                BiocodeService.isDownloadPlates(query),
+                BiocodeService.isDownloadSequences(query)
+        );
+    }
+
+    private static Query createCompoundQuery(Query[] childQueries, CompoundSearchQuery.Operator operator, Map<String, Object> downloadSearchOptions) {
+        Query compoundQuery = null;
+
+        switch (operator) {
+            case AND:
+                compoundQuery = Query.Factory.createAndQuery(childQueries, downloadSearchOptions);
+                break;
+            case OR:
+                compoundQuery = Query.Factory.createOrQuery(childQueries, downloadSearchOptions);
+                break;
+            default:
+
+        }
+
+        return compoundQuery;
     }
 
     @Override
@@ -549,7 +617,11 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     public Collection<String> getPlatesUsingCocktail(Reaction.Type type, int cocktailId) throws DatabaseServiceException {
         try {
             String platesList = target.path(COCKTAILS_BASE_PATH).path(type.name()).path("" + cocktailId).path("plates").request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
-            return Arrays.asList(platesList.split("\\n"));
+            if (platesList == null || platesList.isEmpty()) {
+                return Collections.emptyList();
+            } else {
+                return Arrays.asList(platesList.split("\\n"));
+            }
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -560,7 +632,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     @Override
     public void addCocktails(List<? extends Cocktail> cocktails) throws DatabaseServiceException {
         try {
-            target.path(COCKTAILS_BASE_PATH).request().put(Entity.entity(
+            target.path(COCKTAILS_BASE_PATH).request().post(Entity.entity(
                     new XMLSerializableList<Cocktail>(Cocktail.class, new ArrayList<Cocktail>(cocktails)),
                     MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
@@ -670,7 +742,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     public List<String> getPlatesUsingThermocycle(int thermocycleId) throws DatabaseServiceException {
         try {
             String result = target.path(THERMOCYCLES_BASE_PATH).path("" + thermocycleId).path("plates").request(MediaType.TEXT_PLAIN_TYPE).get(String.class);
-            if (result == null) {
+            if (result == null || result.isEmpty()) {
                 return Collections.emptyList();
             } else {
                 return Arrays.asList(result.split("\\n"));
@@ -705,7 +777,11 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     @Override
     public void addWorkflowsToProject(int projectId, Collection<Integer> workflowIds) throws DatabaseServiceException {
         try {
-            target.path(PROJECTS_BASE_PATH).path(Integer.toString(projectId)).path("workflows").request().put(Entity.entity(StringUtilities.join(",", workflowIds), MediaType.TEXT_PLAIN_TYPE));
+            target.path(PROJECTS_BASE_PATH)
+                    .path(Integer.toString(projectId))
+                    .path("workflows")
+                    .request()
+                    .post(Entity.entity(new XMLSerializableList<XMLSerializableInteger>(XMLSerializableInteger.class, toXMLSerializableIntegers(workflowIds)), MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
@@ -716,12 +792,26 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     @Override
     public void removeWorkflowsFromProject(Collection<Integer> workflowIds) throws DatabaseServiceException {
         try {
-            target.path(PROJECTS_BASE_PATH).path("workflows").path(StringUtilities.join(",", workflowIds)).request().delete();
+            target.path(PROJECTS_BASE_PATH)
+                    .path("workflows")
+                    .path("deletion")
+                    .request()
+                    .post(Entity.entity(new XMLSerializableList<XMLSerializableInteger>(XMLSerializableInteger.class, toXMLSerializableIntegers(workflowIds)), MediaType.APPLICATION_XML_TYPE));
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         }
+    }
+
+    private static List<XMLSerializableInteger> toXMLSerializableIntegers(Collection<Integer> integers) {
+        List<XMLSerializableInteger> xmlSerializableIntegers = new ArrayList<XMLSerializableInteger>();
+
+        for (Integer integer : integers) {
+            xmlSerializableIntegers.add(new XMLSerializableInteger(integer));
+        }
+
+        return xmlSerializableIntegers;
     }
 
     @Override
@@ -735,7 +825,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     }
 
     public static <T> List<T> getListFromResponse(Response response, GenericType<List<T>> type) {
-        if(response.getStatus() == 204) {  // HTTP 204 is No Content
+        if (response.getStatus() == 204) {  // HTTP 204 is No Content
             return Collections.emptyList();
         }
         return response.readEntity(type);

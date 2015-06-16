@@ -75,10 +75,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http.csrf().disable()
                 .authorizeRequests()
                 .antMatchers(USERS_URL + "/**").hasAuthority(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE)
-                .antMatchers(INFO_URL + "/**").permitAll()
-                .antMatchers(HttpMethod.GET, PROJECTS_URL + "/**").authenticated()
-                .antMatchers(PROJECTS_URL + "/**").hasAuthority(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE)
-                .antMatchers(BASE_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
+                .antMatchers(BASE_URL + "/**", PROJECTS_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
                 .anyRequest().permitAll().and()
                 .addFilter(filter())
                 .httpBasic();

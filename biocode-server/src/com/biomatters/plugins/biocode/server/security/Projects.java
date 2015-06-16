@@ -1,5 +1,6 @@
 package com.biomatters.plugins.biocode.server.security;
 
+import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.server.*;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
@@ -24,7 +25,7 @@ public class Projects {
         try {
             return Response.ok(new GenericEntity<List<Project>>(getProjects(LIMSInitializationListener.getDataSource(), Collections.<Integer>emptySet())){}).build();
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of the projects was unsuccessful.", e);
+            throw new InternalServerErrorException("The retrieval of the project details was unsuccessful: " + e.getMessage(), e);
         }
     }
 
@@ -37,13 +38,13 @@ public class Projects {
         try {
             retrievedProjects = getProjects(LIMSInitializationListener.getDataSource(), Collections.singleton(projectId));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of project with id " + projectId + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The retrieval of the project details was unsuccessful: " + e.getMessage(), e);
         }
 
         if (retrievedProjects.isEmpty()) {
-            throw new NotFoundException("A project with ID " + projectId + " could not be found.");
+            throw new NotFoundException("The retrieval of the project details was unsuccessful: Could not find a project of which the id is " + projectId + ".");
         } else if (retrievedProjects.size() > 1) {
-            throw new InternalServerErrorException("More than 1 project with id " + projectId + " was found.");
+            throw new InternalServerErrorException("More than one project of which the id is " + projectId + " was found.");
         }
 
         return retrievedProjects.get(0);
@@ -54,9 +55,13 @@ public class Projects {
     @Produces("text/plain")
     public String addProject(Project project) {
         try {
+            if (!Users.getLoggedInUser().isAdministrator) {
+                throw new ForbiddenException("The addition of the project was unsuccessful: Administrator access is required.");
+            }
+
             return Integer.toString(addProject(LIMSInitializationListener.getDataSource(), project));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The creation of project " + project.name + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The creation of the project was unsuccessful: " + e.getMessage(), e);
         }
     }
 
@@ -64,6 +69,10 @@ public class Projects {
     @Consumes({"application/json", "application/xml"})
     @Path("{id}")
     public void updateProject(@PathParam("id")int id, Project project) {
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new BadRequestException("The update of the project was unsuccessful: Administrator access is required.");
+        }
+
         if (project == null) {
             throw new BadRequestException("project is null.");
         }
@@ -73,7 +82,7 @@ public class Projects {
         try {
             updateProject(LIMSInitializationListener.getDataSource(), project);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The update of project " + project.name + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The update of the project was unsuccessful: " + e.getMessage(), e);
         }
     }
 
@@ -81,9 +90,13 @@ public class Projects {
     @Path("{id}")
     public void removeProject(@PathParam("id")int id) {
         try {
+            if (!Users.getLoggedInUser().isAdministrator) {
+                throw new BadRequestException("The removal of the project was unsuccessful: Administrator access is required.");
+            }
+
             removeProject(LIMSInitializationListener.getDataSource(), id);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The deletion of project with id " + id + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The removal of the project was unsuccessful: " + e.getMessage(), e);
         }
     }
 
@@ -92,9 +105,13 @@ public class Projects {
     @Path("{id}/roles")
     public Response listProjectRoles(@PathParam("id")int projectId) {
         try {
+            if (!Users.getLoggedInUser().isAdministrator) {
+                throw new BadRequestException("The retrieval of the project roles was unsuccessful: Administrator access is required.");
+            }
+
             return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.<String>emptySet()))){}).build();
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of user roles for project with id " + projectId + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The retrieval of the project roles was unsuccessful: " + e.getMessage(), e);
         }
     }
 
@@ -102,6 +119,10 @@ public class Projects {
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{id}/roles/{username}")
     public Role getProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new BadRequestException("The retrieval of the project role was unsuccessful: Administrator access is required.");
+        }
+
         if (username == null) {
             throw new BadRequestException("username is null.");
         }
@@ -113,11 +134,11 @@ public class Projects {
         try {
             userToRole = getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of user " + username + "'s role for project with id " + projectId + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The retrieval the the project role was unsuccessful: " + e.getMessage(), e);
         }
 
         if (userToRole.isEmpty()) {
-            throw new NotFoundException("A role for user " + username + " for project with id " + projectId + " was not found.");
+            throw new NotFoundException("Could not find a role for user " + username + " in project with id " + projectId + ".");
         }
 
         return userToRole.entrySet().iterator().next().getValue();
@@ -126,7 +147,11 @@ public class Projects {
     @PUT
     @Consumes({"application/json", "application/xml"})
     @Path("{id}/roles/{username}")
-    public void assignProjectRole(@PathParam("id")int projectId, @PathParam("username")String username, Role role) {
+    public void addProjectRole(@PathParam("id") int projectId, @PathParam("username") String username, Role role) {
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new BadRequestException("The addition of the project role was unsuccessful: Administrator access is required.");
+        }
+
         if (role == null) {
             throw new BadRequestException("role is null.");
         }
@@ -142,13 +167,17 @@ public class Projects {
         try {
             addProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singletonMap(user, role));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The assignment of role " + role.name + " to user " + username + " for project with id " + projectId + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The addition of the project role was unsuccessful: " + e.getMessage(), e);
         }
     }
 
     @DELETE
     @Path("{id}/roles/{username}")
     public void deleteProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new BadRequestException("The deletion of the project role was unsuccessful: Administrator access is required.");
+        }
+
         if (username == null) {
             throw new BadRequestException("username is null.");
         }
@@ -156,51 +185,60 @@ public class Projects {
         try {
             removeProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The deletion of user " + username + "'s role in project with id " + projectId + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The deletion the project role was unsuccessful: " + e.getMessage(), e);
         }
     }
 
     @GET
     @Produces("application/xml")
     @Path("{id}/workflows")
-    public XMLSerializableList<Workflow> listWorkflowsAssignedToProject(@PathParam("id")int projectId) {
+    public XMLSerializableList<Workflow> getWorkflowsFromProject(@PathParam("id")int projectId) {
         try {
             return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsFromProject(LIMSInitializationListener.getDataSource(), projectId)));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The retrieval of workflows assigned to project with id " + projectId + " was unsuccessful.", e);
+            throw new InternalServerErrorException("The retrieval of the workflows was unsuccessful: " + e.getMessage(), e);
         }
     }
 
-    @PUT
-    @Consumes("text/plain")
+    @POST
+    @Consumes("application/xml")
     @Path("{id}/workflows")
-    public void addWorkflowToProject(@PathParam("id")int projectId, String workflowIds) {
+    public void addWorkflowsToProject(@PathParam("id")int projectId, XMLSerializableList<XMLSerializableInteger> workflowIds) {
         try {
-            String[] workflowIdsSplitByComma = workflowIds.split(",");
-            Set<Integer> workflowIdSet = new HashSet<Integer>();
-            for (String workflowId : workflowIdsSplitByComma) {
-                workflowIdSet.add(Integer.valueOf(workflowId));
+            Set<Integer> workflowIdsAsIntegers = new HashSet<Integer>();
+
+            for (XMLSerializableInteger workflowId : workflowIds.getList()) {
+                workflowIdsAsIntegers.add(workflowId.getValue());
             }
-            addWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectId, workflowIdSet);
+
+            addWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectId, workflowIdsAsIntegers);
+        } catch (DatabaseServiceException e) {
+            throw new InternalServerErrorException("The addition of the workflows was unsuccessful: " + e.getMessage(), e);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The assignment of workflows with ids " + workflowIds + " to project with id " + projectId + " was unsuccessful.", e);
-        } catch (NumberFormatException e) {
-            throw new InternalServerErrorException("Invalid workflow id.", e);
+            throw new InternalServerErrorException("The addition of the workflows was unsuccessful: " + e.getMessage(), e);
         }
     }
 
-    @DELETE
-    @Path("workflows/{workflowIds}")
-    public void removeWorkflowsFromProjects(@PathParam("workflowIds")String workflowIds) {
+    @POST
+    @Consumes("application/xml")
+    @Path("workflows/deletion")
+    public void removeWorkflowsFromProjects(XMLSerializableList<XMLSerializableInteger> workflowIds) {
         try {
-            String[] workflowIdsSplitByComma = workflowIds.split(",");
-            Set<Integer> workflowIdSet = new HashSet<Integer>();
-            for (String workflowId : workflowIdsSplitByComma) {
-                workflowIdSet.add(Integer.valueOf(workflowId));
+            Set<Integer> workflowIdsAsIntegers = new HashSet<Integer>();
+
+            for (XMLSerializableInteger workflowId : workflowIds.getList()) {
+                workflowIdsAsIntegers.add(workflowId.getValue());
             }
-            removeWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), workflowIdSet);
+
+            try {
+                AccessUtilities.checkUserHasRoleForWorkflows(workflowIdsAsIntegers, Users.getLoggedInUser(), Role.WRITER);
+            } catch (DatabaseServiceException e) {
+                throw new InternalServerErrorException(e);
+            }
+
+            removeWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), workflowIdsAsIntegers);
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The freeing of workflows associated with ids " + workflowIds + " from projects + was unsuccessful.", e);
+            throw new InternalServerErrorException("The removal of the workflows from projects was unsuccessful: " + e.getMessage(), e);
         }
     }
 
@@ -663,63 +701,81 @@ public class Projects {
         return workflows;
     }
 
-    static void addWorkflowsToProject(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException {
+    static void addWorkflowsToProject(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException, DatabaseServiceException {
         if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
+            throw new IllegalArgumentException("dataSource is null.");
         }
+
         if (workflowIds == null) {
-            throw new BadRequestException("workflowIds is null.");
-        }
-        if (workflowIds.isEmpty()) {
-            return;
+            throw new IllegalArgumentException("workflowIds is null.");
         }
 
-        workflowIds = new HashSet<Integer>(workflowIds);
-
-        Connection connection = null;
-        PreparedStatement retrieveIDsOfWorkflowsFromProjectStatement = null;
-        ResultSet retrieveIDsOfWorkflowsFromProjectResultSet = null;
-        Set<Integer> idsOfWorkflowsAddedToAProject = new HashSet<Integer>();
-        Set<Integer> idsOfWorkflowsNotAddedToAProject = new HashSet<Integer>(workflowIds);
-        try {
-            connection = dataSource.getConnection();
-            retrieveIDsOfWorkflowsFromProjectStatement = connection.prepareStatement(
-                    "SELECT workflow_id FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
-                    " WHERE workflow_id IN (" + StringUtilities.generateCommaSeparatedQuestionMarks(workflowIds.size()) + ")"
-            );
-
-            int statementObjectIndex = 1;
-            for (Integer workflowID : workflowIds) {
-                retrieveIDsOfWorkflowsFromProjectStatement.setInt(statementObjectIndex++, workflowID);
-            }
-
-            retrieveIDsOfWorkflowsFromProjectResultSet = retrieveIDsOfWorkflowsFromProjectStatement.executeQuery();
-            while (retrieveIDsOfWorkflowsFromProjectResultSet.next()) {
-                idsOfWorkflowsAddedToAProject.add(retrieveIDsOfWorkflowsFromProjectResultSet.getInt(1));
-            }
-
-            idsOfWorkflowsNotAddedToAProject.removeAll(idsOfWorkflowsAddedToAProject);
-
-            SqlUtilities.beginTransaction(connection);
-
-            if (!idsOfWorkflowsNotAddedToAProject.isEmpty()) {
-                insertWorkflowProjectMapping(dataSource, projectId, idsOfWorkflowsNotAddedToAProject);
-            }
-            if (!idsOfWorkflowsNotAddedToAProject.isEmpty()) {
-                updateWorkflowProjectMapping(dataSource, projectId, idsOfWorkflowsAddedToAProject);
-            }
-
-            SqlUtilities.commitTransaction(connection);
-        } finally {
-            SqlUtilities.cleanUpStatements(retrieveIDsOfWorkflowsFromProjectStatement);
-            SqlUtilities.cleanUpResultSets(retrieveIDsOfWorkflowsFromProjectResultSet);
-            SqlUtilities.closeConnection(connection);
+        User loggedInUser = Users.getLoggedInUser();
+        if (!containsProjectWithId(getProjectsUserHasRoleAccessFor(dataSource, loggedInUser, Role.WRITER), projectId)) {
+            throw new ForbiddenException("The addition of the workflows was unsuccessful: Write access for the project is required.");
         }
+
+        Connection connection = dataSource.getConnection();
+
+        Set<Integer> idsOfWorkflowsInProjects = getUnion(workflowIds, getWorkflowsInProjects(connection));
+
+        AccessUtilities.checkUserHasRoleForWorkflows(idsOfWorkflowsInProjects, loggedInUser, Role.WRITER);
+
+        workflowIds.removeAll(idsOfWorkflowsInProjects);
+
+        SqlUtilities.beginTransaction(connection);
+        insertWorkflowProjectMapping(connection, projectId, workflowIds);
+        updateWorkflowProjectMapping(connection, projectId, idsOfWorkflowsInProjects);
+        SqlUtilities.commitTransaction(connection);
     }
 
-    static void insertWorkflowProjectMapping(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
+    private static boolean containsProjectWithId(Collection<Project> projects, int id) {
+        boolean containsProjectWithId = false;
+
+        for (Project project : projects) {
+            if (project.id == id) {
+                containsProjectWithId = true;
+                break;
+            }
+        }
+
+        return containsProjectWithId;
+    }
+
+    private static Set<Integer> getWorkflowsInProjects(Connection connection) throws SQLException {
+        if (connection == null) {
+            throw new IllegalArgumentException("connection is null.");
+        }
+
+        Set<Integer> workflowsInProjects = new HashSet<Integer>();
+        ResultSet getWorkflowsResult = null;
+        try {
+            getWorkflowsResult = connection.prepareStatement("SELECT workflow_id FROM " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME).executeQuery();
+            while (getWorkflowsResult.next()) {
+                workflowsInProjects.add(getWorkflowsResult.getInt(1));
+            }
+        } finally {
+            SqlUtilities.cleanUpResultSets(getWorkflowsResult);
+        }
+
+        return workflowsInProjects;
+    }
+
+    private static <T> Set<T> getUnion(Collection<T> groupOne, Collection<T> groupTwo) {
+        Set<T> union = new HashSet<T>();
+
+        for (T item : groupOne) {
+            if (groupTwo.contains(item)) {
+                union.add(item);
+            }
+        }
+
+        return union;
+    }
+
+    static void insertWorkflowProjectMapping(Connection connection, int projectId, Collection<Integer> workflowIds) throws SQLException {
+        if (connection == null) {
+            throw new BadRequestException("connection is null.");
         }
         if (workflowIds == null) {
             throw new BadRequestException("workflowIds is null.");
@@ -730,10 +786,8 @@ public class Projects {
 
         workflowIds = new HashSet<Integer>(workflowIds);
 
-        Connection connection = null;
         PreparedStatement addWorkflowsToProjectsStatement = null;
         try {
-            connection = dataSource.getConnection();
             addWorkflowsToProjectsStatement = connection.prepareStatement(
                     "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME + "(workflow_id, project_id) " +
                     "VALUES(" + StringUtilities.generateCommaSeparatedQuestionMarks(2) + ")"
@@ -757,13 +811,12 @@ public class Projects {
             SqlUtilities.commitTransaction(connection);
         } finally {
             SqlUtilities.cleanUpStatements(addWorkflowsToProjectsStatement);
-            SqlUtilities.closeConnection(connection);
         }
     }
 
-    static void updateWorkflowProjectMapping(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
+    static void updateWorkflowProjectMapping(Connection connection, int projectId, Collection<Integer> workflowIds) throws SQLException {
+        if (connection == null) {
+            throw new BadRequestException("connection is null.");
         }
         if (workflowIds == null) {
             throw new BadRequestException("workflowIds is null.");
@@ -774,10 +827,8 @@ public class Projects {
 
         workflowIds = new HashSet<Integer>(workflowIds);
 
-        Connection connection = null;
         PreparedStatement updateProjectToWorkflowsStatement = null;
         try {
-            connection = dataSource.getConnection();
             updateProjectToWorkflowsStatement = connection.prepareStatement(
                     "UPDATE " + BiocodeServerLIMSDatabaseConstants.WORKFLOW_PROJECT_TABLE_NAME +
                     " SET project_id=? " +
@@ -802,7 +853,6 @@ public class Projects {
             SqlUtilities.commitTransaction(connection);
         } finally {
             SqlUtilities.cleanUpStatements(updateProjectToWorkflowsStatement);
-            SqlUtilities.closeConnection(connection);
         }
     }
 

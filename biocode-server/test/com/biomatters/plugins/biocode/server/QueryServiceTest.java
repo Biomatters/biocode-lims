@@ -1,4 +1,4 @@
-package com.biomatters.plugins.biocode.server.utilities;
+package com.biomatters.plugins.biocode.server;
 
 import com.biomatters.geneious.publicapi.documents.DocumentField;
 import com.biomatters.plugins.biocode.server.query.*;

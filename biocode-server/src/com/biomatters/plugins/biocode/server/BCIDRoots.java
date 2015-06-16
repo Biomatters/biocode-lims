@@ -72,7 +72,7 @@ public class BCIDRoots {
     @Consumes({"application/json", "application/xml"})
     public synchronized void add(BCIDRoot bcidRoot) {
         if (!hasPrivilegesToModify()) {
-            throw new ForbiddenException("Insufficient privileges to add BCID roots.");
+            throw new ForbiddenException("The addition of the bcid root was unsuccessful: Administrator access is required.");
         }
         Connection connection = null;
         PreparedStatement addBCIDRootStatement = null;
@@ -109,7 +109,7 @@ public class BCIDRoots {
     @Consumes({"application/json", "application/xml"})
     public synchronized void update(@PathParam("type")String type, BCIDRoot bcidRoot) {
         if (!hasPrivilegesToModify()) {
-            throw new ForbiddenException("Insufficient privileges to modify BCID roots.");
+            throw new ForbiddenException("The update of the bcid root was unsuccessful: Administrator access is required.");
         }
         if (!BCIDRootsCache.containsKey(type)) {
             throw new InternalServerErrorException("Could not find " + type + " BCID root.");
@@ -158,7 +158,7 @@ public class BCIDRoots {
     @Path("{type}")
     public synchronized void delete(@PathParam("type")String type) {
         if (!hasPrivilegesToModify()) {
-            throw new ForbiddenException("Insufficient privileges to delete BCID roots");
+            throw new ForbiddenException("The deletion of the bcid root was unsuccessful: Administrator access is required.");
         }
 
         Connection connection = null;

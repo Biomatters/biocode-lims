@@ -87,11 +87,7 @@ public class QueryParser {
     /* Primary parse method. */
     public Query parseQuery(String query) {
         if (query.matches(advancedQueryStructure)) {
-            try {
-                return constructQueryFromPostfix(infixToPostfix(query));
-            } catch (BadRequestException e) {
-                return new GeneralQuery("");
-            }
+            return constructQueryFromPostfix(infixToPostfix(query));
         } else {
             return new GeneralQuery(query);
         }
@@ -169,7 +165,7 @@ public class QueryParser {
             }
         }
         if (field == null) {
-            throw new BadRequestException("Invalid search attribute: " + queryParts[0]);
+            throw new IllegalArgumentException("Invalid field: " + field.getCode() + ".");
         }
 
         /* Extract query condition. */
@@ -181,7 +177,7 @@ public class QueryParser {
         Condition condition = stringSymbolToConditionMaps.get(field.getValueType()).get(conditionSymbol);
 
         if (condition == null) {
-            throw new BadRequestException("Invalid condition: " + conditionSymbol + " for field type: " + field.getCode());
+            throw new IllegalArgumentException("Invalid condition: " + conditionSymbol + " for field type: " + field.getCode());
         }
 
         /* Extract query value. */

@@ -57,30 +57,39 @@ public class RestQueryUtils {
     }
 
     public static String geneiousQueryToRestQueryString(com.biomatters.geneious.publicapi.databaseservice.Query query) {
+        String result = null;
+
         if (query instanceof BasicSearchQuery) {
-            return ((BasicSearchQuery) query).getSearchText();
+            result = ((BasicSearchQuery)query).getSearchText();
         } else if (query instanceof AdvancedSearchQueryTerm) {
-            return parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm) query);
+            result = parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm)query);
         } else if (query instanceof CompoundSearchQuery) {
-            StringBuilder stringQueryBuilder = new StringBuilder();
             CompoundSearchQuery queryCastToCompoundSearchQuery = (CompoundSearchQuery)query;
             String compoundSearchQueryType = null;
+
             if (queryCastToCompoundSearchQuery.getOperator() == CompoundSearchQuery.Operator.AND) {
                 compoundSearchQueryType = "AND";
             } else if (queryCastToCompoundSearchQuery.getOperator() == CompoundSearchQuery.Operator.OR) {
                 compoundSearchQueryType = "OR";
             }
+
             List<? extends com.biomatters.geneious.publicapi.databaseservice.Query> childQueries = queryCastToCompoundSearchQuery.getChildren();
-            if (childQueries.isEmpty()) {
-                return null;
+            if (compoundSearchQueryType != null && !childQueries.isEmpty()) {
+                StringBuilder stringQueryBuilder = new StringBuilder();
+
+                stringQueryBuilder.append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm)childQueries.get(0)));
+                for (int i = 1; i < childQueries.size(); i++) {
+                    if (stringQueryBuilder.length() > 0) {
+                        stringQueryBuilder.append(compoundSearchQueryType);
+                    }
+                    stringQueryBuilder.append(compoundSearchQueryType).append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm)childQueries.get(i)));
+                }
+
+                result = stringQueryBuilder.toString();
             }
-            stringQueryBuilder.append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm)childQueries.get(0)));
-            for (int i = 1; i < childQueries.size(); i++) {
-                stringQueryBuilder.append(compoundSearchQueryType).append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm) childQueries.get(i)));
-            }
-            return stringQueryBuilder.toString();
         }
-        return null;
+
+        return result;
     }
 
     private static String parseAdvancedSearchQueryTerm(AdvancedSearchQueryTerm query) {

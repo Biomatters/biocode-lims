@@ -39,6 +39,10 @@ public class Users {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     public Response list() {
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new ForbiddenException("The retrieval of user account details was unsuccessful: Administrator access is required.");
+        }
+
         Connection connection = null;
 
         try {
@@ -88,6 +92,10 @@ public class Users {
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{username}")
     public User getUser(@PathParam("username")String username) {
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new ForbiddenException("The retrieval of the user account details was unsuccessful: Administrator access is required.");
+        }
+
         User user = getUserForUsername(username);
 
         if (user == null) {
@@ -173,6 +181,10 @@ public class Users {
     @Produces("text/plain")
     @Consumes({"application/json", "application/xml"})
     public String addUser(User user) {
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new ForbiddenException("The addition of the user account was unsuccessful: Administrator access is required.");
+        }
+
         return addUser(LIMSInitializationListener.getDataSource(), user);
     }
 
@@ -232,7 +244,11 @@ public class Users {
     @Consumes({"application/json", "application/xml"})
     public String updateUser(@PathParam("username")String username, User user) {
         if (getUserForUsername(username).isLDAPAccount) {
-            return "Cannot update LDAP accounts.";
+            return "The update of the user account was unsuccessful: LDAP user accounts cannot be updated through the Biocode Server.";
+        }
+
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new ForbiddenException("The update of the user account was unsuccessful: Administrator access is required.");
         }
 
         Connection connection = null;
@@ -304,17 +320,17 @@ public class Users {
     @Path("{username}")
     @Produces("text/plain")
     public String deleteUser(@PathParam("username")String username) {
+        if (getUserForUsername(username).isLDAPAccount) {
+            return "The deletion of the user account was unsuccessful: LDAP user accounts cannot be deleted through the Biocode Server.";
+        }
+
+        if (!Users.getLoggedInUser().isAdministrator) {
+            throw new ForbiddenException("The deletion of the user account was unsuccessful: Administrator access is required.");
+        }
+
         Connection connection = null;
 
         try {
-            if (!isAdmin(getLoggedInUser())) {
-                throw new ForbiddenException("Action denied: insufficient permissions.");
-            }
-
-            if (getUserForUsername(username).isLDAPAccount) {
-                return "LDAP accounts cannot be deleted.";
-            }
-
             connection = LIMSInitializationListener.getDataSource().getConnection();
 
             SqlUtilities.beginTransaction(connection);

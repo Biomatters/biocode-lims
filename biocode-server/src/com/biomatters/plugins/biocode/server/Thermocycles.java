@@ -38,6 +38,12 @@ public class Thermocycles {
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
+
+        try {
+            LIMSInitializationListener.refreshCache();
+        } catch (DatabaseServiceException e) {
+            throw new InternalServerErrorException("Cache update failure: " + e.getMessage(), e);
+        }
     }
 
     private static Thermocycle.Type getType(String typeString) {
@@ -58,6 +64,12 @@ public class Thermocycles {
             LIMSInitializationListener.getLimsConnection().deleteThermoCycles(getType(type), toDelete.getList());
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
+        }
+
+        try {
+            LIMSInitializationListener.refreshCache();
+        } catch (DatabaseServiceException e) {
+            throw new InternalServerErrorException("Cache update failure: " + e.getMessage(), e);
         }
     }
 

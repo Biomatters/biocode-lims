@@ -1,13 +1,11 @@
 package com.biomatters.plugins.biocode.labbench.reaction;
 
-import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.documents.XMLSerializationException;
 import com.biomatters.geneious.publicapi.documents.XMLSerializer;
 import com.biomatters.geneious.publicapi.plugin.Options;
 import org.jdom.Element;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -47,19 +45,15 @@ public abstract class Cocktail implements XMLSerializable {
     public static List<? extends Cocktail> getAllCocktailsOfType(Reaction.Type type) {
         switch (type) {
             case PCR:
-                return cocktailGetter.getPCRCocktails();
+                return getCocktailGetter().getPCRCocktails();
             case CycleSequencing:
-                return cocktailGetter.getCycleSequencingCocktails();
+                return getCocktailGetter().getCycleSequencingCocktails();
             default:
                 throw new IllegalArgumentException("Only PCR and Cycle Sequencing reactions have cocktails");
         }
     }
 
-    public abstract Cocktail createNewCocktail();
-
     public abstract String getSQLString();
-
-
 
     public boolean equals(Object o) {
         if(o instanceof Cocktail) {

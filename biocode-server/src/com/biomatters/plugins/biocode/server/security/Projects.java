@@ -717,7 +717,7 @@ public class Projects {
 
         Connection connection = dataSource.getConnection();
 
-        Set<Integer> idsOfWorkflowsInProjects = getUnion(workflowIds, getWorkflowsInProjects(connection));
+        Set<Integer> idsOfWorkflowsInProjects = getIntersection(workflowIds, getWorkflowsInProjects(connection));
 
         AccessUtilities.checkUserHasRoleForWorkflows(idsOfWorkflowsInProjects, loggedInUser, Role.WRITER);
 
@@ -761,16 +761,16 @@ public class Projects {
         return workflowsInProjects;
     }
 
-    private static <T> Set<T> getUnion(Collection<T> groupOne, Collection<T> groupTwo) {
-        Set<T> union = new HashSet<T>();
+    private static <T> Set<T> getIntersection(Collection<T> groupOne, Collection<T> groupTwo) {
+        Set<T> intersection = new HashSet<T>();
 
         for (T item : groupOne) {
             if (groupTwo.contains(item)) {
-                union.add(item);
+                intersection.add(item);
             }
         }
 
-        return union;
+        return intersection;
     }
 
     static void insertWorkflowProjectMapping(Connection connection, int projectId, Collection<Integer> workflowIds) throws SQLException {

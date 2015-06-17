@@ -9,7 +9,6 @@ import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configurers.ldap.LdapAuthenticationProviderConfigurer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -74,8 +73,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
                 .authorizeRequests()
+                .antMatchers(BASE_URL, INFO_URL).permitAll()
                 .antMatchers(USERS_URL + "/**").hasAuthority(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE)
-                .antMatchers(BASE_URL + "/**", PROJECTS_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
+                .antMatchers(PROJECTS_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
                 .anyRequest().permitAll().and()
                 .addFilter(filter())
                 .httpBasic();

@@ -65,7 +65,7 @@ public class QueryServiceTest extends Assert {
     }
     @Test
     public void testAndFunctionOnPartialOverlappingValues() {
-        testCompoundQuery(Arrays.asList("one", "two", "three"), Arrays.asList("three", "four", "five"), Arrays.asList("three"), new AndQuery(null, null));
+        testCompoundQuery(Arrays.asList("one", "two", "three"), Arrays.asList("three", "four", "five"), Collections.singletonList("three"), new AndQuery(null, null));
     }
     @Test
     public void testAndFunctionOnNoOverlappingValues() {

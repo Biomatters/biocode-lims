@@ -3,7 +3,6 @@ package com.biomatters.plugins.biocode.labbench.rest.client;
 import com.biomatters.geneious.publicapi.components.Dialogs;
 import com.biomatters.geneious.publicapi.databaseservice.*;
 import com.biomatters.geneious.publicapi.documents.DocumentField;
-import com.biomatters.geneious.publicapi.documents.XMLSerializable;
 import com.biomatters.geneious.publicapi.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.labbench.*;
 import com.biomatters.plugins.biocode.labbench.lims.*;
@@ -14,7 +13,6 @@ import com.biomatters.plugins.biocode.server.*;
 import jebl.util.Cancelable;
 import jebl.util.ProgressListener;
 
-import javax.jdo.annotations.Queries;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
@@ -83,7 +81,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     public LimsSearchResult getMatchingDocumentsFromLims(Query query, Collection<String> tissueIdsToMatch, Cancelable cancelable) throws DatabaseServiceException {
         updateBCIDRootsCache();
 
-        query = removeFimsFields(query);
+        query = removeAdvancedSearchQueryTermsOnNonLimsSearchAttributes(query);
 
         String tissueIdsToMatchString = tissueIdsToMatch == null ? null : StringUtilities.join(",", tissueIdsToMatch);
         try {
@@ -103,8 +101,9 @@ public class ServerLimsConnection extends ProjectLimsConnection {
         }
     }
 
-    private static Query removeFimsFields(Query query) {
-        Query resultQuery = Query.Factory.createQuery("");
+    private static Query removeAdvancedSearchQueryTermsOnNonLimsSearchAttributes(Query query) {
+        Map<String, Object> querySearchDownloadOptions = getSearchDownloadOptions(query);
+        Query resultQuery = Query.Factory.createExtendedQuery("", querySearchDownloadOptions);
 
         if (query instanceof BasicSearchQuery) {
             resultQuery = query;
@@ -114,22 +113,20 @@ public class ServerLimsConnection extends ProjectLimsConnection {
             }
         } else if (query instanceof CompoundSearchQuery) {
             List<Query> limsSearchAttributeQueries = new ArrayList<Query>();
+            List<DocumentField> limsSearchAttributes = LIMSConnection.getSearchAttributes();
 
             CompoundSearchQuery queryAsCompoundSearchQuery = (CompoundSearchQuery)query;
-            List<DocumentField> limsSearchAttributes = LIMSConnection.getSearchAttributes();
             for (Query childQuery : queryAsCompoundSearchQuery.getChildren()) {
                 if (limsSearchAttributes.contains(((AdvancedSearchQueryTerm)childQuery).getField())) {
                     limsSearchAttributeQueries.add(childQuery);
                 }
             }
 
-            if (limsSearchAttributeQueries.size() == 1) {
-                resultQuery = limsSearchAttributeQueries.get(0);
-            } else if (limsSearchAttributeQueries.size() > 1) {
+            if (!limsSearchAttributeQueries.isEmpty()) {
                 Query compoundQuery = createCompoundQuery(
                         limsSearchAttributeQueries.toArray(new Query[limsSearchAttributeQueries.size()]),
                         queryAsCompoundSearchQuery.getOperator(),
-                        getSearchDownloadOptions(query)
+                        querySearchDownloadOptions
                 );
 
                 if (compoundQuery != null) {
@@ -219,7 +216,8 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     @Override
     public List<Plate> getEmptyPlates(Collection<Integer> plateIds) throws DatabaseServiceException {
         try {
-            return target.path(PLATES_BASE_PATH).path("empty").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Plate>>(){}).getList();
+            return target.path(PLATES_BASE_PATH).path("empty").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Plate>>() {
+            }).getList();
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {

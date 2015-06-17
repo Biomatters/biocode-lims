@@ -87,7 +87,7 @@ function initProjects($scope, $http, callback) {
         projectMap = $scope.projectMap;
         callback();
     }).error(function(data, status) {
-        showAuthenticationError($scope, status, data, "projects", false);
+        showError($scope, status, data, "projects", false);
     });
 }
 
@@ -183,7 +183,7 @@ biocodeControllers.controller('projectDetailCtrl', ['$scope', '$http', '$routePa
             $http.get(projectsUrl + '/' + $scope.project.id + '/roles').success(function (data) {
                 $scope.userRoles = data;
             }).error(function(data, status) {
-                showAuthenticationError($scope, status, data, "projects", false);
+                showError($scope, status, data, "projects", false);
             });
 
             $http.get(rolesUrl).success(function (data) {
@@ -233,7 +233,7 @@ biocodeControllers.controller('userListCtrl', ['$scope', '$http',
             $http.get(usersUrl).success(function (data) {
                 $scope.users = data;
             }).error(function(data, status) {
-                showAuthenticationError($scope, status, data, "users", true);
+                showError($scope, status, data, "users", true);
             });
 
             $http.get(usersUrl + loggedInUserPage).success(function(data) {
@@ -433,7 +433,7 @@ biocodeControllers.controller('homeCtrl', ['$scope', '$http',
         });
     }]);
 
-function showAuthenticationError($scope, status, data, resourceName, needAdminAccess) {
+function showError($scope, status, data, resourceName, needAdminAccess) {
     if(status == 401 || status == 403) {
         $scope.errorMessage = "You must be authenticated" + (needAdminAccess ? " as an admin user" : "") + " to view " + resourceName + ".";
     }
@@ -454,7 +454,7 @@ biocodeControllers.controller('bcidRootsCtrl', ['$scope', '$http',
             $http.get(BCIDRootsURL).success(function (data) {
                 $scope.bcidRoots = data;
             }).error(function(data, status) {
-                showAuthenticationError($scope, status, data, "bcid roots", false);
+                showError($scope, status, data, "bcid roots", false);
             });
 
             $http.get(usersUrl + loggedInUserPage).success(function(data) {

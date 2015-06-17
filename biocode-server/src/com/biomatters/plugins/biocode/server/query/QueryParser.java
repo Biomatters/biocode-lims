@@ -165,7 +165,7 @@ public class QueryParser {
             }
         }
         if (field == null) {
-            throw new IllegalArgumentException("Invalid field: " + field.getCode() + ".");
+            throw new BadRequestException("Invalid field: " + field.getCode() + ".");
         }
 
         /* Extract query condition. */
@@ -177,7 +177,7 @@ public class QueryParser {
         Condition condition = stringSymbolToConditionMaps.get(field.getValueType()).get(conditionSymbol);
 
         if (condition == null) {
-            throw new IllegalArgumentException("Invalid condition: " + conditionSymbol + " for field type: " + field.getCode());
+            throw new BadRequestException("Invalid condition: " + conditionSymbol + " for field type: " + field.getCode());
         }
 
         /* Extract query value. */

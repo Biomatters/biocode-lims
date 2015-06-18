@@ -9,7 +9,6 @@ import com.biomatters.geneious.publicapi.plugin.ActionProvider;
 import com.biomatters.geneious.publicapi.plugin.DocumentOperationException;
 import com.biomatters.geneious.publicapi.plugin.DocumentViewer;
 import com.biomatters.geneious.publicapi.plugin.GeneiousAction;
-import com.biomatters.geneious.publicapi.utilities.IconUtilities;
 import com.biomatters.plugins.biocode.BiocodePlugin;
 import com.biomatters.plugins.biocode.labbench.PlateDocument;
 import com.biomatters.plugins.biocode.labbench.Workflow;
@@ -17,6 +16,7 @@ import com.biomatters.plugins.biocode.labbench.WorkflowDocument;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
 import com.biomatters.plugins.biocode.server.Project;
+import com.biomatters.plugins.biocode.server.Role;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -28,24 +28,52 @@ import java.util.List;
  *         Created on 24/04/15 1:53 PM
  */
 public class ProjectViewer extends DocumentViewer {
-    private GTextPane table;
+    private AnnotatedPluginDocument[] annotatedDocuments;
     private ProjectLimsConnection projectLimsConnection;
+    private GTextPane table;
     private Set<Workflow> workflows;
     private Map<Project, Collection<Workflow>> projectToWorkflows;
+    private List<Project> writableProjects;
 
-    public ProjectViewer(AnnotatedPluginDocument[] annotatedDocuments, ProjectLimsConnection projectLimsConnection) throws DocumentOperationException, DatabaseServiceException {
+    public ProjectViewer(AnnotatedPluginDocument[] annotatedDocuments, ProjectLimsConnection projectLimsConnection) throws DatabaseServiceException, DocumentOperationException {
+        this.annotatedDocuments = annotatedDocuments;
         this.projectLimsConnection = projectLimsConnection;
-        projectToWorkflows = getProjectToWorkflows(projectLimsConnection);
-        workflows = getWorkflows(annotatedDocuments);
-        table = createTable(generateTableHtml(workflows, projectToWorkflows));
+        table = new GTextPane();
+        table.setContentType("text/html");
+        table.setEditable(false);
+
+        new javax.swing.SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    retrieveDataFromProjectLimsDatabase();
+                } catch (DatabaseServiceException e) {
+                    Dialogs.showMessageDialog("An error was encountered while attempting to construct the project viewer: " + e.getMessage());
+                } catch (DocumentOperationException e) {
+                    Dialogs.showMessageDialog("An error was encountered while attempting to construct the project viewer: " + e.getMessage());
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                updateTable(generateTableHtml(workflows, projectToWorkflows));
+            }
+        }.execute();
     }
 
-    private static Map<Project, Collection<Workflow>> getProjectToWorkflows(ProjectLimsConnection projectLimsConnection) throws DocumentOperationException {
-        try {
-            return projectLimsConnection.getProjectToWorkflows();
-        } catch (DatabaseServiceException e) {
-            throw new DocumentOperationException(e);
-        }
+    private void retrieveDataFromProjectLimsDatabase() throws DatabaseServiceException, DocumentOperationException {
+        projectToWorkflows = getProjectToWorkflows(projectLimsConnection);
+        writableProjects = getWritableProjects(projectLimsConnection);
+        workflows = getWorkflows(annotatedDocuments);
+    }
+
+    private static Map<Project, Collection<Workflow>> getProjectToWorkflows(ProjectLimsConnection projectLimsConnection) throws DatabaseServiceException {
+        return projectLimsConnection.getProjectToWorkflows();
+    }
+
+    private static List<Project> getWritableProjects(ProjectLimsConnection projectLimsConnection) throws DatabaseServiceException {
+        return projectLimsConnection.getProjects(Role.WRITER);
     }
 
     private Set<Workflow> getWorkflows(AnnotatedPluginDocument[] annotatedPluginDocuments) throws DocumentOperationException, DatabaseServiceException {
@@ -78,14 +106,9 @@ public class ProjectViewer extends DocumentViewer {
         return workflows;
     }
 
-    private static GTextPane createTable(String tableHtml) {
-        GTextPane table = new GTextPane();
-
-        table.setContentType("text/html");
+    private void updateTable(String tableHtml) {
         table.setText(tableHtml);
-        table.setEditable(false);
-
-        return table;
+        table.setCaretPosition(0);
     }
 
     private static String generateTableHtml(Collection<Workflow> workflows, Map<Project, Collection<Workflow>> projectToWorkflows) {
@@ -198,7 +221,7 @@ public class ProjectViewer extends DocumentViewer {
                 GeneiousAction action = new GeneiousAction("Assign all workflows to a project", "", BiocodePlugin.getIcons("bulkEdit_16.png")) {
                     @Override
                     public void actionPerformed(ActionEvent actionEvent) {
-                        ProjectSelectionOption projectSelectionOption = new ProjectSelectionOption(getProjects(projectToWorkflows));
+                        ProjectSelectionOption projectSelectionOption = new ProjectSelectionOption(getProjects(writableProjects));
                         if (Dialogs.showOptionsDialog(projectSelectionOption, "Project Selection", false)) {
                             try {
                                 int idOfSelectedProject = projectSelectionOption.getIdOfSelectedProject();
@@ -213,8 +236,9 @@ public class ProjectViewer extends DocumentViewer {
 
                             try {
                                 projectToWorkflows = getProjectToWorkflows(projectLimsConnection);
-                                table.setText(generateTableHtml(workflows, projectToWorkflows));
-                            } catch (DocumentOperationException e) {
+                                writableProjects = getWritableProjects(projectLimsConnection);
+                                updateTable(generateTableHtml(workflows, projectToWorkflows));
+                            } catch (DatabaseServiceException e) {
                                 Dialogs.showMessageDialog(e.getMessage(), "An error occurred", null, Dialogs.DialogIcon.ERROR);
                             }
                         }
@@ -228,13 +252,13 @@ public class ProjectViewer extends DocumentViewer {
         return actionProvider;
     }
 
-    private static Set<Project> getProjects(Map<Project, Collection<Workflow>> projectToWorkflows) {
-        Set<Project> projects = new HashSet<Project>();
+    private static Set<Project> getProjects(Collection<Project> projects) {
+        Set<Project> projectsPlusNoneProject = new HashSet<Project>();
 
-        projects.add(Project.NONE_PROJECT);
-        projects.addAll(projectToWorkflows.keySet());
+        projectsPlusNoneProject.add(Project.NONE_PROJECT);
+        projectsPlusNoneProject.addAll(projects);
 
-        return projects;
+        return projectsPlusNoneProject;
     }
 
     private static Set<Integer> getWorkflowIds(Collection<Workflow> workflows) {

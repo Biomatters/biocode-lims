@@ -14,6 +14,10 @@ var loggedInUserPage = "/logged-in-user";
 var projectMap = null;
 var projects = null;
 
+var adminRoleId = 0;
+var writerRoleId = 1;
+var readerRoleId = 2;
+
 var biocodeControllers = angular.module('biocodeControllers', []);
 
 function updteLevel(node, level) {
@@ -30,7 +34,7 @@ function updteLevel(node, level) {
 }
 
 function initProjects($scope, $http, callback) {
-    $http.get(projectsUrl).success(function (data) {
+    $http.get(projectsUrl, {params: {roleId: readerRoleId}}).success(function (data) {
         $scope.projectMap = new Object();
         for (var i = 0; i < data.length; i++) {
             $scope.projectMap[data[i].id] = data[i];

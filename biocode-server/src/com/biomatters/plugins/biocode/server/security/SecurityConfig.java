@@ -35,11 +35,8 @@ import java.util.Set;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-    private static final String BASE_URL      = "/biocode";
-    private static final String PROJECTS_URL  = BASE_URL + "/projects";
-    private static final String USERS_URL     = BASE_URL + "/users";
-    private static final String BCIDROOTS_URL = BASE_URL + "/bcid-roots";
-    private static final String INFO_URL      = BASE_URL + "/info";
+    private static final String BASE_URL    = "/biocode";
+    private static final String USERS_URL   = BASE_URL + "/users";
 
     private PasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -73,9 +70,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
                 .authorizeRequests()
-                .antMatchers(BASE_URL, INFO_URL).permitAll()
                 .antMatchers(USERS_URL + "/**").hasAuthority(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE)
-                .antMatchers(PROJECTS_URL + "/**", BCIDROOTS_URL + "/**").authenticated()
+                .antMatchers(BASE_URL + "/**").authenticated()
                 .anyRequest().permitAll().and()
                 .addFilter(filter())
                 .httpBasic();
@@ -84,7 +80,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             String LDAPAdminAuthority = LIMSInitializationListener.getLDAPConfiguration().getAdminAuthority();
             if (LDAPAdminAuthority != null && !LDAPAdminAuthority.isEmpty()) {
                 http.authorizeRequests()
-                        .antMatchers(PROJECTS_URL + "/**", USERS_URL + "/**").hasAuthority(LDAPAdminAuthority);
+                        .antMatchers(USERS_URL + "/**").hasAuthority(LDAPAdminAuthority);
             }
         }
     }

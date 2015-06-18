@@ -14,6 +14,7 @@ import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.plates.PlateViewer;
 import com.biomatters.plugins.biocode.labbench.reaction.*;
 import com.biomatters.plugins.biocode.server.Project;
+import com.biomatters.plugins.biocode.server.Role;
 import jebl.util.ProgressListener;
 
 import java.util.*;
@@ -178,16 +179,17 @@ public class NewPlateDocumentOperation extends DocumentOperation {
     private static void tryAddProjectValues(Plate plate) throws DatabaseServiceException {
         LIMSConnection limsConnection = BiocodeService.getInstance().getActiveLIMSConnection();
         if (limsConnection instanceof ProjectLimsConnection && !plate.getReactionType().equals(Reaction.Type.Extraction)) {
-            Map<Project, Collection<Workflow>> projectToWorkflows = ((ProjectLimsConnection)limsConnection).getProjectToWorkflows();
-            List<Project> projects = new ArrayList<Project>();
-            projects.add(Project.NONE_PROJECT);
-            projects.addAll(projectToWorkflows.keySet());
+            ProjectLimsConnection projectLimsConnection = (ProjectLimsConnection)limsConnection;
+            Map<Project, Collection<Workflow>> projectToWorkflows = projectLimsConnection.getProjectToWorkflows();
+            List<Project> writableProjects = new ArrayList<Project>();
+            writableProjects.add(Project.NONE_PROJECT);
+            writableProjects.addAll(projectLimsConnection.getProjects(Role.WRITER));
             for (Reaction reaction : plate.getReactions()) {
                 Workflow reactionWorkflow = reaction.getWorkflow();
                 if (reactionWorkflow != null) {
                     reaction.getOptions().setPossibleProjects(Collections.singletonList(getProjectContainingWorkflow(projectToWorkflows, reactionWorkflow)), 0);
                 } else {
-                    reaction.getOptions().setPossibleProjects(projects, projects.indexOf(Project.NONE_PROJECT));
+                    reaction.getOptions().setPossibleProjects(writableProjects, writableProjects.indexOf(Project.NONE_PROJECT));
                 }
             }
         }

@@ -51,7 +51,13 @@ public class PCROptions extends ReactionOptions<PCRReaction> {
     }
 
     public boolean fieldIsFinal(String fieldCode) {
-        return "extractionId".equals(fieldCode) || "workflowId".equals(fieldCode) || "locus".equals(fieldCode);
+        boolean fieldIsFinal = false;
+
+        if (fieldCode.equals(PROJECT_OPTION_NAME) && reaction.getWorkflow() != null || fieldCode.equals("extractionId") || fieldCode.equals("workflowId") || fieldCode.equals("locus")) {
+            fieldIsFinal = true;
+        }
+
+        return fieldIsFinal;
     }
 
     public void refreshValuesFromCaches() {

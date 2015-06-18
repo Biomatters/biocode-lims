@@ -757,7 +757,7 @@ public class ServerLimsConnection extends ProjectLimsConnection {
         try {
             Map<Project, Collection<Workflow>> projectToWorkflows = new HashMap<Project, Collection<Workflow>>();
 
-            for (Project project : target.path(PROJECTS_BASE_PATH).request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<List<Project>>(){})) {
+            for (Project project : getProjects(Role.READER)) {
                 projectToWorkflows.put(
                         project,
                         target.path(PROJECTS_BASE_PATH).path(Integer.toString(project.id)).path("workflows").request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<XMLSerializableList<Workflow>>(){}).getList()
@@ -765,6 +765,17 @@ public class ServerLimsConnection extends ProjectLimsConnection {
             }
 
             return projectToWorkflows;
+        } catch (WebApplicationException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        } catch (ProcessingException e) {
+            throw new DatabaseServiceException(e, e.getMessage(), false);
+        }
+    }
+
+    @Override
+    public List<Project> getProjects(Role minimumRole) throws DatabaseServiceException {
+        try {
+            return target.path(PROJECTS_BASE_PATH).queryParam("roleId", minimumRole.id).request(MediaType.APPLICATION_XML_TYPE).get(new GenericType<List<Project>>(){});
         } catch (WebApplicationException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         } catch (ProcessingException e) {

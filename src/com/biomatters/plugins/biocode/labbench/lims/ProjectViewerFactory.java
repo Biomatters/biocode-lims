@@ -10,6 +10,10 @@ import com.biomatters.geneious.publicapi.plugin.DocumentViewerFactory;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.PlateDocument;
 import com.biomatters.plugins.biocode.labbench.WorkflowDocument;
+import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -42,16 +46,53 @@ public class ProjectViewerFactory extends DocumentViewerFactory {
 
     @Override
     public DocumentViewer createViewer(AnnotatedPluginDocument[] annotatedDocuments) {
+        ProjectViewer projectViewer = null;
+
         try {
             LIMSConnection activeLimsConnection = BiocodeService.getInstance().getActiveLIMSConnection();
             if (activeLimsConnection instanceof ProjectLimsConnection) {
-                return new ProjectViewer(annotatedDocuments, (ProjectLimsConnection)activeLimsConnection);
+                AnnotatedPluginDocument[] supportedDocuments = getSupportedDocuments(annotatedDocuments);
+                if (supportedDocuments.length > 0) {
+                    projectViewer = new ProjectViewer(supportedDocuments, (ProjectLimsConnection)activeLimsConnection);
+                }
             }
         } catch (DocumentOperationException e) {
             Dialogs.showMessageDialog("An error occurred: " + e.getMessage());
         } catch (DatabaseServiceException e) {
             Dialogs.showMessageDialog("An error occurred: " + e.getMessage());
         }
-        return null;
+
+        return projectViewer;
+    }
+
+    private static AnnotatedPluginDocument[] getSupportedDocuments(AnnotatedPluginDocument[] annotatedDocuments) {
+        List<AnnotatedPluginDocument> supportedDocuments = new ArrayList<AnnotatedPluginDocument>();
+
+        for (AnnotatedPluginDocument annotatedDocument : annotatedDocuments) {
+            if (isSupportedDocument(annotatedDocument)) {
+                supportedDocuments.add(annotatedDocument);
+            }
+        }
+
+        return supportedDocuments.toArray(new AnnotatedPluginDocument[supportedDocuments.size()]);
+    }
+
+    private static boolean isSupportedDocument(AnnotatedPluginDocument annotatedDocuments) {
+        boolean isSupportedDocument = false;
+
+        Class documentClass = annotatedDocuments.getDocumentClass();
+        if (WorkflowDocument.class.isAssignableFrom(documentClass)) {
+            isSupportedDocument = true;
+        } else if (PlateDocument.class.isAssignableFrom(documentClass)) {
+            PlateDocument plateDocument = (PlateDocument)annotatedDocuments.getDocumentOrNull();
+            if (plateDocument != null) {
+                Reaction.Type plateType = plateDocument.getPlate().getReactionType();
+                if (plateType.equals(Reaction.Type.PCR) || plateType.equals(Reaction.Type.CycleSequencing)) {
+                    isSupportedDocument = true;
+                }
+            }
+        }
+
+        return isSupportedDocument;
     }
 }

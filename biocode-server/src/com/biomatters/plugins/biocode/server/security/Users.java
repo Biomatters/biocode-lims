@@ -372,36 +372,6 @@ public class Users {
         return null;
     }
 
-    public boolean isAdmin(User user) throws InternalServerErrorException {
-        String username = user.username;
-
-        Connection connection = null;
-
-        try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
-
-            String query = "SELECT " + BiocodeServerLIMSDatabaseConstants.AUTHORITY_COLUMN_NAME_AUTHORITIES_TABLE + " " +
-                           "FROM " + BiocodeServerLIMSDatabaseConstants.AUTHORITIES_TABLE_NAME + " " +
-                           "WHERE " + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_AUTHORITIES_TABLE + "=?";
-
-            PreparedStatement statement = connection.prepareStatement(query);
-
-            statement.setObject(1, username);
-
-            ResultSet resultSet = statement.executeQuery();
-
-            if (!resultSet.next()) {
-                throw new InternalServerErrorException("No authority associated with user account '" + username + "'.");
-            }
-
-            return resultSet.getString("authority").equals(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE);
-        } catch (SQLException e) {
-            throw new InternalServerErrorException("Error verifying authority of user account '" + username + "'", e);
-        } finally {
-            SqlUtilities.closeConnection(connection);
-        }
-    }
-
     public static void handleLDAPUserLogin() {
         UserDetails loggedInUserDetails = getLoggedInUserDetails();
 

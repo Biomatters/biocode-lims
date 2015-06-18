@@ -21,9 +21,9 @@ import java.util.*;
 public class Projects {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
-    public Response list() {
+    public Response getProjectsLoggedInUserHasRoleAccessTo(@QueryParam("roleId")int roleId) {
         try {
-            return Response.ok(new GenericEntity<List<Project>>(getProjects(LIMSInitializationListener.getDataSource(), Collections.<Integer>emptySet())){}).build();
+            return Response.ok(new GenericEntity<List<Project>>(getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getDataSource(), Users.getLoggedInUser(), Role.getRole(roleId))){}).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project details was unsuccessful: " + e.getMessage(), e);
         }
@@ -61,7 +61,7 @@ public class Projects {
 
             return Integer.toString(addProject(LIMSInitializationListener.getDataSource(), project));
         } catch (SQLException e) {
-            throw new InternalServerErrorException("The creation of the project was unsuccessful: " + e.getMessage(), e);
+            throw new InternalServerErrorException("The addition of the project was unsuccessful: " + e.getMessage(), e);
         }
     }
 
@@ -70,7 +70,7 @@ public class Projects {
     @Path("{id}")
     public void updateProject(@PathParam("id")int id, Project project) {
         if (!Users.getLoggedInUser().isAdministrator) {
-            throw new BadRequestException("The update of the project was unsuccessful: Administrator access is required.");
+            throw new ForbiddenException("The update of the project was unsuccessful: Administrator access is required.");
         }
 
         if (project == null) {
@@ -91,7 +91,7 @@ public class Projects {
     public void removeProject(@PathParam("id")int id) {
         try {
             if (!Users.getLoggedInUser().isAdministrator) {
-                throw new BadRequestException("The removal of the project was unsuccessful: Administrator access is required.");
+                throw new ForbiddenException("The removal of the project was unsuccessful: Administrator access is required.");
             }
 
             removeProject(LIMSInitializationListener.getDataSource(), id);
@@ -105,11 +105,14 @@ public class Projects {
     @Path("{id}/roles")
     public Response listProjectRoles(@PathParam("id")int projectId) {
         try {
-            if (!Users.getLoggedInUser().isAdministrator) {
-                throw new BadRequestException("The retrieval of the project roles was unsuccessful: Administrator access is required.");
+            Set<String> userNames = new HashSet<String>();
+
+            User loggedInUser = Users.getLoggedInUser();
+            if (!loggedInUser.isAdministrator) {
+                userNames.add(loggedInUser.username);
             }
 
-            return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.<String>emptySet()))){}).build();
+            return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, userNames))){}).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project roles was unsuccessful: " + e.getMessage(), e);
         }
@@ -120,7 +123,7 @@ public class Projects {
     @Path("{id}/roles/{username}")
     public Role getProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
         if (!Users.getLoggedInUser().isAdministrator) {
-            throw new BadRequestException("The retrieval of the project role was unsuccessful: Administrator access is required.");
+            throw new ForbiddenException("The retrieval of the project role was unsuccessful: Administrator access is required.");
         }
 
         if (username == null) {
@@ -149,7 +152,7 @@ public class Projects {
     @Path("{id}/roles/{username}")
     public void addProjectRole(@PathParam("id") int projectId, @PathParam("username") String username, Role role) {
         if (!Users.getLoggedInUser().isAdministrator) {
-            throw new BadRequestException("The addition of the project role was unsuccessful: Administrator access is required.");
+            throw new ForbiddenException("The addition of the project role was unsuccessful: Administrator access is required.");
         }
 
         if (role == null) {
@@ -175,7 +178,7 @@ public class Projects {
     @Path("{id}/roles/{username}")
     public void deleteProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
         if (!Users.getLoggedInUser().isAdministrator) {
-            throw new BadRequestException("The deletion of the project role was unsuccessful: Administrator access is required.");
+            throw new ForbiddenException("The deletion of the project role was unsuccessful: Administrator access is required.");
         }
 
         if (username == null) {

@@ -956,7 +956,19 @@ public class ReactionUtilities {
             if(!creating && options.fieldIsFinal(option.getName())) {
                 option.setEnabled(false);
                 JTextField field = new JTextField(30);
-                field.setText(option.getValue().toString());
+                String text = "";
+                if (option instanceof Options.ComboBoxOption) {
+                    Options.ComboBoxOption optionAsComboBoxOption = (Options.ComboBoxOption)option;
+                    Object value = optionAsComboBoxOption.getValue();
+                    if (value instanceof Options.OptionValue) {
+                        text = ((Options.OptionValue)value).getLabel();
+                    } else {
+                        text = option.getValue().toString();
+                    }
+                } else {
+                    text = option.getValue().toString();
+                }
+                field.setText(text);
                 field.setEditable(false);
                 field.setBorder(new EmptyBorder(field.getBorder().getBorderInsets(field)));
                 field.setOpaque(false);

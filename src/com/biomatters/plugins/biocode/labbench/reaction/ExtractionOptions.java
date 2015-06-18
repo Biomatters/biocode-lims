@@ -17,7 +17,13 @@ public class ExtractionOptions extends ReactionOptions<ExtractionReaction>{
     public static final String TISSUE_ID = "sampleId";
 
     public boolean fieldIsFinal(String fieldCode) {
-        return false;//"sampleId".equals(fieldCode) || "extractionId".equals(fieldCode);
+        boolean fieldIsFinal = false;
+
+        if (fieldCode.equals(PROJECT_OPTION_NAME)) {
+            fieldIsFinal = true;
+        }
+
+        return fieldIsFinal;//"sampleId".equals(fieldCode) || "extractionId".equals(fieldCode);
     }
 
     public void init() {

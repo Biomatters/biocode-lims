@@ -3,12 +3,11 @@ package com.biomatters.plugins.biocode.labbench.lims;
 import com.biomatters.geneious.publicapi.components.Dialogs;
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.plugins.biocode.labbench.BadDataException;
-import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
 import com.biomatters.plugins.biocode.labbench.reaction.Reaction;
-import com.biomatters.plugins.biocode.labbench.reaction.ReactionUtilities;
 import com.biomatters.plugins.biocode.server.Project;
+import com.biomatters.plugins.biocode.server.Role;
 import jebl.util.Cancelable;
 import jebl.util.ProgressListener;
 
@@ -20,6 +19,7 @@ import java.util.*;
  *         Created on 21/04/15 1:44 PM
  */
 public abstract class ProjectLimsConnection extends LIMSConnection {
+    public abstract List<Project> getProjects(Role minimumRole) throws DatabaseServiceException;
     public abstract Map<Project, Collection<Workflow>> getProjectToWorkflows() throws DatabaseServiceException;
     public abstract void addWorkflowsToProject(int projectId, Collection<Integer> workflowIds) throws DatabaseServiceException;
     public abstract void removeWorkflowsFromProject(Collection<Integer> workflowIds) throws DatabaseServiceException;
@@ -140,11 +140,6 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
     private static Map<Integer, Collection<Integer>> getNewProjectToWorkflowMappings(Map<Project, Collection<Workflow>> projectToWorkflows, Collection<Reaction> reactions) throws DatabaseServiceException {
         Map<Integer, Collection<Integer>> newProjectToWorkflowMappings = new HashMap<Integer, Collection<Integer>>();
 
-        newProjectToWorkflowMappings.put(Project.NONE_PROJECT.id, new HashSet<Integer>());
-        for (Project project : projectToWorkflows.keySet()) {
-            newProjectToWorkflowMappings.put(project.id, new HashSet<Integer>());
-        }
-
         Set<Project> projects = new HashSet<Project>(projectToWorkflows.keySet());
         projects.add(Project.NONE_PROJECT);
         for (Reaction reaction : reactions) {
@@ -154,6 +149,12 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
                 if (reactionProjectId == Project.NONE_PROJECT.id) {
                     if (getUnionOfCollections(projectToWorkflows.values()).contains(reactionWorkflow)) {
                         Collection<Integer> workflowIds = newProjectToWorkflowMappings.get(reactionProjectId);
+
+                        if (workflowIds == null) {
+                            workflowIds = new HashSet<Integer>();
+                            newProjectToWorkflowMappings.put(reactionProjectId, workflowIds);
+                        }
+
                         workflowIds.add(reactionWorkflow.getId());
                     }
                 } else {
@@ -165,6 +166,12 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
 
                     if (!projectToWorkflows.get(reactionProject).contains(reactionWorkflow)) {
                         Collection<Integer> workflowIds = newProjectToWorkflowMappings.get(reactionProject.id);
+
+                        if (workflowIds == null) {
+                            workflowIds = new HashSet<Integer>();
+                            newProjectToWorkflowMappings.put(reactionProjectId, workflowIds);
+                        }
+
                         workflowIds.add(reactionWorkflow.getId());
                     }
                 }

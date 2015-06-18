@@ -81,7 +81,13 @@ public class CycleSequencingOptions extends ReactionOptions<CycleSequencingReact
     }
 
     public boolean fieldIsFinal(String fieldCode) {
-        return "extractionId".equals(fieldCode) || WORKFLOW_ID.equals(fieldCode) || "locus".equals(fieldCode);
+        boolean fieldIsFinal = false;
+
+        if (fieldCode.equals(PROJECT_OPTION_NAME) && reaction.getWorkflow() != null || fieldCode.equals("extractionId") || fieldCode.equals("workflowId") || fieldCode.equals("locus")) {
+            fieldIsFinal = true;
+        }
+
+        return fieldIsFinal;
     }
 
     public void refreshValuesFromCaches() {

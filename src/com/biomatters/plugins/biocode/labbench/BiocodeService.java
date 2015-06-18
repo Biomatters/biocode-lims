@@ -571,7 +571,9 @@ public class BiocodeService extends PartiallyWritableDatabaseService {
                 disconnectCheckingThread.interrupt();
             }
 
-            getActiveLIMSConnection().connect(connection.getLimsOptions());
+            PasswordOptions limsOptions = connection.getLimsOptions();
+            getActiveLIMSConnection().connect(limsOptions);
+
             progressListener.setMessage("Building Caches");
             buildCaches();
 

@@ -11,6 +11,7 @@ import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
 import com.biomatters.plugins.biocode.labbench.FimsSample;
+import com.biomatters.plugins.biocode.labbench.LoginOptions;
 import com.biomatters.plugins.biocode.labbench.PasswordOptions;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -28,7 +29,7 @@ import java.io.IOException;
  * Time: 6:16:57 PM
  */
 public abstract class FIMSConnection {
-    protected static final int STATEMENT_QUERY_TIMEOUT = 300;
+    protected int requestTimeoutInSeconds = LoginOptions.DEFAULT_TIMEOUT;
 
     protected static String getProjectForSample(List<DocumentField> projectsLowestToHighest, FimsSample sample) {
         for (DocumentField projectField : projectsLowestToHighest) {
@@ -68,6 +69,7 @@ public abstract class FIMSConnection {
     public abstract PasswordOptions getConnectionOptions();
 
     public void connect(Options options) throws ConnectionException {
+        requestTimeoutInSeconds = ((Options.IntegerOption)options.getParentOptions().getOption(LoginOptions.FIMS_REQUEST_TIMEOUT_OPTION_NAME)).getValue();
         _connect(options);
 
         if(getTissueSampleDocumentField() == null) {

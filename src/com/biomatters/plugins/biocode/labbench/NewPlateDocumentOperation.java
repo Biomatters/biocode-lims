@@ -54,6 +54,12 @@ public class NewPlateDocumentOperation extends DocumentOperation {
 
     @Override
     public List<AnnotatedPluginDocument> performOperation(final AnnotatedPluginDocument[] documents, ProgressListener dontUse, Options optionsa) throws DocumentOperationException {
+        _performOperation(documents, dontUse, optionsa);
+
+        return null;
+    }
+
+    public Plate _performOperation(final AnnotatedPluginDocument[] documents, ProgressListener dontUse, Options optionsa) throws DocumentOperationException {
         if(!BiocodeService.getInstance().isLoggedIn()) {
             throw new DocumentOperationException(BiocodeUtilities.NOT_CONNECTED_ERROR_MESSAGE);
         }
@@ -89,7 +95,7 @@ public class NewPlateDocumentOperation extends DocumentOperation {
                 if (pSize != null && size != pSize) {
                     throw new DocumentOperationException("All plates must be of the same size");
                 }
-                pSize = size;                      
+                pSize = size;
             }
         }
         final Plate.Size plateSize = pSize;
@@ -99,7 +105,7 @@ public class NewPlateDocumentOperation extends DocumentOperation {
 
         if(options.getPlateSize() == null) {
             if(numberOfReactionsFromOptions < reactionCount) {
-                throw new DocumentOperationException("You must create at least the number of reactions as are in your existing document(s)");    
+                throw new DocumentOperationException("You must create at least the number of reactions as are in your existing document(s)");
             }
         }
 
@@ -169,10 +175,11 @@ public class NewPlateDocumentOperation extends DocumentOperation {
         } catch (DatabaseServiceException e) {
             throw new DocumentOperationException(e);
         }
-
-        plateViewer.get().displayInFrame(true, GuiUtilities.getMainFrame());
-
-        return null;
+        
+        if(!TestGeneious.isRunningTest() && !Geneious.isHeadless()) {
+            plateViewer.get().displayInFrame(true, GuiUtilities.getMainFrame());
+        }
+        return plateViewer.get().getPlate();
     }
 
     private static void tryAddProjectValues(Plate plate) throws DatabaseServiceException {

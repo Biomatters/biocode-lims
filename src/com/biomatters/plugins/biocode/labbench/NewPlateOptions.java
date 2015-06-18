@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class NewPlateOptions extends Options{
 
+    static final String FROM_EXISTING_OPTION_NAME = "fromExistingPlates";
     private AnnotatedPluginDocument[] documents;
     private final OptionValue INDIVIDUAL_REACTIONS = new OptionValue("individualReactions", "");
     private final OptionValue STRIPS = new OptionValue("strips", "");
@@ -98,7 +99,7 @@ public class NewPlateOptions extends Options{
         ComboBoxOption passedOrFailed;
 
         if (fromExistingPlates) {
-            fromExistingOption = addBooleanOption("fromExistingPlates", "Create plate from existing plate documents", false);
+            fromExistingOption = addBooleanOption(FROM_EXISTING_OPTION_NAME, "Create plate from existing plate documents", false);
             fromExistingOption.setSpanningComponent(true);
             beginAlignHorizontally(null, false);
             onlyFailed = addBooleanOption("onlyFailed", "Copy only ", false);
@@ -175,19 +176,7 @@ public class NewPlateOptions extends Options{
     }
 
     public Plate.Size getPlateSize() {
-        Options.OptionValue plateSizeValue = (Options.OptionValue)getValue("plateType");
-
-        if(plateSizeValue.getName().equals("48Plate")) {
-            return Plate.Size.w48;
-        }
-        else if(plateSizeValue.getName().equals("96Plate")) {
-            return Plate.Size.w96;
-        }
-        else if(plateSizeValue.getName().equals("384Plate")) {
-            return Plate.Size.w384;
-        }
-
-        return null;
+        return Plate.getSizeEnum(getNumberOfReactions());
     }
 
     public Reaction.Type getReactionType() {
@@ -205,7 +194,7 @@ public class NewPlateOptions extends Options{
     }
 
     public boolean isFromExistingPlates() {
-        return "true".equals(getValueAsString("fromExistingPlates"));
+        return "true".equals(getValueAsString(FROM_EXISTING_OPTION_NAME));
     }
 
     public boolean isFromExistingTissues() { return "true".equals(getValueAsString("fromExistingTissues"));}
@@ -303,10 +292,20 @@ public class NewPlateOptions extends Options{
     }
 
     public int getNumberOfReactions() {
-        if(getValueAsString("plateType").equals("strips")) {
+        Options.OptionValue plateType = (Options.OptionValue)getValue("plateType");
+        if (plateType.equals(PLATE_48)) {
+            return 48;
+        } else if (plateType.equals(PLATE_96)) {
+            return 96;
+        } else if (plateType.equals(PLATE_384)) {
+            return 384;
+        } else if (plateType.equals(STRIPS)) {
             return (Integer)getOption("stripNumber").getValue()*8;   
+        } else if (plateType.equals(INDIVIDUAL_REACTIONS)) {
+            return (Integer)getOption("reactionNumber").getValue();
+        } else {
+            throw new IllegalStateException("Unknown plate type: " + plateType.getName() + ".");
         }
-        return (Integer)getOption("reactionNumber").getValue();
     }
 
     static class ComboBoxListener implements SimpleListener{

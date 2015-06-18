@@ -15,6 +15,9 @@ import java.util.Collections;
  * @version $Id$
  */
 public class LoginOptions extends Options {
+    public static final String FIMS_REQUEST_TIMEOUT_OPTION_NAME = "fimsRequestTimeout";
+    public static final String LIMS_REQUEST_TIMEOUT_OPTION_NAME = "limsRequestTimeout";
+    public static final int DEFAULT_TIMEOUT = 300;
 
     public LoginOptions() throws DatabaseServiceException {
         init();
@@ -36,9 +39,11 @@ public class LoginOptions extends Options {
             PasswordOptions connectionOptions = connection.getConnectionOptions();
             fimsOptions.addChildOptions(connection.getName(), connection.getLabel(), connection.getDescription(), connectionOptions != null ? connectionOptions : new PasswordOptions(BiocodeService.class));
         }
-        Option chooser = fimsOptions.addChildOptionsPageChooser("fims", "Field Database Connection", Collections.<String>emptyList(), PageChooserType.COMBO_BOX, false);
+        fimsOptions.addChildOptionsPageChooser("fims", "Field Database Connection", Collections.<String>emptyList(), PageChooserType.COMBO_BOX, false);
+        fimsOptions.addIntegerOption(FIMS_REQUEST_TIMEOUT_OPTION_NAME, "FIMS Timeout (seconds):", DEFAULT_TIMEOUT, 0, Integer.MAX_VALUE);
 
         PasswordOptions limsOptions = LIMSConnection.createConnectionOptions();
+        limsOptions.addIntegerOption(LIMS_REQUEST_TIMEOUT_OPTION_NAME, "LIMS Timeout (seconds):", DEFAULT_TIMEOUT, 0, Integer.MAX_VALUE);
 
         addChildOptions("fims", null, null, fimsOptions);
         addChildOptions("lims", null, null, limsOptions);

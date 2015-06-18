@@ -4,6 +4,7 @@ import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceExceptio
 import com.biomatters.geneious.publicapi.databaseservice.Query;
 import com.biomatters.geneious.publicapi.documents.Condition;
 import com.biomatters.geneious.publicapi.documents.DocumentField;
+import com.biomatters.geneious.publicapi.plugin.Options;
 import com.biomatters.plugins.biocode.labbench.*;
 import com.biomatters.plugins.biocode.labbench.plates.GelImage;
 import com.biomatters.plugins.biocode.labbench.plates.Plate;
@@ -27,6 +28,8 @@ public abstract class LIMSConnection {
     public static final String EXPECTED_SERVER_FULL_VERSION = "9.2";
     public static final int BATCH_SIZE = 200;
     protected static final int STATEMENT_QUERY_TIMEOUT = 300;
+
+    public int requestTimeout = LoginOptions.DEFAULT_TIMEOUT;
 
     /**
      * Was used for a beta version. But since we didn't actually break backwards compatibility we reverted back to the old
@@ -134,7 +137,7 @@ public abstract class LIMSConnection {
 
     public abstract void setSequenceStatus(boolean submitted, List<Integer> ids) throws DatabaseServiceException;
 
-    public static enum AvailableLimsTypes {
+    public enum AvailableLimsTypes {
         local(LocalLIMSConnection.class, "Built-in MySQL Database", "Create and connect to LIMS databases on your local computer (stored with your Geneious data)"),
         remote(MysqlLIMSConnection.class, "Remote MySQL Database", "Connect to a LIMS database on a remote MySQL server"),
         server(ServerLimsConnection.class, "Biocode Server", "Connect to an instance of the Biocode Server.");
@@ -182,6 +185,7 @@ public abstract class LIMSConnection {
     public final void connect(PasswordOptions options) throws ConnectionException {
         this.limsOptions = options;
         _connect(options);
+        requestTimeout = ((Options.IntegerOption)options.getOption(LoginOptions.LIMS_REQUEST_TIMEOUT_OPTION_NAME)).getValue();
     }
 
     protected abstract void _connect(PasswordOptions options) throws ConnectionException;
@@ -221,14 +225,14 @@ public abstract class LIMSConnection {
     public Statement createStatement() throws SQLException {
         Connection connection = getConnectionInternal();
         Statement statement = connection.createStatement();
-        statement.setQueryTimeout(STATEMENT_QUERY_TIMEOUT);
+        statement.setQueryTimeout(requestTimeout);
         return statement;
     }
 
     public PreparedStatement createStatement(String sql) throws SQLException {
         Connection connection = getConnectionInternal();
         PreparedStatement statement = connection.prepareStatement(sql);
-        statement.setQueryTimeout(STATEMENT_QUERY_TIMEOUT);
+        statement.setQueryTimeout(requestTimeout);
         return statement;
     }
 

@@ -113,7 +113,7 @@ public abstract class SqlLimsConnection extends LIMSConnection {
     protected ConnectionWrapper getConnection() throws SQLException {
         ConnectionWrapper toReturn = connectionForThread.get();
         if (toReturn == null || toReturn.isClosed()) {
-            toReturn = new ConnectionWrapper(getDataSource().getConnection());
+            toReturn = new ConnectionWrapper(getDataSource().getConnection(), requestTimeout);
             connectionForThread.set(toReturn);
         }
         synchronized (connectionCounts) {
@@ -3170,12 +3170,14 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
 
     protected static class ConnectionWrapper {
         private Connection connection;
+        private int timeout;
         private int transactionLevel = 0;
         private List<Statement> statements = new ArrayList<Statement>();
         private AtomicBoolean closed = new AtomicBoolean(false);
 
-        protected ConnectionWrapper(Connection connection) {
+        protected ConnectionWrapper(Connection connection, int timeout) {
             this.connection = connection;
+            this.timeout = timeout;
         }
 
         Connection getInternalConnection() {
@@ -3227,12 +3229,13 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
 
         protected PreparedStatement prepareStatement(String query) throws SQLException {
             PreparedStatement statement = connection.prepareStatement(query);
-            statement.setQueryTimeout(STATEMENT_QUERY_TIMEOUT);
+            statement.setQueryTimeout(timeout);
             return statement;
         }
 
         protected void executeUpdate(String sql) throws SQLException {
             Statement statement = connection.createStatement();
+            statement.setQueryTimeout(timeout);
             try {
                 statement.executeUpdate(sql);
             } finally {
@@ -3242,6 +3245,7 @@ private void deleteReactions(ProgressListener progress, Plate plate) throws Data
 
         protected ResultSet executeQuery(String sql) throws SQLException {
             Statement statement = connection.createStatement();
+            statement.setQueryTimeout(timeout);
             statements.add(statement);
             return statement.executeQuery(sql);
         }

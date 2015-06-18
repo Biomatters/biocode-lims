@@ -165,7 +165,7 @@ public class QueryParser {
             }
         }
         if (field == null) {
-            throw new BadRequestException("Invalid field: " + field.getCode() + ".");
+            throw new BadRequestException("Invalid field: " + queryParts[0] + ".");
         }
 
         /* Extract query condition. */

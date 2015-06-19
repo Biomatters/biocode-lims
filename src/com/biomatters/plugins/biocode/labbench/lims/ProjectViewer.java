@@ -40,6 +40,7 @@ public class ProjectViewer extends DocumentViewer {
         this.projectLimsConnection = projectLimsConnection;
         table = new GTextPane();
         table.setContentType("text/html");
+        table.setText("Loading...");
         table.setEditable(false);
 
         new javax.swing.SwingWorker<Void, Void>() {

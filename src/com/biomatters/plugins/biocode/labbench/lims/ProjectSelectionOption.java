@@ -15,6 +15,7 @@ public class ProjectSelectionOption extends Options {
     public ProjectSelectionOption(Collection<Project> projects) {
         List<OptionValue> projectOptionValues = createProjectOptionValues(projects);
         projectComboBox = addComboBoxOption("project", "Project:", projectOptionValues, projectOptionValues.get(0));
+        addLabel("Note: Changes will be applied immediately.");
     }
 
     public int getIdOfSelectedProject() {

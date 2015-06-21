@@ -17,7 +17,7 @@ public class Project {
 
     public Map<User, Role> userRoles = new HashMap<User, Role>();
 
-    public static final Project NONE_PROJECT = new Project(-1, "None", "", -1, true);
+    public static final Project NONE_PROJECT = new Project(-1, "<None>", "", -1, true);
 
     public Project(Integer id, String name, String description, Integer parentProjectID, boolean isPublic) {
         this.id = id;

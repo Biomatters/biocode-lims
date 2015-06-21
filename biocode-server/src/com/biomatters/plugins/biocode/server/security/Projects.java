@@ -311,12 +311,12 @@ public class Projects {
 
         List<Project> projectsUserHasRoleAccessFor = new ArrayList<Project>();
 
-        Map<Integer, Project> projectIdToProject = createProjectIdToProjectMap(getProjects(dataSource, Collections.<Integer>emptySet()));
-
+        List<Project> allAvailableProjects = getProjects(dataSource, Collections.<Integer>emptySet());
         if (user.isAdministrator) {
-            projectsUserHasRoleAccessFor.addAll(projectIdToProject.values());
+            projectsUserHasRoleAccessFor.addAll(allAvailableProjects);
         } else {
-            for (Project project : projectIdToProject.values()) {
+            Map<Integer, Project> projectIdToProject = createProjectIdToProjectMap(allAvailableProjects);
+            for (Project project : allAvailableProjects) {
                 if (project.isPublic) {
                     projectsUserHasRoleAccessFor.add(project);
                 }

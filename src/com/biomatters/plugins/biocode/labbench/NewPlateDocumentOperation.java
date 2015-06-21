@@ -188,18 +188,27 @@ public class NewPlateDocumentOperation extends DocumentOperation {
         if (limsConnection instanceof ProjectLimsConnection && !plate.getReactionType().equals(Reaction.Type.Extraction)) {
             ProjectLimsConnection projectLimsConnection = (ProjectLimsConnection)limsConnection;
             Map<Project, Collection<Workflow>> projectToWorkflows = projectLimsConnection.getProjectToWorkflows();
-            List<Project> writableProjects = new ArrayList<Project>();
-            writableProjects.add(Project.NONE_PROJECT);
-            writableProjects.addAll(projectLimsConnection.getProjects(Role.WRITER));
+            List<Project> possibleProjects = getPossibleProjects(projectLimsConnection);
             for (Reaction reaction : plate.getReactions()) {
                 Workflow reactionWorkflow = reaction.getWorkflow();
                 if (reactionWorkflow != null) {
                     reaction.getOptions().setPossibleProjects(Collections.singletonList(getProjectContainingWorkflow(projectToWorkflows, reactionWorkflow)), 0);
                 } else {
-                    reaction.getOptions().setPossibleProjects(writableProjects, writableProjects.indexOf(Project.NONE_PROJECT));
+                    reaction.getOptions().setPossibleProjects(possibleProjects, possibleProjects.indexOf(Project.NONE_PROJECT));
                 }
             }
         }
+    }
+
+    private static List<Project> getPossibleProjects(ProjectLimsConnection projectLimsConnection) throws DatabaseServiceException {
+        Map<Integer, Project> possibleProjects = new HashMap<Integer, Project>();
+
+        possibleProjects.put(Project.NONE_PROJECT.id, Project.NONE_PROJECT);
+        for (Project project : projectLimsConnection.getProjects(Role.WRITER)) {
+            possibleProjects.put(project.id, project);
+        }
+
+        return new ArrayList<Project>(possibleProjects.values());
     }
 
     private static Project getProjectContainingWorkflow(Map<Project, Collection<Workflow>> projectToWorkflows, Workflow workflow) {

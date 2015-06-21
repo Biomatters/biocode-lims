@@ -41,15 +41,7 @@ public class ProjectSelectionOption extends Options {
     private static class ProjectOptionValueComparator implements Comparator<OptionValue> {
         @Override
         public int compare(OptionValue lhs, OptionValue rhs) {
-            int result = 1, lhsId = Integer.valueOf(lhs.getName()), rhsId = Integer.valueOf(rhs.getName());
-
-            if (lhsId == rhsId) {
-                result = 0;
-            } else if (lhsId < rhsId) {
-                result = -1;
-            }
-
-            return result;
+            return String.CASE_INSENSITIVE_ORDER.compare(lhs.getLabel(), rhs.getLabel());
         }
     }
 }

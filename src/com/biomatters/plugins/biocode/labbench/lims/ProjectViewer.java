@@ -34,13 +34,14 @@ public class ProjectViewer extends DocumentViewer {
     private Set<Workflow> workflows;
     private Map<Project, Collection<Workflow>> projectToWorkflows;
     private List<Project> writableProjects;
+    private static String INITIAL_CONTENT = "Loading...";
 
     public ProjectViewer(AnnotatedPluginDocument[] annotatedDocuments, ProjectLimsConnection projectLimsConnection) throws DatabaseServiceException, DocumentOperationException {
         this.annotatedDocuments = annotatedDocuments;
         this.projectLimsConnection = projectLimsConnection;
         table = new GTextPane();
         table.setContentType("text/html");
-        table.setText("Loading...");
+        table.setText(INITIAL_CONTENT);
         table.setEditable(false);
 
         new javax.swing.SwingWorker<Void, Void>() {
@@ -222,7 +223,8 @@ public class ProjectViewer extends DocumentViewer {
                 GeneiousAction action = new GeneiousAction("Assign all workflows to a project", "", BiocodePlugin.getIcons("bulkEdit_16.png")) {
                     @Override
                     public void actionPerformed(ActionEvent actionEvent) {
-                        ProjectSelectionOption projectSelectionOption = new ProjectSelectionOption(getProjects(writableProjects));
+                        List<Project> possibleProjects = getPossibleProjects(writableProjects);
+                        ProjectSelectionOption projectSelectionOption = new ProjectSelectionOption(possibleProjects);
                         if (Dialogs.showOptionsDialog(projectSelectionOption, "Project Selection", false)) {
                             try {
                                 int idOfSelectedProject = projectSelectionOption.getIdOfSelectedProject();
@@ -253,13 +255,13 @@ public class ProjectViewer extends DocumentViewer {
         return actionProvider;
     }
 
-    private static Set<Project> getProjects(Collection<Project> projects) {
-        Set<Project> projectsPlusNoneProject = new HashSet<Project>();
+    private static List<Project> getPossibleProjects(Collection<Project> projects) {
+        List<Project> possibleProjects = new ArrayList<Project>();
 
-        projectsPlusNoneProject.add(Project.NONE_PROJECT);
-        projectsPlusNoneProject.addAll(projects);
+        possibleProjects.add(Project.NONE_PROJECT);
+        possibleProjects.addAll(projects);
 
-        return projectsPlusNoneProject;
+        return possibleProjects;
     }
 
     private static Set<Integer> getWorkflowIds(Collection<Workflow> workflows) {

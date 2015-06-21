@@ -1,9 +1,6 @@
 package com.biomatters.plugins.biocode.server;
 
-import com.biomatters.geneious.publicapi.databaseservice.AdvancedSearchQueryTerm;
-import com.biomatters.geneious.publicapi.databaseservice.BasicSearchQuery;
-import com.biomatters.geneious.publicapi.databaseservice.CompoundSearchQuery;
-import com.biomatters.geneious.publicapi.databaseservice.QueryField;
+import com.biomatters.geneious.publicapi.databaseservice.*;
 import com.biomatters.geneious.publicapi.documents.Condition;
 import com.biomatters.geneious.publicapi.documents.DocumentField;
 import com.biomatters.geneious.publicapi.utilities.StringUtilities;
@@ -78,12 +75,11 @@ public class RestQueryUtils {
             if (compoundSearchQueryType != null && !childQueries.isEmpty()) {
                 StringBuilder stringQueryBuilder = new StringBuilder();
 
-                stringQueryBuilder.append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm)childQueries.get(0)));
-                for (int i = 1; i < childQueries.size(); i++) {
+                for (com.biomatters.geneious.publicapi.databaseservice.Query childQuery : childQueries) {
                     if (stringQueryBuilder.length() > 0) {
                         stringQueryBuilder.append(compoundSearchQueryType);
                     }
-                    stringQueryBuilder.append(compoundSearchQueryType).append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm)childQueries.get(i)));
+                    stringQueryBuilder.append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm) childQuery));
                 }
 
                 result = stringQueryBuilder.toString();

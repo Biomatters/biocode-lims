@@ -11,6 +11,7 @@ import com.biomatters.plugins.biocode.server.query.QueryParser;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
+import javax.annotation.Nonnull;
 import javax.sql.DataSource;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
@@ -66,8 +67,9 @@ public class QueryService {
                 .execute(BiocodeService.getSearchDownloadOptions(retrieveTissues, retrieveWorkflows, retrievePlates, retrieveSequenceIds), tissuesToMatch);
     }
 
-    Response performSearch(String query, boolean showTissues, boolean showWorkflows, boolean showPlates, boolean showSequenceIds, String tissueIdsToMatch) throws DatabaseServiceException {
-        Set<String> tissueIdsToMatchSet = !query.contains(RestQueryUtils.MATCH_TISSUES_QUERY) ? null : new HashSet<String>(StringUtilities.getListFromString(tissueIdsToMatch));
+    Response performSearch(String query, boolean showTissues, boolean showWorkflows, boolean showPlates, boolean showSequenceIds, @Nonnull String tissueIdsToMatch) throws DatabaseServiceException {
+        Set<String> tissueIdsToMatchSet = !tissueIdsToMatch.isEmpty() || query.contains(RestQueryUtils.MATCH_TISSUES_QUERY) ?
+                new HashSet<String>(StringUtilities.getListFromString(tissueIdsToMatch)) : null;
         LimsSearchResult result = getSearchResults(query, showTissues, showWorkflows, showPlates, showSequenceIds, tissueIdsToMatchSet);
         LimsSearchResult filteredResult = getPermissionsFilteredResult(result);
         return Response.ok(filteredResult).build();
@@ -131,7 +133,7 @@ public class QueryService {
         Set<Integer> filteredSequenceIDs = new HashSet<Integer>();
 
         for (Map.Entry<Integer, String> sequenceIDAndExtractionID : getExtractionIdsForSequences(new ArrayList<Integer>(new HashSet<Integer>(sequenceIDsToFilter))).entrySet()) {
-            if (extractionIDsLoggedInUserHasReadAccessTo.contains(sequenceIDAndExtractionID.getValue())) {
+          Change QueryService API to support matching tissue IDs with AND or OR.  if (extractionIDsLoggedInUserHasReadAccessTo.contains(sequenceIDAndExtractionID.getValue())) {
                 filteredSequenceIDs.add(sequenceIDAndExtractionID.getKey());
             }
         }

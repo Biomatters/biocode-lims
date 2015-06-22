@@ -1,5 +1,6 @@
 package com.biomatters.plugins.biocode.server.utilities;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 
 /**
@@ -30,10 +31,7 @@ public class StringUtilities {
         return commaSeparatedQuestionMarksBuilder.toString();
     }
 
-    public static List<String> getListFromString(String stringList) {
-        if (stringList == null) {
-            return null;
-        }
+    public static List<String> getListFromString(@Nonnull String stringList) {
         List<String> strings = new ArrayList<String>();
         for (String item : Arrays.asList(stringList.split(","))) {
             String toAdd = item.trim();

@@ -55,7 +55,8 @@ public class Projects {
     @Produces("text/plain")
     public String addProject(Project project) {
         try {
-            if (!Users.getLoggedInUser().isAdministrator) {
+            User loggedInUser = Users.getLoggedInUser();
+            if (loggedInUser == null || !loggedInUser.isAdministrator) {
                 throw new ForbiddenException("The addition of the project was unsuccessful: Administrator access is required.");
             }
 
@@ -69,7 +70,8 @@ public class Projects {
     @Consumes({"application/json", "application/xml"})
     @Path("{id}")
     public void updateProject(@PathParam("id")int id, Project project) {
-        if (!Users.getLoggedInUser().isAdministrator) {
+        User loggedInUser = Users.getLoggedInUser();
+        if (loggedInUser == null || !loggedInUser.isAdministrator) {
             throw new ForbiddenException("The update of the project was unsuccessful: Administrator access is required.");
         }
 
@@ -90,7 +92,8 @@ public class Projects {
     @Path("{id}")
     public void removeProject(@PathParam("id")int id) {
         try {
-            if (!Users.getLoggedInUser().isAdministrator) {
+            User loggedInUser = Users.getLoggedInUser();
+            if (loggedInUser == null || !loggedInUser.isAdministrator) {
                 throw new ForbiddenException("The removal of the project was unsuccessful: Administrator access is required.");
             }
 
@@ -105,9 +108,13 @@ public class Projects {
     @Path("{id}/roles")
     public Response listProjectRoles(@PathParam("id")int projectId) {
         try {
-            Set<String> userNames = new HashSet<String>();
-
             User loggedInUser = Users.getLoggedInUser();
+
+            if (loggedInUser == null) {
+                throw new ForbiddenException("The retrieval of the project roles was unsuccessful: Authentication is required.");
+            }
+
+            Set<String> userNames = new HashSet<String>();
             if (!loggedInUser.isAdministrator) {
                 userNames.add(loggedInUser.username);
             }
@@ -122,7 +129,8 @@ public class Projects {
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{id}/roles/{username}")
     public Role getProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
-        if (!Users.getLoggedInUser().isAdministrator) {
+        User loggedInUser = Users.getLoggedInUser();
+        if (loggedInUser == null || !loggedInUser.isAdministrator) {
             throw new ForbiddenException("The retrieval of the project role was unsuccessful: Administrator access is required.");
         }
 
@@ -151,7 +159,8 @@ public class Projects {
     @Consumes({"application/json", "application/xml"})
     @Path("{id}/roles/{username}")
     public void addProjectRole(@PathParam("id") int projectId, @PathParam("username") String username, Role role) {
-        if (!Users.getLoggedInUser().isAdministrator) {
+        User loggedInUser = Users.getLoggedInUser();
+        if (loggedInUser == null || !loggedInUser.isAdministrator) {
             throw new ForbiddenException("The addition of the project role was unsuccessful: Administrator access is required.");
         }
 
@@ -177,7 +186,8 @@ public class Projects {
     @DELETE
     @Path("{id}/roles/{username}")
     public void deleteProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
-        if (!Users.getLoggedInUser().isAdministrator) {
+        User loggedInUser = Users.getLoggedInUser();
+        if (loggedInUser == null || !loggedInUser.isAdministrator) {
             throw new ForbiddenException("The deletion of the project role was unsuccessful: Administrator access is required.");
         }
 
@@ -319,26 +329,25 @@ public class Projects {
             for (Project project : allAvailableProjects) {
                 if (project.isPublic) {
                     projectsUserHasRoleAccessFor.add(project);
-                    continue;
-                }
+                } else {
+                    Project potentialProject = project;
+                    boolean checkingProject = true;
+                    while (checkingProject) {
+                        Map<User, Role> userProjectRole = getProjectRoles(dataSource, potentialProject.id, Collections.singletonList(user.username));
 
-                Project potentialProject = project;
-                boolean checkingProject = true;
-                while (checkingProject) {
-                    Map<User, Role> userProjectRole = getProjectRoles(dataSource, potentialProject.id, Collections.singletonList(user.username));
+                        if (userProjectRole.size() > 1) {
+                            throw new InternalServerErrorException("More than one role was found for user " + user.username + " in project " + potentialProject.name + ".");
+                        }
 
-                    if (userProjectRole.size() > 1) {
-                        throw new InternalServerErrorException("More than one role was found for user " + user.username + " in project " + potentialProject.name + ".");
-                    }
+                        if (!userProjectRole.isEmpty() && userProjectRole.get(user).isAtLeast(role)) {
+                            projectsUserHasRoleAccessFor.add(project);
+                            checkingProject = false;
+                        }
 
-                    if (!userProjectRole.isEmpty() && userProjectRole.get(user).isAtLeast(role)) {
-                        projectsUserHasRoleAccessFor.add(project);
-                        checkingProject = false;
-                    }
-
-                    potentialProject = projectIdToProject.get(potentialProject.parentProjectID);
-                    if (potentialProject == null) {
-                        checkingProject = false;
+                        potentialProject = projectIdToProject.get(potentialProject.parentProjectID);
+                        if (potentialProject == null) {
+                            checkingProject = false;
+                        }
                     }
                 }
             }

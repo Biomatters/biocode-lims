@@ -108,7 +108,7 @@ public class QueryParser {
         if (numAnd != 0 && numXor == 0 && numOr == 0) {
             List<QueryValues> queryValues = new ArrayList<QueryValues>();
             for (String element : queryPostfix) {
-                if (!element.equals("AND") && !element.equals("XOR") && !element.equals("OR")) {
+                if (isFieldQueryValueElement(element)) {
                     queryValues.add(stringToQueryValues(element));
                 }
             }
@@ -116,7 +116,7 @@ public class QueryParser {
         } else if (numAnd == 0 && numXor == 0 && numOr != 0) {
             List<QueryValues> queryValueses = new ArrayList<QueryValues>();
             for (String element : queryPostfix) {
-                if (!element.equals("AND") && !element.equals("XOR") && !element.equals("OR")) {
+                if (isFieldQueryValueElement(element)) {
                     queryValueses.add(stringToQueryValues(element));
                 }
             }
@@ -138,11 +138,21 @@ public class QueryParser {
                     Query LHS = queryQueue.pop();
                     queryQueue.push(new OrQuery(LHS, RHS));
                 } else {
-                    queryQueue.push(new SingleQuery(stringToQueryValues(element)));
+                    if(RestQueryUtils.MATCH_TISSUES_QUERY.equals(element)) {
+                        // We use a GeneralQuery for "" here because this will search the LIMS for nothing.  This ensures
+                        // the search is only done with list of tissue IDs to match.
+                        queryQueue.push(new GeneralQuery(""));
+                    } else {
+                        queryQueue.push(new SingleQuery(stringToQueryValues(element)));
+                    }
                 }
             }
             return queryQueue.pop();
         }
+    }
+
+    private boolean isFieldQueryValueElement(String element) {
+        return !element.equals("AND") && !element.equals("XOR") && !element.equals("OR") && !element.contains(RestQueryUtils.MATCH_TISSUES_QUERY);
     }
 
     private QueryValues stringToQueryValues(String query) {

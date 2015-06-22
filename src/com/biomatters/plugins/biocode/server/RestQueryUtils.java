@@ -7,6 +7,7 @@ import com.biomatters.geneious.publicapi.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.BiocodePlugin;
 import com.biomatters.plugins.biocode.labbench.BiocodeService;
 import com.biomatters.plugins.biocode.labbench.ConnectionException;
+import com.biomatters.plugins.biocode.labbench.lims.LIMSConnection;
 import com.biomatters.plugins.biocode.labbench.rest.client.ExceptionClientFilter;
 import com.biomatters.plugins.biocode.labbench.rest.client.ForbiddenExceptionClientFilter;
 import com.biomatters.plugins.biocode.labbench.rest.client.VersionHeaderAddingFilter;
@@ -36,6 +37,11 @@ import java.util.regex.Pattern;
  */
 public class RestQueryUtils {
 
+    /**
+     * Query for matching FIMS tissue IDs.  Can be used with AND or OR.
+     */
+    public static final String MATCH_TISSUES_QUERY = "matchTissues=true";
+
     public static class Query {
         private String type;
         private String queryString;
@@ -54,6 +60,13 @@ public class RestQueryUtils {
         }
     }
 
+    /**
+     * Converts a Geneious {@link Query} to a String in the format the Biocode LIMS Server accepts.  This includes
+     * converting all FIMS searches into a single instance of {@link #MATCH_TISSUES_QUERY}.
+     *
+     * @param query The Geneious {@link com.biomatters.plugins.biocode.server.RestQueryUtils.Query} to convert
+     * @return A String to search the Biocode Server with.
+     */
     public static String geneiousQueryToRestQueryString(com.biomatters.geneious.publicapi.databaseservice.Query query) {
         String result = null;
 
@@ -73,16 +86,12 @@ public class RestQueryUtils {
 
             List<? extends com.biomatters.geneious.publicapi.databaseservice.Query> childQueries = queryCastToCompoundSearchQuery.getChildren();
             if (compoundSearchQueryType != null && !childQueries.isEmpty()) {
-                StringBuilder stringQueryBuilder = new StringBuilder();
-
+                // Using a Set here to combine multiple instances of the same field=value including MATCH_TISSUES_QUERY
+                Set<String> childQueriesAsRestQueries = new HashSet<String>();
                 for (com.biomatters.geneious.publicapi.databaseservice.Query childQuery : childQueries) {
-                    if (stringQueryBuilder.length() > 0) {
-                        stringQueryBuilder.append(compoundSearchQueryType);
-                    }
-                    stringQueryBuilder.append(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm) childQuery));
+                    childQueriesAsRestQueries.add(parseAdvancedSearchQueryTerm((AdvancedSearchQueryTerm) childQuery));
                 }
-
-                result = stringQueryBuilder.toString();
+                result = StringUtilities.join(compoundSearchQueryType, childQueriesAsRestQueries);
             }
         }
 
@@ -90,11 +99,17 @@ public class RestQueryUtils {
     }
 
     private static String parseAdvancedSearchQueryTerm(AdvancedSearchQueryTerm query) {
-        return "[" +
-                query.getField().getCode() +
-                getConditionSymbol(query.getField().getValueType(), query.getCondition()) +
-                queryValueObjectToString(query.getValues()[0]) +
-                "]";
+        String queryString;
+        if(LIMSConnection.getSearchAttributes().contains(query.getField())) {
+            queryString = query.getField().getCode() +
+                    getConditionSymbol(query.getField().getValueType(), query.getCondition()) +
+                    queryValueObjectToString(query.getValues()[0]);
+
+        } else {
+            queryString = MATCH_TISSUES_QUERY;
+        }
+
+        return "[" + queryString + "]";
     }
 
     private static String queryValueObjectToString(Object value) {
@@ -271,16 +286,8 @@ public class RestQueryUtils {
         }
     }
 
-    public static enum QueryType {AND, OR;
-
-        public static QueryType forTypeString(String typeString) {
-            for (QueryType type : QueryType.values()) {
-                if(type.name().equals(typeString)) {
-                    return type;
-                }
-            }
-            return null;
-        }
+    public enum QueryType {
+        AND, OR
     }
 
     private static Map<Class, Map<String, Condition>> stringSymbolToConditionMaps = new HashMap<Class, Map<String, Condition>>();

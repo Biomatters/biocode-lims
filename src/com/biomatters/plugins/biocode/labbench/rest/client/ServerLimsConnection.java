@@ -81,13 +81,10 @@ public class ServerLimsConnection extends ProjectLimsConnection {
     public LimsSearchResult getMatchingDocumentsFromLims(Query query, Collection<String> tissueIdsToMatch, Cancelable cancelable) throws DatabaseServiceException {
         updateBCIDRootsCache();
 
-        query = removeAdvancedSearchQueryTermsOnNonLimsSearchAttributes(query);
-
         String tissueIdsToMatchString = tissueIdsToMatch == null ? null : StringUtilities.join(",", tissueIdsToMatch);
         try {
             WebTarget target = this.target.path(SEARCH_BASE_PATH)
                     .queryParam("q", RestQueryUtils.geneiousQueryToRestQueryString(query))
-                    .queryParam("matchTissues", tissueIdsToMatch != null)
                     .queryParam("showTissues", BiocodeService.isDownloadTissues(query))
                     .queryParam("showWorkflows", BiocodeService.isDownloadWorkflows(query))
                     .queryParam("showPlates", BiocodeService.isDownloadPlates(query))
@@ -99,69 +96,6 @@ public class ServerLimsConnection extends ProjectLimsConnection {
         } catch (ProcessingException e) {
             throw new DatabaseServiceException(e, e.getMessage(), false);
         }
-    }
-
-    private static Query removeAdvancedSearchQueryTermsOnNonLimsSearchAttributes(Query query) {
-        Map<String, Object> querySearchDownloadOptions = getSearchDownloadOptions(query);
-        Query resultQuery = Query.Factory.createExtendedQuery("", querySearchDownloadOptions);
-
-        if (query instanceof BasicSearchQuery) {
-            resultQuery = query;
-        } else if (query instanceof AdvancedSearchQueryTerm) {
-            if (LIMSConnection.getSearchAttributes().contains(((AdvancedSearchQueryTerm)query).getField())) {
-                resultQuery = query;
-            }
-        } else if (query instanceof CompoundSearchQuery) {
-            List<Query> limsSearchAttributeQueries = new ArrayList<Query>();
-            List<DocumentField> limsSearchAttributes = LIMSConnection.getSearchAttributes();
-
-            CompoundSearchQuery queryAsCompoundSearchQuery = (CompoundSearchQuery)query;
-            for (Query childQuery : queryAsCompoundSearchQuery.getChildren()) {
-                if (limsSearchAttributes.contains(((AdvancedSearchQueryTerm)childQuery).getField())) {
-                    limsSearchAttributeQueries.add(childQuery);
-                }
-            }
-
-            if (!limsSearchAttributeQueries.isEmpty()) {
-                Query compoundQuery = createCompoundQuery(
-                        limsSearchAttributeQueries.toArray(new Query[limsSearchAttributeQueries.size()]),
-                        queryAsCompoundSearchQuery.getOperator(),
-                        querySearchDownloadOptions
-                );
-
-                if (compoundQuery != null) {
-                    resultQuery = compoundQuery;
-                }
-            }
-        }
-
-        return resultQuery;
-    }
-
-    private static Map<String, Object> getSearchDownloadOptions(Query query) {
-        return BiocodeService.getSearchDownloadOptions(
-                BiocodeService.isDownloadTissues(query),
-                BiocodeService.isDownloadWorkflows(query),
-                BiocodeService.isDownloadPlates(query),
-                BiocodeService.isDownloadSequences(query)
-        );
-    }
-
-    private static Query createCompoundQuery(Query[] childQueries, CompoundSearchQuery.Operator operator, Map<String, Object> downloadSearchOptions) {
-        Query compoundQuery = null;
-
-        switch (operator) {
-            case AND:
-                compoundQuery = Query.Factory.createAndQuery(childQueries, downloadSearchOptions);
-                break;
-            case OR:
-                compoundQuery = Query.Factory.createOrQuery(childQueries, downloadSearchOptions);
-                break;
-            default:
-
-        }
-
-        return compoundQuery;
     }
 
     @Override

@@ -39,7 +39,6 @@ public class QueryService {
     @Produces("application/xml")
     @Consumes("text/plain")
     public Response searchWithPost(@QueryParam("q") String query,
-                                   @DefaultValue("true")  @QueryParam("matchTissues") boolean matchTissues,
                                    @DefaultValue("true")  @QueryParam("showTissues") boolean showTissues,
                                    @DefaultValue("true")  @QueryParam("showWorkflows") boolean showWorkflows,
                                    @DefaultValue("true")  @QueryParam("showPlates") boolean showPlates,
@@ -49,7 +48,7 @@ public class QueryService {
             throw new IllegalArgumentException("query is null.");
         }
 
-        return performSearch(query, showTissues, showWorkflows, showPlates, showSequenceIds, matchTissues ? tissueIdsToMatch : null);
+        return performSearch(query, showTissues, showWorkflows, showPlates, showSequenceIds, tissueIdsToMatch);
     }
 
     public static LimsSearchResult getSearchResults(String query,
@@ -68,7 +67,7 @@ public class QueryService {
     }
 
     Response performSearch(String query, boolean showTissues, boolean showWorkflows, boolean showPlates, boolean showSequenceIds, String tissueIdsToMatch) throws DatabaseServiceException {
-        Set<String> tissueIdsToMatchSet = tissueIdsToMatch == null ? null : new HashSet<String>(StringUtilities.getListFromString(tissueIdsToMatch));
+        Set<String> tissueIdsToMatchSet = !query.contains(RestQueryUtils.MATCH_TISSUES_QUERY) ? null : new HashSet<String>(StringUtilities.getListFromString(tissueIdsToMatch));
         LimsSearchResult result = getSearchResults(query, showTissues, showWorkflows, showPlates, showSequenceIds, tissueIdsToMatchSet);
         LimsSearchResult filteredResult = getPermissionsFilteredResult(result);
         return Response.ok(filteredResult).build();

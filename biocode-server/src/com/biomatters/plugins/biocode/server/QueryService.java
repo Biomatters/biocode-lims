@@ -11,6 +11,7 @@ import com.biomatters.plugins.biocode.server.query.QueryParser;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
+import javax.annotation.Nonnull;
 import javax.sql.DataSource;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
@@ -39,7 +40,6 @@ public class QueryService {
     @Produces("application/xml")
     @Consumes("text/plain")
     public Response searchWithPost(@QueryParam("q") String query,
-                                   @DefaultValue("true")  @QueryParam("matchTissues") boolean matchTissues,
                                    @DefaultValue("true")  @QueryParam("showTissues") boolean showTissues,
                                    @DefaultValue("true")  @QueryParam("showWorkflows") boolean showWorkflows,
                                    @DefaultValue("true")  @QueryParam("showPlates") boolean showPlates,
@@ -49,7 +49,7 @@ public class QueryService {
             throw new IllegalArgumentException("query is null.");
         }
 
-        return performSearch(query, showTissues, showWorkflows, showPlates, showSequenceIds, matchTissues ? tissueIdsToMatch : null);
+        return performSearch(query, showTissues, showWorkflows, showPlates, showSequenceIds, tissueIdsToMatch);
     }
 
     public static LimsSearchResult getSearchResults(String query,
@@ -67,8 +67,9 @@ public class QueryService {
                 .execute(BiocodeService.getSearchDownloadOptions(retrieveTissues, retrieveWorkflows, retrievePlates, retrieveSequenceIds), tissuesToMatch);
     }
 
-    Response performSearch(String query, boolean showTissues, boolean showWorkflows, boolean showPlates, boolean showSequenceIds, String tissueIdsToMatch) throws DatabaseServiceException {
-        Set<String> tissueIdsToMatchSet = tissueIdsToMatch == null ? null : new HashSet<String>(StringUtilities.getListFromString(tissueIdsToMatch));
+    Response performSearch(String query, boolean showTissues, boolean showWorkflows, boolean showPlates, boolean showSequenceIds, @Nonnull String tissueIdsToMatch) throws DatabaseServiceException {
+        Set<String> tissueIdsToMatchSet = !tissueIdsToMatch.isEmpty() || query.contains(RestQueryUtils.MATCH_TISSUES_QUERY) ?
+                new HashSet<String>(StringUtilities.getListFromString(tissueIdsToMatch)) : null;
         LimsSearchResult result = getSearchResults(query, showTissues, showWorkflows, showPlates, showSequenceIds, tissueIdsToMatchSet);
         LimsSearchResult filteredResult = getPermissionsFilteredResult(result);
         return Response.ok(filteredResult).build();

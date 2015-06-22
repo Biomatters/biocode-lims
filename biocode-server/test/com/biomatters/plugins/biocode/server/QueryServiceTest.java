@@ -65,7 +65,7 @@ public class QueryServiceTest extends Assert {
     }
     @Test
     public void testAndFunctionOnPartialOverlappingValues() {
-        testCompoundQuery(Arrays.asList("one", "two", "three"), Arrays.asList("three", "four", "five"), Arrays.asList("three"), new AndQuery(null, null));
+        testCompoundQuery(Arrays.asList("one", "two", "three"), Arrays.asList("three", "four", "five"), Collections.singletonList("three"), new AndQuery(null, null));
     }
     @Test
     public void testAndFunctionOnNoOverlappingValues() {
@@ -120,10 +120,12 @@ public class QueryServiceTest extends Assert {
     }
 
     private <T extends Comparable> void testSameContentsUnordered(List<T> oneOrTwoAsList, List<T> result) {
-        Collections.sort(oneOrTwoAsList);
-        Collections.sort(result);
+        List<T> oneOrTwoListModifiable = new ArrayList<T>(oneOrTwoAsList);
+        List<T> resultModifiable = new ArrayList<T>(result);
+        Collections.sort(oneOrTwoListModifiable);
+        Collections.sort(resultModifiable);
 
-        assertEquals(oneOrTwoAsList, result);
+        assertEquals(oneOrTwoListModifiable, resultModifiable);
     }
 
     private <T extends Comparable> void testCompoundQuery(List<T> one, List<T> two, List<T> expected, CompoundQuery query) {

@@ -133,7 +133,7 @@ public class QueryService {
         Set<Integer> filteredSequenceIDs = new HashSet<Integer>();
 
         for (Map.Entry<Integer, String> sequenceIDAndExtractionID : getExtractionIdsForSequences(new ArrayList<Integer>(new HashSet<Integer>(sequenceIDsToFilter))).entrySet()) {
-          Change QueryService API to support matching tissue IDs with AND or OR.  if (extractionIDsLoggedInUserHasReadAccessTo.contains(sequenceIDAndExtractionID.getValue())) {
+            if (extractionIDsLoggedInUserHasReadAccessTo.contains(sequenceIDAndExtractionID.getValue())) {
                 filteredSequenceIDs.add(sequenceIDAndExtractionID.getKey());
             }
         }

@@ -319,6 +319,7 @@ public class Projects {
             for (Project project : allAvailableProjects) {
                 if (project.isPublic) {
                     projectsUserHasRoleAccessFor.add(project);
+                    continue;
                 }
 
                 Project potentialProject = project;

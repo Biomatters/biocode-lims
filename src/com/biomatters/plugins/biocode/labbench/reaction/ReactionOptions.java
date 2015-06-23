@@ -88,10 +88,11 @@ public abstract class ReactionOptions<T extends Reaction> extends Options {
 
     private void addProjectOptions() {
         OptionValue projectOptionValue = projectToOptionValue(Project.NONE_PROJECT);
-        addComboBoxOption(PROJECT_OPTION_NAME, "Project:", Collections.singletonList(projectOptionValue), projectOptionValue);
+        addComboBoxOption(PROJECT_OPTION_NAME, "Project", Collections.singletonList(projectOptionValue), projectOptionValue);
     }
 
     private ComboBoxOption<OptionValue> getProjectOption() {
+        //noinspection unchecked
         return (ComboBoxOption<OptionValue>)getOption(PROJECT_OPTION_NAME);
     }
 

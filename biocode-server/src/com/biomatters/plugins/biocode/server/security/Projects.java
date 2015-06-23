@@ -6,6 +6,7 @@ import com.biomatters.plugins.biocode.server.*;
 import com.biomatters.plugins.biocode.server.utilities.StringUtilities;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 
+import javax.annotation.Nonnull;
 import javax.sql.DataSource;
 import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;
@@ -23,7 +24,7 @@ public class Projects {
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     public Response getProjectsLoggedInUserHasRoleAccessTo(@DefaultValue("2")@QueryParam("roleId")int roleId) {
         try {
-            return Response.ok(new GenericEntity<List<Project>>(getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getDataSource(), Users.getLoggedInUser(), Role.getRole(roleId))){}).build();
+            return Response.ok(new GenericEntity<List<Project>>(getProjectsUserHasRoleAccessFor(getValidDataSource(), Users.getLoggedInUser(), Role.getRole(roleId))){}).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project details was unsuccessful: " + e.getMessage(), e);
         }
@@ -36,7 +37,7 @@ public class Projects {
         List<Project> retrievedProjects;
 
         try {
-            retrievedProjects = getProjects(LIMSInitializationListener.getDataSource(), Collections.singleton(projectId));
+            retrievedProjects = getProjects(getValidDataSource(), Collections.singleton(projectId));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project details was unsuccessful: " + e.getMessage(), e);
         }
@@ -57,7 +58,7 @@ public class Projects {
         try {
             checkLoggedInUserIsAdmin("The addition of the project was unsuccessful: Administrator access is required.");
 
-            return Integer.toString(addProject(LIMSInitializationListener.getDataSource(), project));
+            return Integer.toString(addProject(getValidDataSource(), project));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The addition of the project was unsuccessful: " + e.getMessage(), e);
         }
@@ -83,7 +84,7 @@ public class Projects {
         project.id = id;
 
         try {
-            updateProject(LIMSInitializationListener.getDataSource(), project);
+            updateProject(getValidDataSource(), project);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The update of the project was unsuccessful: " + e.getMessage(), e);
         }
@@ -95,7 +96,7 @@ public class Projects {
         try {
             checkLoggedInUserIsAdmin("The removal of the project was unsuccessful: Administrator access is required.");
 
-            removeProject(LIMSInitializationListener.getDataSource(), id);
+            removeProject(getValidDataSource(), id);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The removal of the project was unsuccessful: " + e.getMessage(), e);
         }
@@ -117,7 +118,7 @@ public class Projects {
                 userNames.add(loggedInUser.username);
             }
 
-            return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, userNames))){}).build();
+            return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(getValidDataSource(), projectId, userNames))){}).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project roles was unsuccessful: " + e.getMessage(), e);
         }
@@ -138,7 +139,7 @@ public class Projects {
 
         Map<User, Role> userToRole;
         try {
-            userToRole = getProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singleton(username));
+            userToRole = getProjectRoles(getValidDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval the the project role was unsuccessful: " + e.getMessage(), e);
         }
@@ -169,7 +170,7 @@ public class Projects {
         User user = new User();
         user.username = username;
         try {
-            addProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singletonMap(user, role));
+            addProjectRoles(getValidDataSource(), projectId, Collections.singletonMap(user, role));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The addition of the project role was unsuccessful: " + e.getMessage(), e);
         }
@@ -185,7 +186,7 @@ public class Projects {
         }
 
         try {
-            removeProjectRoles(LIMSInitializationListener.getDataSource(), projectId, Collections.singleton(username));
+            removeProjectRoles(getValidDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The deletion the project role was unsuccessful: " + e.getMessage(), e);
         }
@@ -196,7 +197,7 @@ public class Projects {
     @Path("{id}/workflows")
     public XMLSerializableList<Workflow> getWorkflowsFromProject(@PathParam("id")int projectId) {
         try {
-            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsFromProject(LIMSInitializationListener.getDataSource(), projectId)));
+            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsFromProject(getValidDataSource(), projectId)));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the workflows was unsuccessful: " + e.getMessage(), e);
         }
@@ -213,7 +214,7 @@ public class Projects {
                 workflowIdsAsIntegers.add(workflowId.getValue());
             }
 
-            addWorkflowsToProject(LIMSInitializationListener.getDataSource(), projectId, workflowIdsAsIntegers);
+            addWorkflowsToProject(getValidDataSource(), projectId, workflowIdsAsIntegers);
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException("The addition of the workflows was unsuccessful: " + e.getMessage(), e);
         } catch (SQLException e) {
@@ -238,10 +239,23 @@ public class Projects {
                 throw new InternalServerErrorException(e);
             }
 
-            removeWorkflowsFromProjects(LIMSInitializationListener.getDataSource(), workflowIdsAsIntegers);
+            removeWorkflowsFromProjects(getValidDataSource(), workflowIdsAsIntegers);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The removal of the workflows from projects was unsuccessful: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     *
+     * @return The server's {@link DataSource} to the LIMS database.
+     * @throws InternalServerErrorException if there is no connection
+     */
+    private @Nonnull DataSource getValidDataSource() {
+        DataSource dataSource = LIMSInitializationListener.getDataSource();
+        if(dataSource == null) {
+            throw new InternalServerErrorException("Server has no connection to database and should be restarted.");
+        }
+        return dataSource;
     }
 
     /**
@@ -250,10 +264,7 @@ public class Projects {
      * @param projectIds A list of project IDs for which to retrieve projects or an empty list if all projects are to be retrieved
      * @return A list of projects matching the specified ids or all projects if no ids were specified.
      */
-    static List<Project> getProjects(DataSource dataSource, Collection<Integer> projectIds) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static List<Project> getProjects(@Nonnull DataSource dataSource, Collection<Integer> projectIds) throws SQLException {
         if (projectIds == null) {
             throw new BadRequestException("projectIds is null.");
         }
@@ -297,10 +308,7 @@ public class Projects {
      * @param role The role to check for.
      * @return A list of {@link Project}s that the specified user is allowed to view.  Or null if there are no projects in the system.
      */
-    public static List<Project> getProjectsUserHasRoleAccessFor(DataSource dataSource, User user, Role role) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    public static List<Project> getProjectsUserHasRoleAccessFor(@Nonnull DataSource dataSource, User user, Role role) throws SQLException {
         if (user == null) {
             throw new BadRequestException("user is null.");
         }
@@ -345,10 +353,7 @@ public class Projects {
         return projectsUserHasRoleAccessFor;
     }
 
-    static synchronized int addProject(DataSource dataSource, Project project) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static synchronized int addProject(@Nonnull DataSource dataSource, Project project) throws SQLException {
         if (project == null) {
             throw new BadRequestException("project is null.");
         }
@@ -392,10 +397,7 @@ public class Projects {
         }
     }
 
-    static void updateProject(DataSource dataSource, Project project) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static void updateProject(@Nonnull DataSource dataSource, Project project) throws SQLException {
         if (project == null) {
             throw new BadRequestException("project is null.");
         }
@@ -428,11 +430,7 @@ public class Projects {
         }
     }
 
-    static void removeProject(DataSource dataSource, int projectId) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
-
+    static void removeProject(@Nonnull DataSource dataSource, int projectId) throws SQLException {
         Connection connection = null;
         PreparedStatement removeProjectStatement = null;
         try {
@@ -448,10 +446,7 @@ public class Projects {
         }
     }
 
-    static Map<User, Role> getProjectRoles(DataSource dataSource, int projectId, Collection<String> usernames) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static Map<User, Role> getProjectRoles(@Nonnull DataSource dataSource, int projectId, Collection<String> usernames) throws SQLException {
         if (usernames == null) {
             throw new BadRequestException("usernames is null.");
         }
@@ -491,10 +486,7 @@ public class Projects {
         return projectRoles;
     }
 
-    static void addProjectRoles(DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static void addProjectRoles(@Nonnull DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
         if (userToRole == null) {
             throw new BadRequestException("userToRole is null.");
         }
@@ -545,10 +537,7 @@ public class Projects {
         }
     }
 
-    static void addNewProjectRoles(DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static void addNewProjectRoles(@Nonnull DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
         if (userToRole == null) {
             throw new BadRequestException("userToRole is null.");
         }
@@ -589,10 +578,7 @@ public class Projects {
         }
     }
 
-    static void updateProjectRoles(DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static void updateProjectRoles(@Nonnull DataSource dataSource, int projectId, Map<User, Role> userToRole) throws SQLException {
         if (userToRole == null) {
             throw new BadRequestException("username is null.");
         }
@@ -634,10 +620,7 @@ public class Projects {
         }
     }
 
-    static void removeProjectRoles(DataSource dataSource, int projectId, Collection<String> usernames) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static void removeProjectRoles(@Nonnull DataSource dataSource, int projectId, Collection<String> usernames) throws SQLException {
         if (usernames == null) {
             throw new BadRequestException("usernames is null.");
         }
@@ -669,11 +652,7 @@ public class Projects {
         }
     }
 
-    static Set<Workflow> getWorkflowsFromProject(DataSource dataSource, int projectId) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
-
+    static Set<Workflow> getWorkflowsFromProject(@Nonnull DataSource dataSource, int projectId) throws SQLException {
         Set<Workflow> workflows = new HashSet<Workflow>();
 
         Connection connection = null;
@@ -703,11 +682,7 @@ public class Projects {
         return workflows;
     }
 
-    static void addWorkflowsToProject(DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException, DatabaseServiceException {
-        if (dataSource == null) {
-            throw new IllegalArgumentException("dataSource is null.");
-        }
-
+    static void addWorkflowsToProject(@Nonnull DataSource dataSource, int projectId, Collection<Integer> workflowIds) throws SQLException, DatabaseServiceException {
         if (workflowIds == null) {
             throw new IllegalArgumentException("workflowIds is null.");
         }
@@ -858,10 +833,7 @@ public class Projects {
         }
     }
 
-    static void removeWorkflowsFromProjects(DataSource dataSource, Collection<Integer> workflowIds) throws SQLException {
-        if (dataSource == null) {
-            throw new BadRequestException("dataSource is null.");
-        }
+    static void removeWorkflowsFromProjects(@Nonnull DataSource dataSource, Collection<Integer> workflowIds) throws SQLException {
         if (workflowIds == null) {
             throw new BadRequestException("workflowIds is null.");
         }

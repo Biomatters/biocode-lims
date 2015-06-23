@@ -10,6 +10,7 @@ import com.biomatters.geneious.publicapi.plugin.DocumentOperationException;
 import com.biomatters.geneious.publicapi.plugin.DocumentViewer;
 import com.biomatters.geneious.publicapi.plugin.GeneiousAction;
 import com.biomatters.plugins.biocode.BiocodePlugin;
+import com.biomatters.plugins.biocode.BiocodeUtilities;
 import com.biomatters.plugins.biocode.labbench.PlateDocument;
 import com.biomatters.plugins.biocode.labbench.Workflow;
 import com.biomatters.plugins.biocode.labbench.WorkflowDocument;
@@ -20,6 +21,8 @@ import com.biomatters.plugins.biocode.server.Role;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.*;
 import java.util.List;
 
@@ -45,21 +48,31 @@ public class ProjectViewer extends DocumentViewer {
         table.setEditable(false);
 
         new javax.swing.SwingWorker<Void, Void>() {
+
+            private Exception exceptionDuringRetrieval;
             @Override
             protected Void doInBackground() throws Exception {
                 try {
                     retrieveDataFromProjectLimsDatabase();
                 } catch (DatabaseServiceException e) {
-                    Dialogs.showMessageDialog("An error was encountered while attempting to construct the project viewer: " + e.getMessage());
+                    exceptionDuringRetrieval = e;
                 } catch (DocumentOperationException e) {
-                    Dialogs.showMessageDialog("An error was encountered while attempting to construct the project viewer: " + e.getMessage());
+                    exceptionDuringRetrieval = e;
                 }
                 return null;
             }
 
             @Override
             protected void done() {
-                updateTable(generateTableHtml(workflows, projectToWorkflows));
+                if(exceptionDuringRetrieval != null) {
+                    String message = "Failed to retrieve project assignments from server: " + exceptionDuringRetrieval.getMessage();
+                    StringWriter stacktrace = new StringWriter();
+                    exceptionDuringRetrieval.printStackTrace(new PrintWriter(stacktrace));
+                    message += "<br><br>Details:<br>" + stacktrace.toString().replace("\n", "<br>");
+                    table.setText(message);
+                } else {
+                    updateTable(generateTableHtml(workflows, projectToWorkflows));
+                }
             }
         }.execute();
     }

@@ -956,7 +956,7 @@ public class ReactionUtilities {
             if(!creating && options.fieldIsFinal(option.getName())) {
                 option.setEnabled(false);
                 JTextField field = new JTextField(30);
-                String text = "";
+                String text;
                 if (option instanceof Options.ComboBoxOption) {
                     Options.ComboBoxOption optionAsComboBoxOption = (Options.ComboBoxOption)option;
                     Object value = optionAsComboBoxOption.getValue();

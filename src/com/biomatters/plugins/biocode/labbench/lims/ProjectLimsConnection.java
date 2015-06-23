@@ -161,7 +161,7 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
                     Project reactionProject = getProject(projects, reactionProjectId);
 
                     if (reactionProject == null) {
-                        throw new DatabaseServiceException("Reaction with id " + reaction.getId() + " associated with invalid project " + reactionProject.name + ".", false);
+                        throw new DatabaseServiceException("Reaction with id " + reaction.getId() + " associated with invalid project (ID=" + reactionProjectId + ").", false);
                     }
 
                     if (!projectToWorkflows.get(reactionProject).contains(reactionWorkflow)) {

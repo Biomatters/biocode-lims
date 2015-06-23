@@ -9,10 +9,10 @@ import java.util.*;
  * @author Gen Li
  *         Created on 24/04/15 3:01 PM
  */
-public class ProjectSelectionOption extends Options {
+public class ProjectSelectionOptions extends Options {
     private ComboBoxOption<OptionValue> projectComboBox;
 
-    public ProjectSelectionOption(Collection<Project> projects) {
+    public ProjectSelectionOptions(Collection<Project> projects) {
         List<OptionValue> projectOptionValues = createProjectOptionValues(projects);
         projectComboBox = addComboBoxOption("project", "Project:", projectOptionValues, projectOptionValues.get(0));
         addLabel("Note: Changes will be applied immediately.");

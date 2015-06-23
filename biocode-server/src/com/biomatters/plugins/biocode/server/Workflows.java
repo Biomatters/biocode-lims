@@ -59,7 +59,7 @@ public class Workflows {
             }
 
             if (workflows.isEmpty()) {
-                return null;
+                throw new NotFoundException("No workflow found for \"" + workflowName + "\"");
             }
 
             Workflow workflow = workflows.get(0);

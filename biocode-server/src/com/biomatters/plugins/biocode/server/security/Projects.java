@@ -21,7 +21,7 @@ import java.util.*;
 public class Projects {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
-    public Response getProjectsLoggedInUserHasRoleAccessTo(@QueryParam("roleId")int roleId) {
+    public Response getProjectsLoggedInUserHasRoleAccessTo(@DefaultValue("2")@QueryParam("roleId")int roleId) {
         try {
             return Response.ok(new GenericEntity<List<Project>>(getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getDataSource(), Users.getLoggedInUser(), Role.getRole(roleId))){}).build();
         } catch (SQLException e) {
@@ -55,10 +55,7 @@ public class Projects {
     @Produces("text/plain")
     public String addProject(Project project) {
         try {
-            User loggedInUser = Users.getLoggedInUser();
-            if (loggedInUser == null || !loggedInUser.isAdministrator) {
-                throw new ForbiddenException("The addition of the project was unsuccessful: Administrator access is required.");
-            }
+            checkLoggedInUserIsAdmin("The addition of the project was unsuccessful: Administrator access is required.");
 
             return Integer.toString(addProject(LIMSInitializationListener.getDataSource(), project));
         } catch (SQLException e) {
@@ -66,14 +63,18 @@ public class Projects {
         }
     }
 
+    private void checkLoggedInUserIsAdmin(String message) {
+        User loggedInUser = Users.getLoggedInUser();
+        if (loggedInUser == null || !loggedInUser.isAdministrator) {
+            throw new ForbiddenException(message);
+        }
+    }
+
     @PUT
     @Consumes({"application/json", "application/xml"})
     @Path("{id}")
     public void updateProject(@PathParam("id")int id, Project project) {
-        User loggedInUser = Users.getLoggedInUser();
-        if (loggedInUser == null || !loggedInUser.isAdministrator) {
-            throw new ForbiddenException("The update of the project was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The update of the project was unsuccessful: Administrator access is required.");
 
         if (project == null) {
             throw new BadRequestException("project is null.");
@@ -92,10 +93,7 @@ public class Projects {
     @Path("{id}")
     public void removeProject(@PathParam("id")int id) {
         try {
-            User loggedInUser = Users.getLoggedInUser();
-            if (loggedInUser == null || !loggedInUser.isAdministrator) {
-                throw new ForbiddenException("The removal of the project was unsuccessful: Administrator access is required.");
-            }
+            checkLoggedInUserIsAdmin("The removal of the project was unsuccessful: Administrator access is required.");
 
             removeProject(LIMSInitializationListener.getDataSource(), id);
         } catch (SQLException e) {
@@ -129,10 +127,7 @@ public class Projects {
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{id}/roles/{username}")
     public Role getProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
-        User loggedInUser = Users.getLoggedInUser();
-        if (loggedInUser == null || !loggedInUser.isAdministrator) {
-            throw new ForbiddenException("The retrieval of the project role was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The retrieval of the project role was unsuccessful: Administrator access is required.");
 
         if (username == null) {
             throw new BadRequestException("username is null.");
@@ -159,10 +154,7 @@ public class Projects {
     @Consumes({"application/json", "application/xml"})
     @Path("{id}/roles/{username}")
     public void addProjectRole(@PathParam("id") int projectId, @PathParam("username") String username, Role role) {
-        User loggedInUser = Users.getLoggedInUser();
-        if (loggedInUser == null || !loggedInUser.isAdministrator) {
-            throw new ForbiddenException("The addition of the project role was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The addition of the project role was unsuccessful: Administrator access is required.");
 
         if (role == null) {
             throw new BadRequestException("role is null.");
@@ -186,10 +178,7 @@ public class Projects {
     @DELETE
     @Path("{id}/roles/{username}")
     public void deleteProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
-        User loggedInUser = Users.getLoggedInUser();
-        if (loggedInUser == null || !loggedInUser.isAdministrator) {
-            throw new ForbiddenException("The deletion of the project role was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The deletion of the project role was unsuccessful: Administrator access is required.");
 
         if (username == null) {
             throw new BadRequestException("username is null.");

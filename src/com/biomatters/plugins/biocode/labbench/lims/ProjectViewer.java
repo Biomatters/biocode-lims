@@ -34,7 +34,7 @@ public class ProjectViewer extends DocumentViewer {
     private Set<Workflow> workflows;
     private Map<Project, Collection<Workflow>> projectToWorkflows;
     private List<Project> writableProjects;
-    private static String INITIAL_CONTENT = "Loading...";
+    private static final String INITIAL_CONTENT = "Loading...";
 
     public ProjectViewer(AnnotatedPluginDocument[] annotatedDocuments, ProjectLimsConnection projectLimsConnection) throws DatabaseServiceException, DocumentOperationException {
         this.annotatedDocuments = annotatedDocuments;
@@ -217,17 +217,17 @@ public class ProjectViewer extends DocumentViewer {
 
     @Override
     public ActionProvider getActionProvider() {
-        ActionProvider actionProvider = new ActionProvider() {
+        return new ActionProvider() {
             @Override
             public List<GeneiousAction> getOtherActions() {
                 GeneiousAction action = new GeneiousAction("Assign all workflows to a project", "", BiocodePlugin.getIcons("bulkEdit_16.png")) {
                     @Override
                     public void actionPerformed(ActionEvent actionEvent) {
                         List<Project> possibleProjects = getPossibleProjects(writableProjects);
-                        ProjectSelectionOption projectSelectionOption = new ProjectSelectionOption(possibleProjects);
-                        if (Dialogs.showOptionsDialog(projectSelectionOption, "Project Selection", false)) {
+                        ProjectSelectionOptions projectSelectionOptions = new ProjectSelectionOptions(possibleProjects);
+                        if (Dialogs.showOptionsDialog(projectSelectionOptions, "Project Selection", false)) {
                             try {
-                                int idOfSelectedProject = projectSelectionOption.getIdOfSelectedProject();
+                                int idOfSelectedProject = projectSelectionOptions.getIdOfSelectedProject();
                                 if (idOfSelectedProject == Project.NONE_PROJECT.id) {
                                     projectLimsConnection.removeWorkflowsFromProject(getWorkflowIds(workflows));
                                 } else {
@@ -251,8 +251,6 @@ public class ProjectViewer extends DocumentViewer {
                 return Collections.singletonList(action);
             }
         };
-
-        return actionProvider;
     }
 
     private static List<Project> getPossibleProjects(Collection<Project> projects) {

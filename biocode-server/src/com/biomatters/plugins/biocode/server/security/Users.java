@@ -9,6 +9,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsImpl;
 
+import javax.annotation.Nonnull;
 import javax.sql.DataSource;
 import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;
@@ -39,18 +40,13 @@ public class Users {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     public Response list() {
-        if (!Users.getLoggedInUser().isAdministrator) {
-            throw new ForbiddenException("The retrieval of user account details was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The retrieval of user account details was unsuccessful: Administrator access is required.");
 
         Connection connection = null;
-
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
-
-            List<User> users = getUserList(connection);
-
-            return Response.ok(new GenericEntity<List<User>>(users){}).build();
+            DataSource dataSource = getValidDataSource();
+            connection = dataSource.getConnection();
+            return Response.ok(new GenericEntity<List<User>>(getUserList(connection)){}).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException("Failed to list users.", e);
         } finally {
@@ -92,9 +88,7 @@ public class Users {
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{username}")
     public User getUser(@PathParam("username")String username) {
-        if (!Users.getLoggedInUser().isAdministrator) {
-            throw new ForbiddenException("The retrieval of the user account details was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The retrieval of the user account details was unsuccessful: Administrator access is required.");
 
         User user = getUserForUsername(username);
 
@@ -108,7 +102,9 @@ public class Users {
     private static User getUserForUsername(String username) {
         Connection connection = null;
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            DataSource dataSource = getValidDataSource();
+
+            connection = dataSource.getConnection();
 
             String usernameUserTable = BiocodeServerLIMSDatabaseConstants.USERS_TABLE_NAME + "." + BiocodeServerLIMSDatabaseConstants.USERNAME_COLUMN_NAME_USERS_TABLE;
 
@@ -181,9 +177,7 @@ public class Users {
     @Produces("text/plain")
     @Consumes({"application/json", "application/xml"})
     public String addUser(User user) {
-        if (!Users.getLoggedInUser().isAdministrator) {
-            throw new ForbiddenException("The addition of the user account was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The addition of the user account was unsuccessful: Administrator access is required.");
 
         return addUser(LIMSInitializationListener.getDataSource(), user);
     }
@@ -247,14 +241,14 @@ public class Users {
             return "The update of the user account was unsuccessful: LDAP user accounts cannot be updated through the Biocode Server.";
         }
 
-        if (!Users.getLoggedInUser().isAdministrator) {
-            throw new ForbiddenException("The update of the user account was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The update of the user account was unsuccessful: Administrator access is required.");
 
         Connection connection = null;
 
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            DataSource dataSource = getValidDataSource();
+
+            connection = dataSource.getConnection();
 
             SqlUtilities.beginTransaction(connection);
 
@@ -279,7 +273,7 @@ public class Users {
             statement.setObject(i++, user.lastname);
             statement.setObject(i++, user.email);
             statement.setObject(i++, user.enabled);
-            statement.setObject(i++, username);
+            statement.setObject(i, username);
 
             int updated = statement.executeUpdate();
 
@@ -324,14 +318,13 @@ public class Users {
             return "The deletion of the user account was unsuccessful: LDAP user accounts cannot be deleted through the Biocode Server.";
         }
 
-        if (!Users.getLoggedInUser().isAdministrator) {
-            throw new ForbiddenException("The deletion of the user account was unsuccessful: Administrator access is required.");
-        }
+        checkLoggedInUserIsAdmin("The deletion of the user account was unsuccessful: Administrator access is required.");
 
         Connection connection = null;
-
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            DataSource dataSource = getValidDataSource();
+
+            connection = dataSource.getConnection();
 
             SqlUtilities.beginTransaction(connection);
 
@@ -357,6 +350,26 @@ public class Users {
         } finally {
             SqlUtilities.closeConnection(connection);
         }
+    }
+
+    private static void checkLoggedInUserIsAdmin(String message) {
+        User loggedInUser = Users.getLoggedInUser();
+        if (loggedInUser == null || !loggedInUser.isAdministrator) {
+            throw new ForbiddenException(message);
+        }
+    }
+
+    /**
+     *
+     * @return The server's {@link DataSource} to the LIMS database.
+     * @throws InternalServerErrorException if there is no connection
+     */
+    private static @Nonnull DataSource getValidDataSource() {
+        DataSource dataSource = LIMSInitializationListener.getDataSource();
+        if(dataSource == null) {
+            throw new InternalServerErrorException("Server has no connection to database and should be restarted.");
+        }
+        return dataSource;
     }
 
     /**
@@ -424,9 +437,10 @@ public class Users {
 
     private static boolean addLDAPUser(String username, String firstname, String lastname, String email, boolean isAdministrator) {
         Connection connection = null;
-
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            DataSource dataSource = getValidDataSource();
+
+            connection = dataSource.getConnection();
 
             SqlUtilities.beginTransaction(connection);
 

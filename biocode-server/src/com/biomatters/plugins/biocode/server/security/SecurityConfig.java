@@ -36,6 +36,7 @@ import java.util.Set;
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private static final String BASE_URL    = "/biocode";
+    private static final String ERRORS_URL  = BASE_URL + "/info/errors";
     private static final String USERS_URL   = BASE_URL + "/users";
 
     private PasswordEncoder encoder = new BCryptPasswordEncoder();
@@ -71,6 +72,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http.csrf().disable()
                 .authorizeRequests()
                 .antMatchers(USERS_URL + "/**").hasAuthority(BiocodeServerLIMSDatabaseConstants.AUTHORITY_ADMIN_CODE)
+                .antMatchers(ERRORS_URL).permitAll()
                 .antMatchers(BASE_URL + "/**").authenticated()
                 .anyRequest().permitAll().and()
                 .addFilter(filter())

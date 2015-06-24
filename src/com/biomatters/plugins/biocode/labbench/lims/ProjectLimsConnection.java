@@ -1,6 +1,5 @@
 package com.biomatters.plugins.biocode.labbench.lims;
 
-import com.biomatters.geneious.publicapi.components.Dialogs;
 import com.biomatters.geneious.publicapi.databaseservice.DatabaseServiceException;
 import com.biomatters.plugins.biocode.labbench.BadDataException;
 import com.biomatters.plugins.biocode.labbench.Workflow;
@@ -14,16 +13,64 @@ import jebl.util.ProgressListener;
 import java.util.*;
 
 /**
+ * A lims connection that restricts access to data via the segregation of workflows into groups called projects. Access
+ * to a datum is defined by the project to which the workflow associated with the datum is in. Users that have write
+ * access to a project have write access to data associated with workflows in the project.
  *
  * @author Gen Li
  *         Created on 21/04/15 1:44 PM
  */
 public abstract class ProjectLimsConnection extends LIMSConnection {
+    /**
+     * @param minimumRole The role that the logged in user must at least have for projects that are to be returned.
+     * @return A list of projects for which the logged in user must have at least the supplied role.
+     * @throws DatabaseServiceException
+     */
     public abstract List<Project> getProjects(Role minimumRole) throws DatabaseServiceException;
+
+    /**
+     * @return A map between projects and workflows.
+     * @throws DatabaseServiceException
+     */
     public abstract Map<Project, Collection<Workflow>> getProjectToWorkflows() throws DatabaseServiceException;
+
+    /**
+     * Adds the workflows denoted by the supplied workflow ids to the project denoted by the supplied project id.
+     *
+     * @param projectId The id of the project to which the workflows denoted by the supplied workflow ids are to be
+     *                  added.
+     * @param workflowIds The ids of the workflows to be added to the project denoted by the supplied project id.
+     * @throws DatabaseServiceException
+     */
     public abstract void addWorkflowsToProject(int projectId, Collection<Integer> workflowIds) throws DatabaseServiceException;
+
+    /**
+     * Removes the workflows denoted by the supplied workflow ids from all projects.
+     *
+     * @param workflowIds The ids of the workflows to be removed from all projects.
+     * @throws DatabaseServiceException
+     */
     public abstract void removeWorkflowsFromProject(Collection<Integer> workflowIds) throws DatabaseServiceException;
+
+    /**
+     * Template method for LimsConnection.getPlates()_. Retrieves the plates that are denoted by the supplied plate ids.
+     *
+     * @param plateIds The ids of plates to be returned.
+     * @param cancelable A cancelable for displaying the progress of the method and providing users with the ability to
+     *                   cancel the method.
+     * @return
+     * @throws DatabaseServiceException
+     */
     protected abstract List<Plate> getPlates__(Collection<Integer> plateIds, Cancelable cancelable) throws DatabaseServiceException;
+
+    /**
+     * Template method for LimsConnection.savePlates(). Saves the supplied plates.
+     *
+     * @param plates A list of plates to be saved.
+     * @param progressListener A progress listener for displaying the progress of method.
+     * @throws BadDataException
+     * @throws DatabaseServiceException
+     */
     protected abstract void savePlates_(List<Plate> plates, ProgressListener progressListener) throws BadDataException, DatabaseServiceException;
 
     @Override
@@ -55,7 +102,7 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
                 }
             }
         } catch (DatabaseServiceException e) {
-            Dialogs.showMessageDialog("Please re-assign the workflows associated with the saved reactions to projects manually.");
+            throw new DatabaseServiceException(e, "An error occurred: " + e.getMessage() + ".\n\nPlease re-assign the workflows associated with the saved reactions to projects manually.", false);
         }
     }
 

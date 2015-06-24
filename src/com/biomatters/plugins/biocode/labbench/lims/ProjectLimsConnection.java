@@ -67,7 +67,7 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
      * Template method for LimsConnection.savePlates(). Saves the supplied plates.
      *
      * @param plates A list of plates to be saved.
-     * @param progressListener A progress listener for displaying the progress of method.
+     * @param progressListener A progress listener for displaying the progress of the method.
      * @throws BadDataException
      * @throws DatabaseServiceException
      */

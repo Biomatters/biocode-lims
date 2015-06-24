@@ -22,9 +22,9 @@ import java.util.*;
 public class Projects {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
-    public Response getProjectsLoggedInUserHasRoleAccessTo(@DefaultValue("2")@QueryParam("roleId")int roleId) {
+    public Response getProjectsLoggedInUserHasRoleAccessTo(@DefaultValue("2") @QueryParam("roleId") int roleId) {
         try {
-            return Response.ok(new GenericEntity<List<Project>>(getProjectsUserHasRoleAccessFor(getValidDataSource(), Users.getLoggedInUser(), Role.getRole(roleId))){}).build();
+            return Response.ok(new GenericEntity<List<Project>>(getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getValidDataSource(), Users.getLoggedInUser(), Role.getRole(roleId))){}).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project details was unsuccessful: " + e.getMessage(), e);
         }
@@ -33,11 +33,11 @@ public class Projects {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{id}")
-    public Project getProject(@PathParam("id")int projectId) {
+    public Project getProject(@PathParam("id") int projectId) {
         List<Project> retrievedProjects;
 
         try {
-            retrievedProjects = getProjects(getValidDataSource(), Collections.singleton(projectId));
+            retrievedProjects = getProjects(LIMSInitializationListener.getValidDataSource(), Collections.singleton(projectId));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project details was unsuccessful: " + e.getMessage(), e);
         }
@@ -56,26 +56,19 @@ public class Projects {
     @Produces("text/plain")
     public String addProject(Project project) {
         try {
-            checkLoggedInUserIsAdmin("The addition of the project was unsuccessful: Administrator access is required.");
+            Users.checkLoggedInUserIsAdmin("The addition of the project was unsuccessful: Administrator access is required.");
 
-            return Integer.toString(addProject(getValidDataSource(), project));
+            return Integer.toString(addProject(LIMSInitializationListener.getValidDataSource(), project));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The addition of the project was unsuccessful: " + e.getMessage(), e);
-        }
-    }
-
-    private void checkLoggedInUserIsAdmin(String message) {
-        User loggedInUser = Users.getLoggedInUser();
-        if (loggedInUser == null || !loggedInUser.isAdministrator) {
-            throw new ForbiddenException(message);
         }
     }
 
     @PUT
     @Consumes({"application/json", "application/xml"})
     @Path("{id}")
-    public void updateProject(@PathParam("id")int id, Project project) {
-        checkLoggedInUserIsAdmin("The update of the project was unsuccessful: Administrator access is required.");
+    public void updateProject(@PathParam("id") int id, Project project) {
+        Users.checkLoggedInUserIsAdmin("The update of the project was unsuccessful: Administrator access is required.");
 
         if (project == null) {
             throw new BadRequestException("project is null.");
@@ -84,7 +77,7 @@ public class Projects {
         project.id = id;
 
         try {
-            updateProject(getValidDataSource(), project);
+            updateProject(LIMSInitializationListener.getValidDataSource(), project);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The update of the project was unsuccessful: " + e.getMessage(), e);
         }
@@ -92,11 +85,11 @@ public class Projects {
 
     @DELETE
     @Path("{id}")
-    public void removeProject(@PathParam("id")int id) {
+    public void removeProject(@PathParam("id") int id) {
         try {
-            checkLoggedInUserIsAdmin("The removal of the project was unsuccessful: Administrator access is required.");
+            Users.checkLoggedInUserIsAdmin("The removal of the project was unsuccessful: Administrator access is required.");
 
-            removeProject(getValidDataSource(), id);
+            removeProject(LIMSInitializationListener.getValidDataSource(), id);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The removal of the project was unsuccessful: " + e.getMessage(), e);
         }
@@ -105,7 +98,7 @@ public class Projects {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{id}/roles")
-    public Response listProjectRoles(@PathParam("id")int projectId) {
+    public Response listProjectRoles(@PathParam("id") int projectId) {
         try {
             User loggedInUser = Users.getLoggedInUser();
 
@@ -118,7 +111,7 @@ public class Projects {
                 userNames.add(loggedInUser.username);
             }
 
-            return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(getValidDataSource(), projectId, userNames))){}).build();
+            return Response.ok(new GenericEntity<List<UserRole>>(UserRole.forMap(getProjectRoles(LIMSInitializationListener.getValidDataSource(), projectId, userNames))){}).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the project roles was unsuccessful: " + e.getMessage(), e);
         }
@@ -127,8 +120,8 @@ public class Projects {
     @GET
     @Produces({"application/json;qs=1", "application/xml;qs=0.5"})
     @Path("{id}/roles/{username}")
-    public Role getProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
-        checkLoggedInUserIsAdmin("The retrieval of the project role was unsuccessful: Administrator access is required.");
+    public Role getProjectRole(@PathParam("id") int projectId, @PathParam("username") String username) {
+        Users.checkLoggedInUserIsAdmin("The retrieval of the project role was unsuccessful: Administrator access is required.");
 
         if (username == null) {
             throw new BadRequestException("username is null.");
@@ -139,7 +132,7 @@ public class Projects {
 
         Map<User, Role> userToRole;
         try {
-            userToRole = getProjectRoles(getValidDataSource(), projectId, Collections.singleton(username));
+            userToRole = getProjectRoles(LIMSInitializationListener.getValidDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval the the project role was unsuccessful: " + e.getMessage(), e);
         }
@@ -155,7 +148,7 @@ public class Projects {
     @Consumes({"application/json", "application/xml"})
     @Path("{id}/roles/{username}")
     public void addProjectRole(@PathParam("id") int projectId, @PathParam("username") String username, Role role) {
-        checkLoggedInUserIsAdmin("The addition of the project role was unsuccessful: Administrator access is required.");
+        Users.checkLoggedInUserIsAdmin("The addition of the project role was unsuccessful: Administrator access is required.");
 
         if (role == null) {
             throw new BadRequestException("role is null.");
@@ -170,7 +163,7 @@ public class Projects {
         User user = new User();
         user.username = username;
         try {
-            addProjectRoles(getValidDataSource(), projectId, Collections.singletonMap(user, role));
+            addProjectRoles(LIMSInitializationListener.getValidDataSource(), projectId, Collections.singletonMap(user, role));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The addition of the project role was unsuccessful: " + e.getMessage(), e);
         }
@@ -178,15 +171,15 @@ public class Projects {
 
     @DELETE
     @Path("{id}/roles/{username}")
-    public void deleteProjectRole(@PathParam("id")int projectId, @PathParam("username")String username) {
-        checkLoggedInUserIsAdmin("The deletion of the project role was unsuccessful: Administrator access is required.");
+    public void deleteProjectRole(@PathParam("id") int projectId, @PathParam("username") String username) {
+        Users.checkLoggedInUserIsAdmin("The deletion of the project role was unsuccessful: Administrator access is required.");
 
         if (username == null) {
             throw new BadRequestException("username is null.");
         }
 
         try {
-            removeProjectRoles(getValidDataSource(), projectId, Collections.singleton(username));
+            removeProjectRoles(LIMSInitializationListener.getValidDataSource(), projectId, Collections.singleton(username));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The deletion the project role was unsuccessful: " + e.getMessage(), e);
         }
@@ -195,9 +188,9 @@ public class Projects {
     @GET
     @Produces("application/xml")
     @Path("{id}/workflows")
-    public XMLSerializableList<Workflow> getWorkflowsFromProject(@PathParam("id")int projectId) {
+    public XMLSerializableList<Workflow> getWorkflowsFromProject(@PathParam("id") int projectId) {
         try {
-            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsFromProject(getValidDataSource(), projectId)));
+            return new XMLSerializableList<Workflow>(Workflow.class, new ArrayList<Workflow>(getWorkflowsFromProject(LIMSInitializationListener.getValidDataSource(), projectId)));
         } catch (SQLException e) {
             throw new InternalServerErrorException("The retrieval of the workflows was unsuccessful: " + e.getMessage(), e);
         }
@@ -206,7 +199,7 @@ public class Projects {
     @POST
     @Consumes("application/xml")
     @Path("{id}/workflows")
-    public void addWorkflowsToProject(@PathParam("id")int projectId, XMLSerializableList<XMLSerializableInteger> workflowIds) {
+    public void addWorkflowsToProject(@PathParam("id") int projectId, XMLSerializableList<XMLSerializableInteger> workflowIds) {
         try {
             Set<Integer> workflowIdsAsIntegers = new HashSet<Integer>();
 
@@ -214,7 +207,7 @@ public class Projects {
                 workflowIdsAsIntegers.add(workflowId.getValue());
             }
 
-            addWorkflowsToProject(getValidDataSource(), projectId, workflowIdsAsIntegers);
+            addWorkflowsToProject(LIMSInitializationListener.getValidDataSource(), projectId, workflowIdsAsIntegers);
         } catch (DatabaseServiceException e) {
             throw new InternalServerErrorException("The addition of the workflows was unsuccessful: " + e.getMessage(), e);
         } catch (SQLException e) {
@@ -239,23 +232,10 @@ public class Projects {
                 throw new InternalServerErrorException(e);
             }
 
-            removeWorkflowsFromProjects(getValidDataSource(), workflowIdsAsIntegers);
+            removeWorkflowsFromProjects(LIMSInitializationListener.getValidDataSource(), workflowIdsAsIntegers);
         } catch (SQLException e) {
             throw new InternalServerErrorException("The removal of the workflows from projects was unsuccessful: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     *
-     * @return The server's {@link DataSource} to the LIMS database.
-     * @throws InternalServerErrorException if there is no connection
-     */
-    private @Nonnull DataSource getValidDataSource() {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-        if(dataSource == null) {
-            throw new InternalServerErrorException("Server has no connection to database and should be restarted.");
-        }
-        return dataSource;
     }
 
     /**

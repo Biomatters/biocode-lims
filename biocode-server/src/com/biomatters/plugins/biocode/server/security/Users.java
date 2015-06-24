@@ -9,7 +9,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.ldap.userdetails.LdapUserDetailsImpl;
 
-import javax.annotation.Nonnull;
 import javax.sql.DataSource;
 import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;
@@ -44,7 +43,7 @@ public class Users {
 
         Connection connection = null;
         try {
-            DataSource dataSource = getValidDataSource();
+            DataSource dataSource = LIMSInitializationListener.getValidDataSource();
             connection = dataSource.getConnection();
             return Response.ok(new GenericEntity<List<User>>(getUserList(connection)){}).build();
         } catch (SQLException e) {
@@ -102,7 +101,7 @@ public class Users {
     private static User getUserForUsername(String username) {
         Connection connection = null;
         try {
-            DataSource dataSource = getValidDataSource();
+            DataSource dataSource = LIMSInitializationListener.getValidDataSource();
 
             connection = dataSource.getConnection();
 
@@ -179,7 +178,7 @@ public class Users {
     public String addUser(User user) {
         checkLoggedInUserIsAdmin("The addition of the user account was unsuccessful: Administrator access is required.");
 
-        return addUser(LIMSInitializationListener.getDataSource(), user);
+        return addUser(LIMSInitializationListener.getValidDataSource(), user);
     }
 
     static String addUser(DataSource dataSource, User user) {
@@ -246,7 +245,7 @@ public class Users {
         Connection connection = null;
 
         try {
-            DataSource dataSource = getValidDataSource();
+            DataSource dataSource = LIMSInitializationListener.getValidDataSource();
 
             connection = dataSource.getConnection();
 
@@ -322,7 +321,7 @@ public class Users {
 
         Connection connection = null;
         try {
-            DataSource dataSource = getValidDataSource();
+            DataSource dataSource = LIMSInitializationListener.getValidDataSource();
 
             connection = dataSource.getConnection();
 
@@ -352,24 +351,11 @@ public class Users {
         }
     }
 
-    private static void checkLoggedInUserIsAdmin(String message) {
+    public static void checkLoggedInUserIsAdmin(String message) {
         User loggedInUser = Users.getLoggedInUser();
         if (loggedInUser == null || !loggedInUser.isAdministrator) {
             throw new ForbiddenException(message);
         }
-    }
-
-    /**
-     *
-     * @return The server's {@link DataSource} to the LIMS database.
-     * @throws InternalServerErrorException if there is no connection
-     */
-    private static @Nonnull DataSource getValidDataSource() {
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
-        if(dataSource == null) {
-            throw new InternalServerErrorException("Server has no connection to database and should be restarted.");
-        }
-        return dataSource;
     }
 
     /**
@@ -438,7 +424,7 @@ public class Users {
     private static boolean addLDAPUser(String username, String firstname, String lastname, String email, boolean isAdministrator) {
         Connection connection = null;
         try {
-            DataSource dataSource = getValidDataSource();
+            DataSource dataSource = LIMSInitializationListener.getValidDataSource();
 
             connection = dataSource.getConnection();
 

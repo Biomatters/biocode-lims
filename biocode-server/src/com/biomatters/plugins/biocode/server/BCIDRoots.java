@@ -27,7 +27,7 @@ public class BCIDRoots {
         PreparedStatement getBCIDRootsStatement = null;
         ResultSet BCIDRootsResultSet = null;
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            connection = LIMSInitializationListener.getValidDataSource().getConnection();
 
             String getBCIDRootsQuery = "SELECT * " +
                                        "FROM " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME;
@@ -77,7 +77,7 @@ public class BCIDRoots {
         Connection connection = null;
         PreparedStatement addBCIDRootStatement = null;
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            connection = LIMSInitializationListener.getValidDataSource().getConnection();
 
             String addBCIDRootQuery = "INSERT INTO " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " VALUES (?, ?)";
 
@@ -122,7 +122,7 @@ public class BCIDRoots {
         Connection connection = null;
         PreparedStatement updateBCIDRootStatement = null;
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            connection = LIMSInitializationListener.getValidDataSource().getConnection();
 
             String updateBCIDRootQuery = "UPDATE " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
                                          "SET "    + BiocodeServerLIMSDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?, "
@@ -164,7 +164,7 @@ public class BCIDRoots {
         Connection connection = null;
         PreparedStatement deleteBCIDRootStatement = null;
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            connection = LIMSInitializationListener.getValidDataSource().getConnection();
 
             String deleteBCIDRootQuery = "DELETE FROM " + BiocodeServerLIMSDatabaseConstants.BCID_ROOTS_TABLE_NAME + " " +
                                          "WHERE "       + BiocodeServerLIMSDatabaseConstants.TYPE_COLUMN_NAME_BCID_ROOTS_TABLE + "=?";

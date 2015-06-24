@@ -196,7 +196,7 @@ public class QueryService {
             return Collections.emptyMap();
         }
         Multimap<Integer, String> mapping = HashMultimap.create();
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
+        DataSource dataSource = LIMSInitializationListener.getValidDataSource();
         Connection connection = null;
         try {
             connection = dataSource.getConnection();
@@ -243,7 +243,7 @@ public class QueryService {
         }
 
         Map<Integer, String> mapping = new HashMap<Integer, String>();
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
+        DataSource dataSource = LIMSInitializationListener.getValidDataSource();
         Connection connection = null;
         try {
             StringBuilder queryBuilder = new StringBuilder("select assembly.id, extraction.extractionId from assembly, workflow, extraction where assembly.id IN ");
@@ -286,7 +286,7 @@ public class QueryService {
         PreparedStatement retrieveExtractionIDsStatement = null;
         ResultSet retrieveExtractionIDsResultSet = null;
         try {
-            connection = LIMSInitializationListener.getDataSource().getConnection();
+            connection = LIMSInitializationListener.getValidDataSource().getConnection();
             retrieveExtractionIDsStatement = connection.prepareStatement(
                     "SELECT sampleId, extractionId " +
                     "FROM extraction " +
@@ -318,7 +318,7 @@ public class QueryService {
             return Collections.emptyMap();
         }
         Map<Integer, String> mapping = new HashMap<Integer, String>();
-        DataSource dataSource = LIMSInitializationListener.getDataSource();
+        DataSource dataSource = LIMSInitializationListener.getValidDataSource();
         Connection connection = null;
         try {
             connection = dataSource.getConnection();

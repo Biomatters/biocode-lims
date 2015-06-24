@@ -117,11 +117,7 @@ public class AccessUtilities {
         PreparedStatement retrieveIdsOfProjectsThatGovernWorkflowsStatement = null;
         ResultSet retrieveIdsOfProjectsThatGovernWorkflowsResultSet = null;
         try {
-            DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-            if (dataSource == null) {
-                throw new DatabaseServiceException("The data source is null.", false);
-            }
+            DataSource dataSource = LIMSInitializationListener.getValidDataSource();
 
             connection = dataSource.getConnection();
             retrieveIdsOfProjectsThatGovernWorkflowsStatement = connection.prepareStatement(
@@ -136,7 +132,7 @@ public class AccessUtilities {
             }
 
             retrieveIdsOfProjectsThatGovernWorkflowsResultSet = retrieveIdsOfProjectsThatGovernWorkflowsStatement.executeQuery();
-            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIds(Projects.getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getDataSource(), user, role));
+            Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIds(Projects.getProjectsUserHasRoleAccessFor(LIMSInitializationListener.getValidDataSource(), user, role));
 
             while (retrieveIdsOfProjectsThatGovernWorkflowsResultSet.next()) {
                 if (!idsOfProjectsUserHasRoleFor.contains(retrieveIdsOfProjectsThatGovernWorkflowsResultSet.getInt("project_id"))) {
@@ -170,11 +166,7 @@ public class AccessUtilities {
         ResultSet retrieveExtractionIdsUserHasRoleForResultSet = null;
 
         try {
-            DataSource dataSource = LIMSInitializationListener.getDataSource();
-
-            if (dataSource == null) {
-                throw new DatabaseServiceException("The data source is null.", false);
-            }
+            DataSource dataSource = LIMSInitializationListener.getValidDataSource();
 
             Set<Integer> idsOfProjectsUserHasRoleFor = getProjectIds(Projects.getProjectsUserHasRoleAccessFor(dataSource, user, role));
 

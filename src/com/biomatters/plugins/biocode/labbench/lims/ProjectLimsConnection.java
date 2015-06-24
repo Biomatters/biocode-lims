@@ -102,7 +102,8 @@ public abstract class ProjectLimsConnection extends LIMSConnection {
                 }
             }
         } catch (DatabaseServiceException e) {
-            throw new DatabaseServiceException(e, "An error occurred: " + e.getMessage() + ".\n\nPlease re-assign the workflows associated with the saved reactions to projects manually.", false);
+            throw new DatabaseServiceException(e, "An error occurred: " + e.getMessage() + ".\n\n" +
+                    "Please re-assign the workflows associated with the saved reactions to projects manually.", e.isNetworkConnectionError());
         }
     }
 

@@ -19,8 +19,11 @@ import com.biomatters.plugins.biocode.server.security.LDAPConfiguration;
 import com.biomatters.plugins.biocode.utilities.SqlUtilities;
 import jebl.util.ProgressListener;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.servlet.*;
 import javax.sql.DataSource;
+import javax.ws.rs.InternalServerErrorException;
 import java.io.*;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -46,7 +49,7 @@ public class LIMSInitializationListener implements ServletContextListener {
         return limsConnection;
     }
 
-    public static DataSource getDataSource() {
+    private static @Nullable DataSource getDataSource() {
         try {
             if(limsConnection instanceof SqlLimsConnection) {
                 return ((SqlLimsConnection) limsConnection).getDataSource();
@@ -58,10 +61,23 @@ public class LIMSInitializationListener implements ServletContextListener {
         return null;
     }
 
+    /**
+     *
+     * @return The server's {@link DataSource} to the LIMS database.
+     * @throws InternalServerErrorException if there is no connection
+     */
+    @Nonnull
+    public static DataSource getValidDataSource() {
+        DataSource dataSource = getDataSource();
+        if(dataSource == null) {
+            throw new InternalServerErrorException("Server has no connection to database and should be restarted.");
+        }
+        return dataSource;
+    }
+
     private static LDAPConfiguration LDAPConfiguration;
 
     public static LDAPConfiguration getLDAPConfiguration() { return LDAPConfiguration; }
-
     private static List<Thermocycle> pcrThermocycles = new ArrayList<Thermocycle>();
     private static List<Thermocycle> cycleSequencingThermocycles = new ArrayList<Thermocycle>();
     private static List<PCRCocktail> pcrCocktails = new ArrayList<PCRCocktail>();
@@ -104,7 +120,7 @@ public class LIMSInitializationListener implements ServletContextListener {
 
             limsConnection = connectLims(connectionConfig); // to get error message.  In the future BiocodeService should be changed to expose it's connection errors
 
-            createBCIDRootsTableIfNecessary(getDataSource());
+            createBCIDRootsTableIfNecessary(getValidDataSource());
         } catch (IOException e) {
             initializationErrors.add(new IntializationError("Configuration Error",
                     "Failed to load properties file from " + connectionPropertiesFile.getAbsolutePath() + ": " + e.getMessage()));

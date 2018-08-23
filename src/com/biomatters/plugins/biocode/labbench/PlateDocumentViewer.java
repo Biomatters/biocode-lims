@@ -49,7 +49,7 @@ public class PlateDocumentViewer extends DocumentViewer{
     private List<Thermocycle> cycles;
     List<SimpleListener> actionsChangedListeners;
     private AnnotatedPluginDocument annotatedDocument;
-    private PlateView plateView;
+    private PlateViewPane plateView;
     private Map<Cocktail, Integer> cocktailCount;
     private final boolean isLocal;
     private JComponent container;
@@ -70,23 +70,23 @@ public class PlateDocumentViewer extends DocumentViewer{
         } catch (XMLSerializationException e) {
             throw new RuntimeException("Could not serialise the plate!",e);
         }
-        this.plateView = new PlateView(plate, false);
+        this.plateView = new JTablePlateView(plate, false);
         zoomInAction = new GeneiousAction("", "Zoom in", IconUtilities.getIcons("zoomin.png")) {
             public void actionPerformed(ActionEvent e) {
                 plateView.increaseZoom();
-                plateView.revalidate();
+                plateView.getComponent().revalidate();
             }
         };
         fullZoomAction = new GeneiousAction("", "Full Zoom", IconUtilities.getIcons("fullzoom.png")) {
             public void actionPerformed(ActionEvent e) {
                 plateView.setDefaultZoom();
-                plateView.revalidate();
+                plateView.getComponent().revalidate();
             }
         };
         zoomOutAction = new GeneiousAction("", "Zoom out", IconUtilities.getIcons("zoomout.png")) {
             public void actionPerformed(ActionEvent e) {
                 plateView.decreaseZoom();
-                plateView.revalidate();
+                plateView.getComponent().revalidate();
             }
         };
         saveAction = new GeneiousAction("Save") {
@@ -109,7 +109,7 @@ public class PlateDocumentViewer extends DocumentViewer{
                                 boolean errorDetected = false;
 
                                 if (!hasCheckedPlateForErrorsAtLeastOnce && !plateView.isEditted()) {
-                                    String reactionValidityCheckResult = allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, plateView, true);
+                                    String reactionValidityCheckResult = allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, plateView.getComponent(), true);
 
                                     if (!reactionValidityCheckResult.isEmpty()) {
                                         Dialogs.showMessageDialog(reactionValidityCheckResult);
@@ -162,7 +162,7 @@ public class PlateDocumentViewer extends DocumentViewer{
                         }
                     };
 
-                    BiocodeService.block("Saving plate...", plateView, runnable, updatePanelRunnable);
+                    BiocodeService.block("Saving plate...", plateView.getComponent(), runnable, updatePanelRunnable);
                 }
             }
         };
@@ -271,9 +271,9 @@ public class PlateDocumentViewer extends DocumentViewer{
         keyPanel.add(getColorKeyPanel(plateView.getPlate().getReaction(0, 0).getBackgroundColorer()));
         if(thingInsideScrollPane != null) {
             keyPanel.invalidate();
-            plateView.invalidate();
+            plateView.getComponent().invalidate();
             thingInsideScrollPane.revalidate();
-            plateView.repaint();
+            plateView.getComponent().repaint();
         }
     }
 
@@ -499,7 +499,7 @@ public class PlateDocumentViewer extends DocumentViewer{
 
     GeneiousAction editAction = new GeneiousAction("Edit All Wells", null, StandardIcons.edit.getIcons()) {
         public void actionPerformed(ActionEvent e) {
-            final List<Reaction> selectedReactions = plateView.getSelectedReactions();
+            final List<Reaction> selectedReactions = new ArrayList<Reaction>(plateView.getSelectedReactions());
 
             if (selectedReactions.isEmpty()) {
                 selectedReactions.addAll(Arrays.asList(plateView.getPlate().getReactions()));
@@ -510,7 +510,7 @@ public class PlateDocumentViewer extends DocumentViewer{
             Runnable editReactionsRunnable = new Runnable() {
                 @Override
                 public void run() {
-                    okSelected.set(ReactionUtilities.editReactions(selectedReactions, plateView, false, true));
+                    okSelected.set(ReactionUtilities.editReactions(selectedReactions, plateView.getComponent(), false, true));
                 }
             };
 
@@ -529,20 +529,20 @@ public class PlateDocumentViewer extends DocumentViewer{
                 }
             };
 
-            BiocodeService.block("Editing reactions...", plateView, editReactionsRunnable, postEditReactionsRunnable);
+            BiocodeService.block("Editing reactions...", plateView.getComponent(), editReactionsRunnable, postEditReactionsRunnable);
         }
     };
 
     GeneiousAction displayAction = new GeneiousAction("Display Options", null, IconUtilities.getIcons("monitor16.png")) {
         public void actionPerformed(ActionEvent e) {
-            ReactionUtilities.showDisplayDialog(plateView.getPlate(), plateView);
+            ReactionUtilities.showDisplayDialog(plateView.getPlate(), plateView.getComponent());
             updatePanel();
         }
     };
 
     GeneiousAction addTracesAction = new GeneiousAction("Bulk Add Traces", null, IconUtilities.getIcons("chromatogram32.png")) {
         public void actionPerformed(ActionEvent e) {
-            String error = ReactionUtilities.bulkLoadChromatograms(plateView.getPlate(), plateView);
+            String error = ReactionUtilities.bulkLoadChromatograms(plateView.getPlate(), plateView.getComponent());
             if(error != null) {
                 Dialogs.showMessageDialog(error);
                 actionPerformed(e);
@@ -563,7 +563,7 @@ public class PlateDocumentViewer extends DocumentViewer{
                 final AtomicReference<String> referenceToReactionsCheckResult = new AtomicReference<String>();
                 Runnable reactionsCheckRunnable = new Runnable() {
                     public void run() {
-                        referenceToReactionsCheckResult.set(allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, plateView, true));
+                        referenceToReactionsCheckResult.set(allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, plateView.getComponent(), true));
                     }
                 };
 
@@ -584,14 +584,14 @@ public class PlateDocumentViewer extends DocumentViewer{
                     }
                 };
 
-                BiocodeService.block("Checking reactions...", plateView, reactionsCheckRunnable, postReactionsCheckRunnable);
+                BiocodeService.block("Checking reactions...", plateView.getComponent(), reactionsCheckRunnable, postReactionsCheckRunnable);
             }
         }
     };
 
     GeneiousAction exportPlateAction = new GeneiousAction("Export Sequencer File", "Generate an input file for ABI sequencers", BiocodePlugin.getIcons("abi_16.png")) {
         public void actionPerformed(ActionEvent e) {
-            ReactionUtilities.saveAbiFileFromPlate(plateView.getPlate(), plateView);
+            ReactionUtilities.saveAbiFileFromPlate(plateView.getPlate(), plateView.getComponent());
         }
     };
 
@@ -797,9 +797,9 @@ public class PlateDocumentViewer extends DocumentViewer{
                 boolean colorPlate = (Boolean) options.getValue("colorPlate");
                 plateView.setColorBackground(colorPlate);
                 double scaleFactor = 1;
-                scaleFactor = Math.min(scaleFactor, dimensions.getWidth()/plateView.getPreferredSize().width);
-                scaleFactor = Math.min(scaleFactor, dimensions.getHeight()/plateView.getPreferredSize().height);
-                double requiredPlateHeight = scaleFactor*plateView.getPreferredSize().height;
+                scaleFactor = Math.min(scaleFactor, dimensions.getWidth()/plateView.getComponent().getPreferredSize().width);
+                scaleFactor = Math.min(scaleFactor, dimensions.getHeight()/plateView.getComponent().getPreferredSize().height);
+                double requiredPlateHeight = scaleFactor*plateView.getComponent().getPreferredSize().height;
 
 
 
@@ -825,8 +825,8 @@ public class PlateDocumentViewer extends DocumentViewer{
                     //draw the plate
                     g.translate(0, dimensions.height-availableHeight);
                     g.scale(scaleFactor, scaleFactor);
-                    plateView.setBounds(0,0,plateView.getPreferredSize().width, plateView.getPreferredSize().height);
-                    plateView.print(g);
+                    plateView.getComponent().setBounds(0,0,plateView.getComponent().getPreferredSize().width, plateView.getComponent().getPreferredSize().height);
+                    plateView.getComponent().print(g);
                     g.scale(1/scaleFactor, 1/scaleFactor);
                     g.translate(0, availableHeight-dimensions.height);
                 }
@@ -1052,7 +1052,7 @@ public class PlateDocumentViewer extends DocumentViewer{
         final OptionsPanel mainPanel = new OptionsPanel(false, false);
         mainPanel.setOpaque(false);
         mainPanel.addDividerWithLabel("Plate");
-        mainPanel.addSpanningComponent(plateView);
+        mainPanel.addSpanningComponent(plateView.getComponent());
 
         updateCocktailCount();
 

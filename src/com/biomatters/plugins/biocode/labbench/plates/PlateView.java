@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.virion.jam.util.SimpleListener;
 
-public class PlateView extends JPanel {
+public class PlateView extends JPanel implements PlateViewPane<JPanel> {
     private PlateView selfReference = this;
     private Plate plate;
     private boolean colorBackground = true;
@@ -48,15 +48,23 @@ public class PlateView extends JPanel {
         init();
     }
 
+    @Override
+    public JPanel getComponent() {
+        return this;
+    }
+
+    @Override
     public void setPlate(Plate plate) {
         this.plate = plate;
     }
 
+    @Override
     public Plate getPlate() {
         return plate;
     }
 
-    public void decreaseZoom () {
+    @Override
+    public void decreaseZoom() {
         zoom--;
         if (zoom < 5) {
             zoom = 5;
@@ -64,7 +72,8 @@ public class PlateView extends JPanel {
         updateZoom();
     }
 
-    public void increaseZoom () {
+    @Override
+    public void increaseZoom() {
         zoom++;
         if (zoom > 15) {
             zoom = 15;
@@ -79,6 +88,7 @@ public class PlateView extends JPanel {
         repaint();
     }
 
+    @Override
     public void setDefaultZoom() {
         zoom = 10;
         updateZoom();
@@ -118,10 +128,12 @@ public class PlateView extends JPanel {
         //System.out.println("paintin: "+(System.currentTimeMillis()-time));
     }
 
+    @Override
     public boolean isColorBackground() {
         return colorBackground;
     }
 
+    @Override
     public void setColorBackground(boolean colorBackground) {
         this.colorBackground = colorBackground;
     }
@@ -277,10 +289,12 @@ public class PlateView extends JPanel {
         getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_A, GuiUtilities.MENU_MASK), "select-all");
     }
 
+    @Override
     public boolean isEditted() {
         return editted;
     }
 
+    @Override
     public boolean checkForPlateSpecificErrors() {
         boolean detectedError = false;
         Collection<Reaction> reactions = Arrays.asList(getPlate().getReactions());
@@ -332,6 +346,7 @@ public class PlateView extends JPanel {
         }
     }
 
+    @Override
     public List<Reaction> getSelectedReactions() {
         List<Reaction> selectedReactions = new ArrayList<Reaction>();
         for (Reaction reaction : plate.getReactions()) {
@@ -345,6 +360,7 @@ public class PlateView extends JPanel {
     private List<ListSelectionListener> selectionListeners = new ArrayList<ListSelectionListener>();
     private List<SimpleListener> editListeners = new ArrayList<SimpleListener>();
 
+    @Override
     public void addSelectionListener(ListSelectionListener lsl) {
         selectionListeners.add(lsl);
     }
@@ -353,6 +369,7 @@ public class PlateView extends JPanel {
      * adds a listener that's fired when one or more of the wells in this plate are edited
      * @param listener
      */
+    @Override
     public void addEditListener(SimpleListener listener) {
         editListeners.add(listener);
     }

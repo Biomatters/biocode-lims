@@ -33,26 +33,26 @@ import java.util.prefs.Preferences;
  */
 public class PlateViewer extends JPanel {
 
-    private PlateView plateView;
+    private PlateViewPane plateView;
     private PlateViewer selfReference = this;
     private Options.StringOption nameField;
     private JScrollPane scroller;
     private boolean hasCheckedPlateForErrorsAtLeastOnce = false;
 
     public PlateViewer(int numberOfReactions, Reaction.Type type) {
-        plateView = new PlateView(numberOfReactions, type, true);
+        plateView = new JTablePlateView(numberOfReactions, type, true);
         init();
     }
 
     public PlateViewer(Plate.Size size, Reaction.Type type) {
-        plateView = new PlateView(size, type, true);
+        plateView = new JTablePlateView(size, type, true);
         init();
     }
 
     private void init() {
         setLayout(new BorderLayout());
 
-        scroller = new JScrollPane(plateView);
+        scroller = new JScrollPane(plateView.getComponent());
         scroller.setBorder(new EmptyBorder(0,0,0,0));
         scroller.getVerticalScrollBar().setUnitIncrement(20);
         scroller.getHorizontalScrollBar().setUnitIncrement(20);
@@ -74,19 +74,19 @@ public class PlateViewer extends JPanel {
         final GeneiousAction zoomInAction = new GeneiousAction("", "Zoom in", IconUtilities.getIcons("zoomin.png")) {
             public void actionPerformed(ActionEvent e) {
                 plateView.increaseZoom();
-                plateView.revalidate();
+                plateView.getComponent().revalidate();
             }
         };
         final GeneiousAction fullZoomAction = new GeneiousAction("", "Full Zoom", IconUtilities.getIcons("fullzoom.png")) {
             public void actionPerformed(ActionEvent e) {
                 plateView.setDefaultZoom();
-                plateView.revalidate();
+                plateView.getComponent().revalidate();
             }
         };
         final GeneiousAction zoomOutAction = new GeneiousAction("", "Zoom out", IconUtilities.getIcons("zoomout.png")) {
             public void actionPerformed(ActionEvent e) {
                 plateView.decreaseZoom();
-                plateView.revalidate();
+                plateView.getComponent().revalidate();
             }
         };
         toolbar.addAction(zoomInAction);
@@ -214,7 +214,7 @@ public class PlateViewer extends JPanel {
 
                     Runnable reactionsCheckRunnable = new Runnable() {
                         public void run() {
-                            referenceToReactionsCheckResult.set(allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, plateView, true));
+                            referenceToReactionsCheckResult.set(allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, PlateViewer.this, true));
                         }
                     };
 
@@ -233,7 +233,7 @@ public class PlateViewer extends JPanel {
                         }
                     };
 
-                    BiocodeService.block("Checking reactions...", plateView, reactionsCheckRunnable, postReactionsCheckRunnable);
+                    BiocodeService.block("Checking reactions...", PlateViewer.this, reactionsCheckRunnable, postReactionsCheckRunnable);
                 }
             }
         };
@@ -241,7 +241,7 @@ public class PlateViewer extends JPanel {
 
         final GeneiousAction bulkChromatAction = new GeneiousAction("Bulk Add Traces", "Import trace files, and attach them to wells", StandardIcons.nucleotide.getIcons()) {
             public void actionPerformed(ActionEvent e) {
-                String error = ReactionUtilities.bulkLoadChromatograms(plateView.getPlate(), plateView);
+                String error = ReactionUtilities.bulkLoadChromatograms(plateView.getPlate(), PlateViewer.this);
                 if (error != null) {
                     Dialogs.showMessageDialog(error);
                     actionPerformed(e);
@@ -264,7 +264,7 @@ public class PlateViewer extends JPanel {
 
                 Runnable editReactionsRunnable = new Runnable() {
                     public void run() {
-                        okSelected.set(ReactionUtilities.editReactions(reactionsToEdit, plateView, true, true));
+                        okSelected.set(ReactionUtilities.editReactions(reactionsToEdit, PlateViewer.this, true, true));
                     }
                 };
 
@@ -280,7 +280,7 @@ public class PlateViewer extends JPanel {
                     }
                 };
 
-                BiocodeService.block("Editing reactions...", plateView, editReactionsRunnable, postEditReactionsRunnable);
+                BiocodeService.block("Editing reactions...", PlateViewer.this, editReactionsRunnable, postEditReactionsRunnable);
             }
         };
         toolbar.addAction(editAction);
@@ -294,7 +294,7 @@ public class PlateViewer extends JPanel {
 
         GeneiousAction displayAction = new GeneiousAction("Display Options", null, IconUtilities.getIcons("monitor16.png")) {
             public void actionPerformed(ActionEvent e) {
-                ReactionUtilities.showDisplayDialog(plateView.getPlate(), plateView);
+                ReactionUtilities.showDisplayDialog(plateView.getPlate(), PlateViewer.this);
                 updatePanel();
             }
         };
@@ -305,7 +305,7 @@ public class PlateViewer extends JPanel {
         if(plateView.getPlate().getReactionType() == Reaction.Type.CycleSequencing) {
             final GeneiousAction exportPlateAction = new GeneiousAction("Export Sequencer File") {
                 public void actionPerformed(ActionEvent e) {
-                    ReactionUtilities.saveAbiFileFromPlate(plateView.getPlate(), plateView);
+                    ReactionUtilities.saveAbiFileFromPlate(plateView.getPlate(), PlateViewer.this);
                 }
             };
             toolbar.addAction(exportPlateAction);
@@ -347,7 +347,7 @@ public class PlateViewer extends JPanel {
                     public void windowClosing(WindowEvent e) {
                         for (Reaction r : plateView.getPlate().getReactions()) {
                             if (!r.isEmpty()) {
-                                if (Dialogs.showOkCancelDialog("Your plate has unsaved changes.  Are you sure you want to close this window?", "Unsaved Changes", plateView)) {
+                                if (Dialogs.showOkCancelDialog("Your plate has unsaved changes.  Are you sure you want to close this window?", "Unsaved Changes", PlateViewer.this)) {
                                     break;
                                 }
                                 else {
@@ -394,7 +394,7 @@ public class PlateViewer extends JPanel {
                             public void run() {
                                 try {
                                     if (!hasCheckedPlateForErrorsAtLeastOnce && !plateView.isEditted()) {
-                                        String reactionValidityCheckResult = allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, plateView, true);
+                                        String reactionValidityCheckResult = allReactionsOnPlate.get(0).areReactionsValid(allReactionsOnPlate, PlateViewer.this, true);
 
                                         if (!reactionValidityCheckResult.isEmpty()) {
                                             Dialogs.showMessageDialog(reactionValidityCheckResult);
@@ -437,7 +437,7 @@ public class PlateViewer extends JPanel {
                             }
                         };
 
-                        BiocodeService.block("Creating plate...", plateView, runnable, updatePanelRunnable);
+                        BiocodeService.block("Creating plate...", PlateViewer.this, runnable, updatePanelRunnable);
                     }
                 });
                 frame.getContentPane().add(closeButtonPanel, BorderLayout.SOUTH);
@@ -490,10 +490,10 @@ public class PlateViewer extends JPanel {
     }
 
     private void updatePanel() {
-        plateView.invalidate();
+        plateView.getComponent().invalidate();
 
         scroller.getViewport().validate();
 
-        plateView.repaint();
+        plateView.getComponent().repaint();
     }
 }
